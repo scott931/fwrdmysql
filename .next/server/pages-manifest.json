@@ -2,8 +2,9 @@
   "/_app": "pages/_app.js",
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
-  "/courses": "pages/courses.js",
-  "/course/[courseId]/lesson/[lessonId]": "pages/course/[courseId]/lesson/[lessonId].js",
   "/home": "pages/home.js",
-  "/course/[courseId]": "pages/course/[courseId].js"
+  "/admin": "pages/admin.js",
+  "/admin/manage-users": "pages/admin/manage-users.js",
+  "/admin/create-user": "pages/admin/create-user.js",
+  "/community": "pages/community.js"
 }

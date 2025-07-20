@@ -19,20 +19,25 @@ self.__BUILD_MANIFEST = {
       "static/chunks/main.js",
       "static/chunks/pages/_error.js"
     ],
-    "/course/[courseId]": [
+    "/admin": [
       "static/chunks/webpack.js",
       "static/chunks/main.js",
-      "static/chunks/pages/course/[courseId].js"
+      "static/chunks/pages/admin.js"
     ],
-    "/course/[courseId]/lesson/[lessonId]": [
+    "/admin/create-user": [
       "static/chunks/webpack.js",
       "static/chunks/main.js",
-      "static/chunks/pages/course/[courseId]/lesson/[lessonId].js"
+      "static/chunks/pages/admin/create-user.js"
     ],
-    "/courses": [
+    "/admin/manage-users": [
       "static/chunks/webpack.js",
       "static/chunks/main.js",
-      "static/chunks/pages/courses.js"
+      "static/chunks/pages/admin/manage-users.js"
+    ],
+    "/community": [
+      "static/chunks/webpack.js",
+      "static/chunks/main.js",
+      "static/chunks/pages/community.js"
     ],
     "/home": [
       "static/chunks/webpack.js",

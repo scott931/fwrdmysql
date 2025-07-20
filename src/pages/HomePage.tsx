@@ -110,33 +110,6 @@ const HomePage: React.FC = () => {
     router.push(`/course/${courseId}`);
   };
 
-  // Test API connection
-  const testAPI = async () => {
-    try {
-      console.log('Testing API connection...');
-
-      // Test health endpoint
-      const healthResponse = await fetch('http://localhost:3001/api/health');
-      const healthData = await healthResponse.json();
-      console.log('Health check:', healthData);
-
-      // Test courses endpoint
-      const coursesResponse = await fetch('http://localhost:3001/api/courses');
-      const coursesData = await coursesResponse.json();
-      console.log('Courses from API:', coursesData);
-      console.log('Number of courses:', coursesData.length);
-
-      // Test featured courses endpoint
-      const featuredResponse = await fetch('http://localhost:3001/api/courses/featured');
-      const featuredData = await featuredResponse.json();
-      console.log('Featured courses from API:', featuredData);
-      console.log('Number of featured courses:', featuredData.length);
-
-    } catch (error) {
-      console.error('API test failed:', error);
-    }
-  };
-
   // Use fallback data if no courses are loaded yet
   const displayCourses = allCourses.length > 0 ? allCourses : [fallbackCourse];
   const displayFeaturedCourses = featuredCourses.length > 0 ? featuredCourses : [fallbackCourse];
@@ -147,16 +120,6 @@ const HomePage: React.FC = () => {
       <div className="pb-10">
         {/* Hero Banner - Always show with fallback data */}
         <HeroBanner course={featuredCourse} onPlay={handlePlayCourse} />
-
-        {/* Temporary API Test Button */}
-        <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
-          <button
-            onClick={testAPI}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium"
-          >
-            Test API Connection
-          </button>
-        </div>
 
         {/* Stats Section */}
         <div className="bg-gradient-to-b from-black to-gray-900">
