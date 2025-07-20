@@ -2,34 +2,305 @@
  * Core type definitions for the application
  */
 
-/**
- * User Profile
- * Represents a user account with personal and learning information
- */
+// User and Authentication Types
 export interface User {
-  /** Unique identifier for the user */
   id: string;
-  /** User's email address */
   email: string;
-  /** User's full name */
-  fullName: string;
-  /** URL to user's avatar image */
-  avatarUrl?: string;
-  /** User's education level */
-  educationLevel?: 'high-school' | 'associate' | 'bachelor' | 'master' | 'phd' | 'professional' | 'other';
-  /** User's job title */
-  jobTitle?: string;
-  /** Topics the user is interested in learning */
-  topicsOfInterest?: string[];
-  /** Whether the user has completed onboarding */
-  onboardingCompleted: boolean;
-  /** User's role in the system */
-  role: 'user' | 'content_manager' | 'admin' | 'super_admin';
-  /** Date when user account was created */
-  createdAt: Date;
-  /** Date when user account was last updated */
-  updatedAt: Date;
+  full_name: string;
+  avatar_url?: string;
+  role: UserRole;
+  permissions: Permission[];
+  created_at: string;
+  updated_at: string;
+  last_login?: string;
+  is_active: boolean;
+  onboarding_completed: boolean;
 }
+
+// Role Definitions
+export type UserRole = 'super_admin' | 'content_manager' | 'community_manager' | 'user_support' | 'user';
+
+// Permission Types
+export type Permission =
+  // System Management
+  | 'system:full_access'
+  | 'system:configuration'
+  | 'system:maintenance'
+  | 'system:backup'
+
+  // User Management
+  | 'users:view'
+  | 'users:create'
+  | 'users:edit'
+  | 'users:delete'
+  | 'users:assign_roles'
+  | 'users:suspend'
+  | 'users:activate'
+
+  // Content Management
+  | 'content:upload'
+  | 'content:edit'
+  | 'content:delete'
+  | 'content:publish'
+  | 'content:review'
+  | 'content:workflow'
+
+  // Course Management
+  | 'courses:view'
+  | 'courses:create'
+  | 'courses:edit'
+  | 'courses:delete'
+  | 'courses:publish'
+  | 'courses:assign_instructors'
+
+  // Instructor Management
+  | 'instructors:view'
+  | 'instructors:create'
+  | 'instructors:edit'
+  | 'instructors:delete'
+  | 'instructors:approve'
+
+  // Community Management
+  | 'community:moderate'
+  | 'community:ban_users'
+  | 'community:delete_posts'
+  | 'community:pin_posts'
+  | 'community:analytics'
+
+  // Support Management
+  | 'support:view_tickets'
+  | 'support:respond_tickets'
+  | 'support:escalate_tickets'
+  | 'support:close_tickets'
+
+  // Financial & Analytics
+  | 'analytics:view'
+  | 'analytics:export'
+  | 'financial:view'
+  | 'financial:export'
+  | 'financial:refund'
+
+  // Communication
+  | 'communication:send_announcements'
+  | 'communication:send_emails'
+  | 'communication:send_notifications'
+
+  // Audit & Security
+  | 'audit:view_logs'
+  | 'audit:export_logs'
+  | 'security:view_sessions'
+  | 'security:terminate_sessions';
+
+// Role Permission Matrix
+export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
+  super_admin: [
+    // Full system access
+    'system:full_access',
+    'system:configuration',
+    'system:maintenance',
+    'system:backup',
+
+    // All user management
+    'users:view',
+    'users:create',
+    'users:edit',
+    'users:delete',
+    'users:assign_roles',
+    'users:suspend',
+    'users:activate',
+
+    // All content management
+    'content:upload',
+    'content:edit',
+    'content:delete',
+    'content:publish',
+    'content:review',
+    'content:workflow',
+
+    // All course management
+    'courses:view',
+    'courses:create',
+    'courses:edit',
+    'courses:delete',
+    'courses:publish',
+    'courses:assign_instructors',
+
+    // All instructor management
+    'instructors:view',
+    'instructors:create',
+    'instructors:edit',
+    'instructors:delete',
+    'instructors:approve',
+
+    // All community management
+    'community:moderate',
+    'community:ban_users',
+    'community:delete_posts',
+    'community:pin_posts',
+    'community:analytics',
+
+    // All support management
+    'support:view_tickets',
+    'support:respond_tickets',
+    'support:escalate_tickets',
+    'support:close_tickets',
+
+    // All analytics and financial
+    'analytics:view',
+    'analytics:export',
+    'financial:view',
+    'financial:export',
+    'financial:refund',
+
+    // All communication
+    'communication:send_announcements',
+    'communication:send_emails',
+    'communication:send_notifications',
+
+    // All audit and security
+    'audit:view_logs',
+    'audit:export_logs',
+    'security:view_sessions',
+    'security:terminate_sessions'
+  ],
+
+  content_manager: [
+    // Content management
+    'content:upload',
+    'content:edit',
+    'content:delete',
+    'content:publish',
+    'content:review',
+    'content:workflow',
+
+    // Course management
+    'courses:view',
+    'courses:create',
+    'courses:edit',
+    'courses:delete',
+    'courses:publish',
+    'courses:assign_instructors',
+
+    // Instructor management
+    'instructors:view',
+    'instructors:create',
+    'instructors:edit',
+    'instructors:approve',
+
+    // Limited user management
+    'users:view',
+    'users:edit',
+
+    // Basic analytics
+    'analytics:view',
+
+    // Communication
+    'communication:send_announcements',
+    'communication:send_notifications'
+  ],
+
+  community_manager: [
+    // Community management
+    'community:moderate',
+    'community:ban_users',
+    'community:delete_posts',
+    'community:pin_posts',
+    'community:analytics',
+
+    // Support management
+    'support:view_tickets',
+    'support:respond_tickets',
+    'support:close_tickets',
+
+    // Limited user management
+    'users:view',
+    'users:suspend',
+    'users:activate',
+
+    // Communication
+    'communication:send_announcements',
+    'communication:send_notifications',
+
+    // Basic analytics
+    'analytics:view'
+  ],
+
+  user_support: [
+    // Support management
+    'support:view_tickets',
+    'support:respond_tickets',
+    'support:escalate_tickets',
+    'support:close_tickets',
+
+    // Limited user management
+    'users:view',
+    'users:edit',
+
+    // Basic communication
+    'communication:send_notifications',
+
+    // Limited analytics
+    'analytics:view'
+  ],
+
+  user: [
+    // Basic permissions for regular users
+    'courses:view'
+  ]
+};
+
+// Audit Log Types
+export interface AuditLog {
+  id: string;
+  user_id: string;
+  user_email: string;
+  action: string;
+  resource_type: string;
+  resource_id?: string;
+  details: Record<string, any>;
+  ip_address: string;
+  user_agent: string;
+  created_at: string;
+}
+
+// Session Management
+export interface UserSession {
+  id: string;
+  user_id: string;
+  token: string;
+  ip_address: string;
+  user_agent: string;
+  is_active: boolean;
+  created_at: string;
+  last_activity: string;
+  expires_at: string;
+}
+
+// Permission Check Helper
+export const hasPermission = (userPermissions: Permission[], requiredPermission: Permission): boolean => {
+  return userPermissions.includes(requiredPermission) || userPermissions.includes('system:full_access');
+};
+
+export const hasAnyPermission = (userPermissions: Permission[], requiredPermissions: Permission[]): boolean => {
+  return requiredPermissions.some(permission => hasPermission(userPermissions, permission));
+};
+
+export const hasAllPermissions = (userPermissions: Permission[], requiredPermissions: Permission[]): boolean => {
+  return requiredPermissions.every(permission => hasPermission(userPermissions, permission));
+};
+
+// Role Hierarchy
+export const ROLE_HIERARCHY: Record<UserRole, number> = {
+  super_admin: 5,
+  content_manager: 4,
+  community_manager: 3,
+  user_support: 2,
+  user: 1
+};
+
+export const canManageRole = (currentUserRole: UserRole, targetRole: UserRole): boolean => {
+  return ROLE_HIERARCHY[currentUserRole] > ROLE_HIERARCHY[targetRole];
+};
 
 /**
  * Instructor Profile
@@ -248,4 +519,14 @@ export interface CourseProgress extends Course {
   xpEarned: number;
   /** Completed lesson IDs */
   completedLessons: string[];
+}
+
+export interface Notification {
+  id: string;
+  user_id: string;
+  title: string;
+  message: string;
+  type: 'info' | 'success' | 'warning' | 'error';
+  is_read: boolean;
+  created_at: string;
 }

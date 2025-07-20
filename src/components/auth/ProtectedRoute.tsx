@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Navigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { canPerformAction } from '../../utils/permissions';
+import { UserRole, ROLE_HIERARCHY } from '../../types';
 import ErrorMessage from '../ui/ErrorMessage';
 import { AlertTriangle } from 'lucide-react';
 import Button from '../ui/Button';
@@ -9,7 +9,7 @@ import Button from '../ui/Button';
 interface ProtectedRouteProps {
   children?: React.ReactNode;
   requireOnboarding?: boolean;
-  requiredRole?: 'content_manager' | 'admin' | 'super_admin';
+  requiredRole?: UserRole;
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
@@ -17,7 +17,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   requireOnboarding = true,
   requiredRole,
 }) => {
-  const { user, profile, loading } = useAuth();
+  const { user, loading } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -31,7 +31,6 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   console.log("ProtectedRoute Check:", {
     isLoading: loading,
     user: user,
-    profile: profile,
     requiredRole: requiredRole,
     pathname: location.pathname
   });
@@ -42,13 +41,14 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return <Navigate to={redirectTo} state={{ from: location }} replace />;
   }
 
-  // Check for required role - Allow all users to view admin panels
+  // Check for required role
   if (requiredRole) {
-    const userRole = profile?.role;
-    // Allow all authenticated users to view admin panels
-    // Role restrictions will be handled at the component level for specific actions
-    if (!userRole) {
-       return (
+    const userRole = user?.role as UserRole;
+    const userRoleLevel = ROLE_HIERARCHY[userRole] || 0;
+    const requiredRoleLevel = ROLE_HIERARCHY[requiredRole] || 0;
+
+    if (userRoleLevel < requiredRoleLevel) {
+      return (
         <div className="min-h-screen flex items-center justify-center bg-gray-900 p-4">
           <div className="bg-gray-800 rounded-lg p-8 max-w-md w-full">
             <div className="text-center mb-6">
@@ -57,14 +57,14 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
               </div>
               <h2 className="text-2xl font-bold text-white mb-2">Access Denied</h2>
               <p className="text-gray-400">
-                You don't have permission to access this page. Please contact a system administrator.
+                You don't have sufficient permissions to access this page.
+                Required role: {requiredRole}
               </p>
             </div>
             <div className="flex justify-center">
               <Button
                 variant="primary"
                 onClick={() => {
-                  // This should ideally use the signOut from AuthContext
                   window.location.href = '/admin/login';
                 }}
               >
@@ -78,7 +78,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   // Onboarding check for regular users - Disabled to go directly to home
-  // if (requireOnboarding && profile && !profile.onboarding_completed && !requiredRole) {
+  // if (requireOnboarding && user && !user.onboarding_completed && !requiredRole) {
   //   return <Navigate to="/onboarding" replace />;
   // }
 

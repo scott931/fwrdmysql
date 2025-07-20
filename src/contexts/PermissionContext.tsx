@@ -1,12 +1,15 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { Permission, getUserPermissions } from '../utils/permissions';
+import { Permission, UserRole, ROLE_PERMISSIONS } from '../types';
+import { hasPermission as checkPermission, hasAnyPermission, hasAllPermissions } from '../types';
 import { useAuth } from './AuthContext';
 
 interface PermissionContextType {
-  userRole: string;
-  permissions: Permission;
-  hasPermission: (permission: keyof Permission) => boolean;
-  checkPermission: (permission: keyof Permission) => { hasAccess: boolean; errorMessage: string };
+  userRole: UserRole;
+  permissions: Permission[];
+  hasPermission: (permission: Permission) => boolean;
+  hasAnyPermission: (permissions: Permission[]) => boolean;
+  hasAllPermissions: (permissions: Permission[]) => boolean;
+  checkPermission: (permission: Permission) => { hasAccess: boolean; errorMessage: string };
 }
 
 const PermissionContext = createContext<PermissionContextType | undefined>(undefined);
@@ -20,30 +23,45 @@ export const usePermissions = () => {
 };
 
 export const PermissionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { profile } = useAuth();
-  const [userRole, setUserRole] = useState<string>('user');
-  const [permissions, setPermissions] = useState<Permission>(getUserPermissions('user'));
+  const { user } = useAuth();
+  const [userRole, setUserRole] = useState<UserRole>('user');
+  const [permissions, setPermissions] = useState<Permission[]>(ROLE_PERMISSIONS.user);
 
   useEffect(() => {
-    // Get user role from AuthContext profile
-    const role = profile?.role || 'user';
+    // Get user role from AuthContext user
+    const role = (user?.role as UserRole) || 'user';
     setUserRole(role);
-    setPermissions(getUserPermissions(role));
-  }, [profile]);
+    setPermissions(ROLE_PERMISSIONS[role] || ROLE_PERMISSIONS.user);
+  }, [user]);
 
-  const hasPermission = (permission: keyof Permission): boolean => {
-    return permissions[permission];
+  const hasPermission = (permission: Permission): boolean => {
+    return checkPermission(permissions, permission);
   };
 
-  const checkPermission = (permission: keyof Permission) => {
+  const hasAnyPermissionCheck = (requiredPermissions: Permission[]): boolean => {
+    return hasAnyPermission(permissions, requiredPermissions);
+  };
+
+  const hasAllPermissionsCheck = (requiredPermissions: Permission[]): boolean => {
+    return hasAllPermissions(permissions, requiredPermissions);
+  };
+
+  const checkPermissionWithError = (permission: Permission) => {
     const hasAccess = hasPermission(permission);
-    const errorMessage = hasAccess ? '' : `You don't have permission to ${permission.replace('_', ' ')}`;
+    const errorMessage = hasAccess ? '' : `You don't have permission to access this feature`;
 
     return { hasAccess, errorMessage };
   };
 
   return (
-    <PermissionContext.Provider value={{ userRole, permissions, hasPermission, checkPermission }}>
+    <PermissionContext.Provider value={{
+      userRole,
+      permissions,
+      hasPermission,
+      hasAnyPermission: hasAnyPermissionCheck,
+      hasAllPermissions: hasAllPermissionsCheck,
+      checkPermission: checkPermissionWithError
+    }}>
       {children}
     </PermissionContext.Provider>
   );

@@ -1,150 +1,246 @@
-export interface Permission {
-  view_courses: boolean;
-  enroll_courses: boolean;
-  create_courses: boolean;
-  edit_courses: boolean;
-  delete_courses: boolean;
-  manage_users: boolean;
-  view_analytics: boolean;
-  manage_settings: boolean;
-  access_audit_logs: boolean;
-  create_admin_users: boolean;
-  manage_instructors: boolean;
-  view_admin_dashboard: boolean;
-}
+import { Permission, UserRole, ROLE_PERMISSIONS, ROLE_HIERARCHY } from '../types';
 
-const ROLE_HIERARCHY: { [key: string]: number } = {
-  super_admin: 3,
-  admin: 2,
-  content_manager: 1,
-  user: 0,
+/**
+ * Permission Management Utilities
+ * Provides helper functions for role-based access control
+ */
+
+/**
+ * Check if user has a specific permission
+ */
+export const hasPermission = (userPermissions: Permission[], requiredPermission: Permission): boolean => {
+  return userPermissions.includes(requiredPermission) || userPermissions.includes('system:full_access');
 };
 
-export const ROLE_PERMISSIONS: Record<string, Permission> = {
-  user: {
-    view_courses: true,
-    enroll_courses: true,
-    create_courses: false,
-    edit_courses: false,
-    delete_courses: false,
-    manage_users: false,
-    view_analytics: false,
-    manage_settings: false,
-    access_audit_logs: false,
-    create_admin_users: false,
-    manage_instructors: false,
-    view_admin_dashboard: true, // Changed to true to give all users access
-  },
-  content_manager: {
-    view_courses: true,
-    enroll_courses: true,
-    create_courses: true,
-    edit_courses: true,
-    delete_courses: false,
-    manage_users: false,
-    view_analytics: false,
-    manage_settings: false,
-    access_audit_logs: false,
-    create_admin_users: false,
-    manage_instructors: false,
-    view_admin_dashboard: true,
-  },
-  admin: {
-    view_courses: true,
-    enroll_courses: true,
-    create_courses: true,
-    edit_courses: true,
-    delete_courses: true,
-    manage_users: true,
-    view_analytics: true,
-    manage_settings: true,
-    access_audit_logs: true,
-    create_admin_users: true,
-    manage_instructors: true,
-    view_admin_dashboard: true,
-  },
-  super_admin: {
-    view_courses: true,
-    enroll_courses: true,
-    create_courses: true,
-    edit_courses: true,
-    delete_courses: true,
-    manage_users: true,
-    view_analytics: true,
-    manage_settings: true,
-    access_audit_logs: true,
-    create_admin_users: true,
-    manage_instructors: true,
-    view_admin_dashboard: true,
-  },
+/**
+ * Check if user has any of the required permissions
+ */
+export const hasAnyPermission = (userPermissions: Permission[], requiredPermissions: Permission[]): boolean => {
+  return requiredPermissions.some(permission => hasPermission(userPermissions, permission));
 };
 
-export function getUserPermissions(role: string): Permission {
-  return ROLE_PERMISSIONS[role] || ROLE_PERMISSIONS.user;
-}
+/**
+ * Check if user has all required permissions
+ */
+export const hasAllPermissions = (userPermissions: Permission[], requiredPermissions: Permission[]): boolean => {
+  return requiredPermissions.every(permission => hasPermission(userPermissions, permission));
+};
 
-export function hasPermission(role: string, permission: keyof Permission): boolean {
-  const permissions = getUserPermissions(role);
-  return permissions[permission];
-}
+/**
+ * Get permissions for a specific role
+ */
+export const getRolePermissions = (role: UserRole): Permission[] => {
+  return ROLE_PERMISSIONS[role] || [];
+};
 
-export function canAccessAdminDashboard(role: string): boolean {
-  return hasPermission(role, 'view_admin_dashboard');
-}
+/**
+ * Check if a user can manage another role
+ */
+export const canManageRole = (currentUserRole: UserRole, targetRole: UserRole): boolean => {
+  return ROLE_HIERARCHY[currentUserRole] > ROLE_HIERARCHY[targetRole];
+};
 
-export function canCreateSuperAdmin(role: string): boolean {
-  return role === 'super_admin';
-}
+/**
+ * Get all roles that a user can manage
+ */
+export const getManageableRoles = (currentUserRole: UserRole): UserRole[] => {
+  return Object.keys(ROLE_HIERARCHY).filter(role =>
+    canManageRole(currentUserRole, role as UserRole)
+  ) as UserRole[];
+};
 
-export function canDeleteCourses(role: string): boolean {
-  return hasPermission(role, 'delete_courses');
-}
+/**
+ * Check if user has system administration permissions
+ */
+export const isSystemAdmin = (userPermissions: Permission[]): boolean => {
+  return hasPermission(userPermissions, 'system:full_access');
+};
 
-export function canManageUsers(role: string): boolean {
-  return hasPermission(role, 'manage_users');
-}
+/**
+ * Check if user has content management permissions
+ */
+export const isContentManager = (userPermissions: Permission[]): boolean => {
+  return hasAnyPermission(userPermissions, [
+    'content:upload',
+    'content:edit',
+    'content:delete',
+    'courses:create',
+    'courses:edit'
+  ]);
+};
 
-export function canAccessAuditLogs(role: string): boolean {
-  return hasPermission(role, 'access_audit_logs');
-}
+/**
+ * Check if user has community management permissions
+ */
+export const isCommunityManager = (userPermissions: Permission[]): boolean => {
+  return hasAnyPermission(userPermissions, [
+    'community:moderate',
+    'community:ban_users',
+    'community:delete_posts'
+  ]);
+};
 
-export function canManageSettings(role: string): boolean {
-  return hasPermission(role, 'manage_settings');
-}
+/**
+ * Check if user has user support permissions
+ */
+export const isUserSupport = (userPermissions: Permission[]): boolean => {
+  return hasAnyPermission(userPermissions, [
+    'support:view_tickets',
+    'support:respond_tickets'
+  ]);
+};
 
-export function canCreateAdminUsers(role: string): boolean {
-  return hasPermission(role, 'create_admin_users');
-}
+/**
+ * Get role display name
+ */
+export const getRoleDisplayName = (role: UserRole): string => {
+  const roleNames: Record<UserRole, string> = {
+    super_admin: 'Super Admin',
+    content_manager: 'Content Manager',
+    community_manager: 'Community Manager',
+    user_support: 'User Support',
+    user: 'User'
+  };
+  return roleNames[role] || role;
+};
 
-export function canManageInstructors(role: string): boolean {
-  return hasPermission(role, 'manage_instructors');
-}
+/**
+ * Get role description
+ */
+export const getRoleDescription = (role: UserRole): string => {
+  const roleDescriptions: Record<UserRole, string> = {
+    super_admin: 'Full system access and configuration. Can manage all users, content, and system settings.',
+    content_manager: 'Course upload and editing permissions. Can manage content workflow and instructor accounts.',
+    community_manager: 'Forum moderation capabilities. Can manage community interactions and user support.',
+    user_support: 'Limited user account assistance. Basic reporting and communication tools.',
+    user: 'Standard user with access to courses and basic features.'
+  };
+  return roleDescriptions[role] || '';
+};
 
-export function getPermissionError(action: string, role: string): string {
-  const roleDisplayName = role.replace('_', ' ').toUpperCase();
+/**
+ * Get permission display name
+ */
+export const getPermissionDisplayName = (permission: Permission): string => {
+  const permissionNames: Record<Permission, string> = {
+    // System Management
+    'system:full_access': 'Full System Access',
+    'system:configuration': 'System Configuration',
+    'system:maintenance': 'System Maintenance',
+    'system:backup': 'System Backup',
 
-  switch (action) {
-    case 'delete_courses':
-      return `Access Denied: Only Admins and Super Admins can delete courses. Your current role (${roleDisplayName}) does not have this permission.`;
-    case 'manage_users':
-      return `Access Denied: Only Admins and Super Admins can manage users. Your current role (${roleDisplayName}) does not have this permission.`;
-    case 'access_audit_logs':
-      return `Access Denied: Only Admins and Super Admins can access audit logs. Your current role (${roleDisplayName}) does not have this permission.`;
-    case 'manage_settings':
-      return `Access Denied: Only Admins and Super Admins can manage platform settings. Your current role (${roleDisplayName}) does not have this permission.`;
-    case 'create_admin_users':
-      return `Access Denied: Only Admins and Super Admins can create admin users. Your current role (${roleDisplayName}) does not have this permission.`;
-    case 'create_super_admin':
-      return `Access Denied: Only Super Admins can create other Super Admin accounts. Your current role (${roleDisplayName}) does not have this permission.`;
-    case 'view_admin_dashboard':
-      return `Access Denied: You do not have permission to access the admin dashboard. Your current role (${roleDisplayName}) does not have administrative privileges.`;
-    default:
-      return `Access Denied: You do not have permission to perform this action. Your current role (${roleDisplayName}) does not have the required permissions.`;
-  }
-}
+    // User Management
+    'users:view': 'View Users',
+    'users:create': 'Create Users',
+    'users:edit': 'Edit Users',
+    'users:delete': 'Delete Users',
+    'users:assign_roles': 'Assign User Roles',
+    'users:suspend': 'Suspend Users',
+    'users:activate': 'Activate Users',
 
-export function canPerformAction(userRole: string, requiredRole: string): boolean {
-  const userLevel = ROLE_HIERARCHY[userRole] || 0;
-  const requiredLevel = ROLE_HIERARCHY[requiredRole] || 0;
-  return userLevel >= requiredLevel;
-}
+    // Content Management
+    'content:upload': 'Upload Content',
+    'content:edit': 'Edit Content',
+    'content:delete': 'Delete Content',
+    'content:publish': 'Publish Content',
+    'content:review': 'Review Content',
+    'content:workflow': 'Content Workflow',
+
+    // Course Management
+    'courses:view': 'View Courses',
+    'courses:create': 'Create Courses',
+    'courses:edit': 'Edit Courses',
+    'courses:delete': 'Delete Courses',
+    'courses:publish': 'Publish Courses',
+    'courses:assign_instructors': 'Assign Instructors',
+
+    // Instructor Management
+    'instructors:view': 'View Instructors',
+    'instructors:create': 'Create Instructors',
+    'instructors:edit': 'Edit Instructors',
+    'instructors:delete': 'Delete Instructors',
+    'instructors:approve': 'Approve Instructors',
+
+    // Community Management
+    'community:moderate': 'Moderate Community',
+    'community:ban_users': 'Ban Users',
+    'community:delete_posts': 'Delete Posts',
+    'community:pin_posts': 'Pin Posts',
+    'community:analytics': 'Community Analytics',
+
+    // Support Management
+    'support:view_tickets': 'View Support Tickets',
+    'support:respond_tickets': 'Respond to Tickets',
+    'support:escalate_tickets': 'Escalate Tickets',
+    'support:close_tickets': 'Close Tickets',
+
+    // Financial & Analytics
+    'analytics:view': 'View Analytics',
+    'analytics:export': 'Export Analytics',
+    'financial:view': 'View Financial Data',
+    'financial:export': 'Export Financial Data',
+    'financial:refund': 'Process Refunds',
+
+    // Communication
+    'communication:send_announcements': 'Send Announcements',
+    'communication:send_emails': 'Send Emails',
+    'communication:send_notifications': 'Send Notifications',
+
+    // Audit & Security
+    'audit:view_logs': 'View Audit Logs',
+    'audit:export_logs': 'Export Audit Logs',
+    'security:view_sessions': 'View User Sessions',
+    'security:terminate_sessions': 'Terminate Sessions'
+  };
+  return permissionNames[permission] || permission;
+};
+
+/**
+ * Get permission category
+ */
+export const getPermissionCategory = (permission: Permission): string => {
+  if (permission.startsWith('system:')) return 'System Management';
+  if (permission.startsWith('users:')) return 'User Management';
+  if (permission.startsWith('content:')) return 'Content Management';
+  if (permission.startsWith('courses:')) return 'Course Management';
+  if (permission.startsWith('instructors:')) return 'Instructor Management';
+  if (permission.startsWith('community:')) return 'Community Management';
+  if (permission.startsWith('support:')) return 'Support Management';
+  if (permission.startsWith('analytics:') || permission.startsWith('financial:')) return 'Analytics & Financial';
+  if (permission.startsWith('communication:')) return 'Communication';
+  if (permission.startsWith('audit:') || permission.startsWith('security:')) return 'Audit & Security';
+  return 'Other';
+};
+
+/**
+ * Group permissions by category
+ */
+export const groupPermissionsByCategory = (permissions: Permission[]): Record<string, Permission[]> => {
+  const grouped: Record<string, Permission[]> = {};
+
+  permissions.forEach(permission => {
+    const category = getPermissionCategory(permission);
+    if (!grouped[category]) {
+      grouped[category] = [];
+    }
+    grouped[category].push(permission);
+  });
+
+  return grouped;
+};
+
+/**
+ * Validate role permissions
+ */
+export const validateRolePermissions = (role: UserRole, permissions: Permission[]): boolean => {
+  const expectedPermissions = getRolePermissions(role);
+  return hasAllPermissions(permissions, expectedPermissions);
+};
+
+/**
+ * Get missing permissions for a role
+ */
+export const getMissingPermissions = (role: UserRole, userPermissions: Permission[]): Permission[] => {
+  const expectedPermissions = getRolePermissions(role);
+  return expectedPermissions.filter(permission => !hasPermission(userPermissions, permission));
+};

@@ -3,10 +3,5 @@
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
   "/courses": "pages/courses.js",
-  "/home": "pages/home.js",
-  "/login": "pages/login.js",
-  "/register": "pages/register.js",
-  "/about": "pages/about.js",
-  "/": "pages/index.js",
-  "/profile": "pages/profile.js"
+  "/home": "pages/home.js"
 }
