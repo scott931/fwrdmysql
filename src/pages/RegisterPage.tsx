@@ -1,0 +1,421 @@
+import React, { useState } from 'react';
+import { useRouter } from 'next/router';
+import { useAuth } from '../contexts/AuthContext';
+import Button from '../components/ui/Button';
+import { Eye, EyeOff, Mail, Lock, User, GraduationCap, Briefcase, ArrowLeft, Check, X } from 'lucide-react';
+
+const RegisterPage: React.FC = () => {
+  const router = useRouter();
+  const { signUp } = useAuth();
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+    confirmPassword: '',
+    full_name: '',
+    education_level: '',
+    job_title: '',
+    topics_of_interest: [] as string[]
+  });
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [passwordStrength, setPasswordStrength] = useState(0);
+
+  const educationLevels = [
+    'High School',
+    'Bachelor\'s Degree',
+    'Master\'s Degree',
+    'PhD',
+    'Other'
+  ];
+
+  const availableTopics = [
+    'Business & Entrepreneurship',
+    'Technology & Programming',
+    'Marketing & Sales',
+    'Finance & Investment',
+    'Leadership & Management',
+    'Personal Development',
+    'Health & Wellness',
+    'Creative Arts',
+    'Science & Research',
+    'Education & Training'
+  ];
+
+  const calculatePasswordStrength = (password: string) => {
+    let strength = 0;
+    if (password.length >= 8) strength++;
+    if (/[a-z]/.test(password)) strength++;
+    if (/[A-Z]/.test(password)) strength++;
+    if (/[0-9]/.test(password)) strength++;
+    if (/[^A-Za-z0-9]/.test(password)) strength++;
+    return strength;
+  };
+
+  const handlePasswordChange = (password: string) => {
+    setFormData(prev => ({ ...prev, password }));
+    setPasswordStrength(calculatePasswordStrength(password));
+  };
+
+  const handleTopicToggle = (topic: string) => {
+    setFormData(prev => ({
+      ...prev,
+      topics_of_interest: prev.topics_of_interest.includes(topic)
+        ? prev.topics_of_interest.filter(t => t !== topic)
+        : [...prev.topics_of_interest, topic]
+    }));
+  };
+
+  const getPasswordStrengthColor = () => {
+    if (passwordStrength <= 2) return 'bg-red-500';
+    if (passwordStrength <= 3) return 'bg-yellow-500';
+    if (passwordStrength <= 4) return 'bg-blue-500';
+    return 'bg-green-500';
+  };
+
+  const getPasswordStrengthText = () => {
+    if (passwordStrength <= 2) return 'Weak';
+    if (passwordStrength <= 3) return 'Fair';
+    if (passwordStrength <= 4) return 'Good';
+    return 'Strong';
+  };
+
+  const validateForm = () => {
+    if (!formData.email || !formData.password || !formData.confirmPassword || !formData.full_name) {
+      setError('Please fill in all required fields');
+      return false;
+    }
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match');
+      return false;
+    }
+    if (passwordStrength < 3) {
+      setError('Password is too weak');
+      return false;
+    }
+    if (formData.topics_of_interest.length === 0) {
+      setError('Please select at least one topic of interest');
+      return false;
+    }
+    return true;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+
+    if (!validateForm()) return;
+
+    setLoading(true);
+
+    try {
+      const { confirmPassword, ...registerData } = formData;
+      await signUp(registerData);
+      router.push('/home');
+    } catch (error: any) {
+      setError(error.message || 'Registration failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
+      <div className="max-w-2xl w-full">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <button
+            onClick={() => router.push('/login')}
+            className="inline-flex items-center space-x-2 text-gray-400 hover:text-white mb-4 transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            <span>Back to Login</span>
+          </button>
+          <div className="mx-auto w-16 h-16 bg-gradient-to-r from-red-600 to-red-500 rounded-2xl flex items-center justify-center mb-4 shadow-lg">
+            <span className="text-white text-2xl font-bold">FA</span>
+          </div>
+          <h2 className="text-3xl font-bold text-white mb-2">
+            Join Forward Africa
+          </h2>
+          <p className="text-gray-400">
+            Start your learning journey today
+          </p>
+        </div>
+
+        {/* Registration Form */}
+        <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-8 border border-gray-700/50 shadow-2xl">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Full Name */}
+            <div className="space-y-2">
+              <label htmlFor="full_name" className="block text-sm font-medium text-gray-300">
+                Full Name *
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <User className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  id="full_name"
+                  name="full_name"
+                  type="text"
+                  required
+                  className="block w-full pl-10 pr-4 py-3 bg-gray-700/50 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200"
+                  placeholder="Enter your full name"
+                  value={formData.full_name}
+                  onChange={(e) => setFormData(prev => ({ ...prev, full_name: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            {/* Email */}
+            <div className="space-y-2">
+              <label htmlFor="email" className="block text-sm font-medium text-gray-300">
+                Email Address *
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Mail className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  className="block w-full pl-10 pr-4 py-3 bg-gray-700/50 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200"
+                  placeholder="Enter your email"
+                  value={formData.email}
+                  onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            {/* Password */}
+            <div className="space-y-2">
+              <label htmlFor="password" className="block text-sm font-medium text-gray-300">
+                Password *
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Lock className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  id="password"
+                  name="password"
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  className="block w-full pl-10 pr-12 py-3 bg-gray-700/50 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200"
+                  placeholder="Create a strong password"
+                  value={formData.password}
+                  onChange={(e) => handlePasswordChange(e.target.value)}
+                />
+                <button
+                  type="button"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-300" />
+                  ) : (
+                    <Eye className="h-5 w-5 text-gray-400 hover:text-gray-300" />
+                  )}
+                </button>
+              </div>
+              {/* Password Strength Indicator */}
+              {formData.password && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-gray-400">Password strength:</span>
+                    <span className={`font-medium ${passwordStrength >= 4 ? 'text-green-400' : passwordStrength >= 3 ? 'text-blue-400' : passwordStrength >= 2 ? 'text-yellow-400' : 'text-red-400'}`}>
+                      {getPasswordStrengthText()}
+                    </span>
+                  </div>
+                  <div className="flex space-x-1">
+                    {[1, 2, 3, 4, 5].map((level) => (
+                      <div
+                        key={level}
+                        className={`h-1 flex-1 rounded-full transition-all duration-300 ${
+                          level <= passwordStrength ? getPasswordStrengthColor() : 'bg-gray-600'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Confirm Password */}
+            <div className="space-y-2">
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-300">
+                Confirm Password *
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Lock className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  required
+                  className={`block w-full pl-10 pr-12 py-3 bg-gray-700/50 border rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200 ${
+                    formData.confirmPassword && formData.password !== formData.confirmPassword
+                      ? 'border-red-500'
+                      : formData.confirmPassword && formData.password === formData.confirmPassword
+                      ? 'border-green-500'
+                      : 'border-gray-600'
+                  }`}
+                  placeholder="Confirm your password"
+                  value={formData.confirmPassword}
+                  onChange={(e) => setFormData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                />
+                <button
+                  type="button"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                >
+                  {showConfirmPassword ? (
+                    <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-300" />
+                  ) : (
+                    <Eye className="h-5 w-5 text-gray-400 hover:text-gray-300" />
+                  )}
+                </button>
+              </div>
+              {formData.confirmPassword && (
+                <div className="flex items-center space-x-2 text-xs">
+                  {formData.password === formData.confirmPassword ? (
+                    <>
+                      <Check className="h-4 w-4 text-green-400" />
+                      <span className="text-green-400">Passwords match</span>
+                    </>
+                  ) : (
+                    <>
+                      <X className="h-4 w-4 text-red-400" />
+                      <span className="text-red-400">Passwords do not match</span>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Education Level */}
+            <div className="space-y-2">
+              <label htmlFor="education_level" className="block text-sm font-medium text-gray-300">
+                Education Level
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <GraduationCap className="h-5 w-5 text-gray-400" />
+                </div>
+                <select
+                  id="education_level"
+                  name="education_level"
+                  className="block w-full pl-10 pr-4 py-3 bg-gray-700/50 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200"
+                  value={formData.education_level}
+                  onChange={(e) => setFormData(prev => ({ ...prev, education_level: e.target.value }))}
+                >
+                  <option value="">Select education level</option>
+                  {educationLevels.map((level) => (
+                    <option key={level} value={level}>{level}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Job Title */}
+            <div className="space-y-2">
+              <label htmlFor="job_title" className="block text-sm font-medium text-gray-300">
+                Job Title
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Briefcase className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  id="job_title"
+                  name="job_title"
+                  type="text"
+                  className="block w-full pl-10 pr-4 py-3 bg-gray-700/50 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200"
+                  placeholder="Enter your job title"
+                  value={formData.job_title}
+                  onChange={(e) => setFormData(prev => ({ ...prev, job_title: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            {/* Topics of Interest */}
+            <div className="space-y-3">
+              <label className="block text-sm font-medium text-gray-300">
+                Topics of Interest * (Select at least one)
+              </label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {availableTopics.map((topic) => (
+                  <button
+                    key={topic}
+                    type="button"
+                    onClick={() => handleTopicToggle(topic)}
+                    className={`flex items-center space-x-2 p-3 rounded-xl border transition-all duration-200 ${
+                      formData.topics_of_interest.includes(topic)
+                        ? 'bg-red-600/20 border-red-500 text-red-400'
+                        : 'bg-gray-700/50 border-gray-600 text-gray-300 hover:bg-gray-700 hover:border-gray-500'
+                    }`}
+                  >
+                    {formData.topics_of_interest.includes(topic) ? (
+                      <Check className="h-4 w-4" />
+                    ) : (
+                      <div className="w-4 h-4 border border-gray-400 rounded" />
+                    )}
+                    <span className="text-sm">{topic}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Error Message */}
+            {error && (
+              <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3">
+                <p className="text-red-400 text-sm text-center">
+                  {error}
+                </p>
+              </div>
+            )}
+
+            {/* Submit Button */}
+            <Button
+              type="submit"
+              variant="primary"
+              size="lg"
+              className="w-full bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 text-white font-semibold py-3 rounded-xl transition-all duration-200 transform hover:scale-[1.02] shadow-lg"
+              disabled={loading}
+            >
+              {loading ? (
+                <div className="flex items-center justify-center space-x-2">
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <span>Creating account...</span>
+                </div>
+              ) : (
+                <span>Create Account</span>
+              )}
+            </Button>
+          </form>
+
+          {/* Login Link */}
+          <div className="mt-6 text-center">
+            <p className="text-gray-400">
+              Already have an account?{' '}
+              <button
+                onClick={() => router.push('/login')}
+                className="text-red-400 hover:text-red-300 font-medium transition-colors duration-200"
+              >
+                Sign in here
+              </button>
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default RegisterPage;

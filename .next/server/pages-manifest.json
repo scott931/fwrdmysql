@@ -2,9 +2,11 @@
   "/_app": "pages/_app.js",
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
+  "/courses": "pages/courses.js",
   "/home": "pages/home.js",
-  "/admin": "pages/admin.js",
-  "/admin/manage-users": "pages/admin/manage-users.js",
-  "/admin/create-user": "pages/admin/create-user.js",
-  "/community": "pages/community.js"
+  "/login": "pages/login.js",
+  "/register": "pages/register.js",
+  "/about": "pages/about.js",
+  "/": "pages/index.js",
+  "/profile": "pages/profile.js"
 }
