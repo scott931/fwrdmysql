@@ -1,27 +1,59 @@
-import React, { useEffect } from 'react';
-import { useParams, useNavigate } from '../lib/router';
-import { getAllCategories, getCoursesByCategory } from '../data/mockData';
+import React, { useEffect, useState } from 'react';
+import { useRouter } from 'next/router';
 import CourseCard from '../components/ui/CourseCard';
+import { getCoursesByCategory, getAllCategories } from '../data/mockData';
+import { Course, Category } from '../types';
 
 const CategoryPage: React.FC = () => {
-  const { categoryId } = useParams<{ categoryId: string }>();
-  const navigate = useNavigate();
+  const router = useRouter();
+  const { categoryId } = router.query;
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [category, setCategory] = useState<Category | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (categoryId && typeof categoryId === 'string') {
+      const allCategories = getAllCategories();
+      const foundCategory = allCategories.find(cat => cat.id === categoryId);
+      if (foundCategory) {
+        setCategory(foundCategory);
+        const categoryCourses = getCoursesByCategory(categoryId);
+        setCourses(categoryCourses);
+      } else {
+        // Try to find by name if not found by ID
+        const foundByName = allCategories.find(cat => cat.name.toLowerCase() === categoryId.toLowerCase());
+        if (foundByName) {
+          setCategory(foundByName);
+          const categoryCourses = getCoursesByCategory(foundByName.id);
+          setCourses(categoryCourses);
+        } else {
+          // Redirect to courses page if category not found
+          router.push('/courses');
+        }
+      }
+      setLoading(false);
+    }
+  }, [categoryId, router]);
 
   // Scroll to top on component mount
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' });
   }, []);
 
-  const allCategories = getAllCategories();
-  const category = allCategories.find(cat => cat.id === categoryId);
-  const courses = categoryId ? getCoursesByCategory(categoryId) : [];
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 px-4">
+        <h1 className="text-white text-3xl font-bold mb-6">Loading...</h1>
+      </div>
+    );
+  }
 
   if (!category) {
     return (
       <div className="flex flex-col items-center justify-center py-20 px-4">
         <h1 className="text-white text-3xl font-bold mb-6">Category Not Found</h1>
         <button
-          onClick={() => navigate('/')}
+          onClick={() => router.push('/')}
           className="bg-red-600 text-white px-6 py-3 rounded-md hover:bg-red-700 transition-colors"
         >
           Return Home
@@ -54,7 +86,7 @@ const CategoryPage: React.FC = () => {
             Check back soon for new classes!
           </p>
           <button
-            onClick={() => navigate('/')}
+            onClick={() => router.push('/')}
             className="bg-red-600 text-white px-6 py-3 rounded-md hover:bg-red-700 transition-colors"
           >
             Explore Other Categories

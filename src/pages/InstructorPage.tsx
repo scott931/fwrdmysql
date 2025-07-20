@@ -1,28 +1,45 @@
-import React, { useEffect } from 'react';
-import { useParams, useNavigate } from '../lib/router';
-import { getAllCourses, getInstructorById, getCoursesByInstructor } from '../data/mockData';
+import React, { useEffect, useState } from 'react';
+import { useRouter } from 'next/router';
 import CourseCard from '../components/ui/CourseCard';
-import Button from '../components/ui/Button';
-import { Calendar, Award, Users, ExternalLink } from 'lucide-react';
+import { getInstructorById, getCoursesByInstructor } from '../data/mockData';
+import { Instructor, Course } from '../types';
 
 const InstructorPage: React.FC = () => {
-  const { instructorId } = useParams<{ instructorId: string }>();
-  const navigate = useNavigate();
+  const router = useRouter();
+  const { instructorId } = router.query;
+  const [instructor, setInstructor] = useState<Instructor | null>(null);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Scroll to top on component mount
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'instant' });
-  }, []);
+    if (instructorId && typeof instructorId === 'string') {
+      const foundInstructor = getInstructorById(instructorId);
+      if (foundInstructor) {
+        setInstructor(foundInstructor);
+        const instructorCourses = getCoursesByInstructor(instructorId);
+        setCourses(instructorCourses);
+      } else {
+        // Redirect to courses page if instructor not found
+        router.push('/courses');
+      }
+      setLoading(false);
+    }
+  }, [instructorId, router]);
 
-  const instructor = instructorId ? getInstructorById(instructorId) : null;
-  const instructorCourses = instructorId ? getCoursesByInstructor(instructorId) : [];
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 px-4">
+        <h1 className="text-white text-3xl font-bold mb-6">Loading...</h1>
+      </div>
+    );
+  }
 
   if (!instructor) {
     return (
       <div className="flex flex-col items-center justify-center py-20 px-4">
         <h1 className="text-white text-3xl font-bold mb-6">Instructor Not Found</h1>
         <button
-          onClick={() => navigate('/')}
+          onClick={() => router.push('/')}
           className="bg-red-600 text-white px-6 py-3 rounded-md hover:bg-red-700 transition-colors"
         >
           Return Home
@@ -58,15 +75,12 @@ const InstructorPage: React.FC = () => {
 
                 <div className="flex flex-wrap justify-center md:justify-start gap-4 mb-8">
                   <div className="flex items-center">
-                    <Calendar className="h-5 w-5 text-red-500 mr-2" />
-                    <span className="text-gray-300">{instructorCourses.length} Classes</span>
+                    <span className="text-gray-300">{courses.length} Classes</span>
                   </div>
                   <div className="flex items-center">
-                    <Award className="h-5 w-5 text-red-500 mr-2" />
                     <span className="text-gray-300">{instructor.experience} Years Experience</span>
                   </div>
                   <div className="flex items-center">
-                    <Users className="h-5 w-5 text-red-500 mr-2" />
                     <span className="text-gray-300">Expert Instructor</span>
                   </div>
                 </div>
@@ -100,7 +114,6 @@ const InstructorPage: React.FC = () => {
                         rel="noopener noreferrer"
                         className="flex items-center text-gray-300 hover:text-white transition-colors"
                       >
-                        <ExternalLink className="h-4 w-4 mr-2" />
                         LinkedIn
                       </a>
                     )}
@@ -111,7 +124,6 @@ const InstructorPage: React.FC = () => {
                         rel="noopener noreferrer"
                         className="flex items-center text-gray-300 hover:text-white transition-colors"
                       >
-                        <ExternalLink className="h-4 w-4 mr-2" />
                         Twitter
                       </a>
                     )}
@@ -122,7 +134,6 @@ const InstructorPage: React.FC = () => {
                         rel="noopener noreferrer"
                         className="flex items-center text-gray-300 hover:text-white transition-colors"
                       >
-                        <ExternalLink className="h-4 w-4 mr-2" />
                         Website
                       </a>
                     )}
@@ -130,8 +141,18 @@ const InstructorPage: React.FC = () => {
                 )}
 
                 <div className="flex flex-wrap justify-center md:justify-start gap-4">
-                  <Button variant="primary" size="lg">Subscribe to All Classes</Button>
-                  <Button variant="outline" size="lg">Contact Instructor</Button>
+                  <button
+                    onClick={() => router.push('/courses')}
+                    className="bg-red-600 text-white px-6 py-3 rounded-md hover:bg-red-700 transition-colors"
+                  >
+                    Subscribe to All Classes
+                  </button>
+                  <button
+                    onClick={() => router.push('/contact')}
+                    className="bg-gray-800 text-white px-6 py-3 rounded-md hover:bg-gray-700 transition-colors"
+                  >
+                    Contact Instructor
+                  </button>
                 </div>
               </div>
             </div>
@@ -143,9 +164,9 @@ const InstructorPage: React.FC = () => {
       <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 mt-16">
         <h2 className="text-white text-3xl font-bold mb-8">Classes by {instructor.name}</h2>
 
-        {instructorCourses.length > 0 ? (
+        {courses.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {instructorCourses.map(course => (
+            {courses.map(course => (
               <CourseCard key={course.id} course={course} />
             ))}
           </div>
@@ -156,12 +177,12 @@ const InstructorPage: React.FC = () => {
               We're working on bringing you amazing content from this instructor.
               Check back soon for new classes!
             </p>
-            <Button
-              onClick={() => navigate('/')}
-              variant="primary"
+            <button
+              onClick={() => router.push('/courses')}
+              className="bg-red-600 text-white px-6 py-3 rounded-md hover:bg-red-700 transition-colors"
             >
               Explore Other Instructors
-            </Button>
+            </button>
           </div>
         )}
       </div>

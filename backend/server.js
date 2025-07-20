@@ -261,6 +261,16 @@ app.get('/api/courses', async (req, res) => {
       JOIN categories cat ON c.category_id = cat.id
       ORDER BY c.created_at DESC
     `);
+
+    // Get lessons for each course
+    for (let course of courses) {
+      const lessons = await executeQuery(
+        'SELECT * FROM lessons WHERE course_id = ? ORDER BY order_index ASC',
+        [course.id]
+      );
+      course.lessons = lessons;
+    }
+
     res.json(courses);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch courses' });
@@ -275,9 +285,19 @@ app.get('/api/courses/featured', async (req, res) => {
       FROM courses c
       JOIN instructors i ON c.instructor_id = i.id
       JOIN categories cat ON c.category_id = cat.id
-      WHERE c.featured = TRUE
+      WHERE c.featured = true
       ORDER BY c.created_at DESC
     `);
+
+    // Get lessons for each course
+    for (let course of courses) {
+      const lessons = await executeQuery(
+        'SELECT * FROM lessons WHERE course_id = ? ORDER BY order_index ASC',
+        [course.id]
+      );
+      course.lessons = lessons;
+    }
+
     res.json(courses);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch featured courses' });

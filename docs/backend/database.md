@@ -317,11 +317,11 @@ CREATE POLICY "Users can update own profile" ON user_profiles
 
 -- Admins can read all profiles
 CREATE POLICY "Admins can read all profiles" ON user_profiles
-  FOR SELECT TO authenticated 
+  FOR SELECT TO authenticated
   USING (
     EXISTS (
-      SELECT 1 FROM user_profiles 
-      WHERE id = auth.uid() 
+      SELECT 1 FROM user_profiles
+      WHERE id = auth.uid()
       AND role IN ('admin', 'super_admin')
     )
   );
@@ -339,30 +339,30 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == userId;
       allow read: if request.auth != null && isAdmin();
     }
-    
+
     // Courses are readable by authenticated users
     match /courses/{courseId} {
       allow read: if request.auth != null;
       allow write: if request.auth != null && canManageCourses();
     }
-    
+
     // User progress is private to the user
     match /progress/{userId}/courses/{courseId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
       allow read: if request.auth != null && isAdmin();
     }
-    
+
     // Audit logs are admin-only
     match /audit_logs/{logId} {
       allow read: if request.auth != null && isAdmin();
       allow write: if request.auth != null && isAdmin();
     }
-    
+
     // Helper functions
     function isAdmin() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'super_admin'];
     }
-    
+
     function canManageCourses() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['content_manager', 'admin', 'super_admin'];
     }
@@ -426,7 +426,7 @@ const getCoursesByCategory = async (category: string) => {
     orderBy('createdAt', 'desc'),
     limit(20)
   );
-  
+
   const snapshot = await getDocs(q);
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 };
@@ -434,7 +434,7 @@ const getCoursesByCategory = async (category: string) => {
 // Real-time progress tracking
 const subscribeToUserProgress = (userId: string, callback: (progress: UserProgress[]) => void) => {
   const q = query(collection(db, `progress/${userId}/courses`));
-  
+
   return onSnapshot(q, (snapshot) => {
     const progress = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     callback(progress);

@@ -71,7 +71,7 @@ import { createUserWithEmailAndPassword } from 'firebase/auth';
 
 const signUp = async (email: string, password: string, userData: any) => {
   const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-  
+
   // Create user profile in Firestore
   await setDoc(doc(db, 'users', userCredential.user.uid), {
     email,
@@ -80,7 +80,7 @@ const signUp = async (email: string, password: string, userData: any) => {
     onboardingCompleted: false,
     role: 'user'
   });
-  
+
   return userCredential;
 };
 ```
@@ -129,7 +129,7 @@ import { doc, getDoc } from 'firebase/firestore';
 const getUserProfile = async (userId: string) => {
   const docRef = doc(db, 'users', userId);
   const docSnap = await getDoc(docRef);
-  
+
   if (docSnap.exists()) {
     return { id: docSnap.id, ...docSnap.data() };
   } else {
@@ -177,25 +177,25 @@ const getAllCourses = async (filters?: {
   limit?: number;
 }) => {
   let q = query(collection(db, 'courses'));
-  
+
   if (filters?.category) {
     q = query(q, where('category', '==', filters.category));
   }
-  
+
   if (filters?.featured !== undefined) {
     q = query(q, where('featured', '==', filters.featured));
   }
-  
+
   if (filters?.comingSoon !== undefined) {
     q = query(q, where('comingSoon', '==', filters.comingSoon));
   }
-  
+
   q = query(q, orderBy('createdAt', 'desc'));
-  
+
   if (filters?.limit) {
     q = query(q, limit(filters.limit));
   }
-  
+
   const snapshot = await getDocs(q);
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 };
@@ -213,24 +213,24 @@ export const createCourse = onCall(async (request) => {
     .collection('users')
     .doc(request.auth?.uid)
     .get();
-    
+
   const userRole = userDoc.data()?.role;
-  
+
   if (!['content_manager', 'admin', 'super_admin'].includes(userRole)) {
     throw new Error('Insufficient permissions');
   }
-  
+
   // Create course
   const courseData = {
     ...request.data,
     createdAt: new Date(),
     createdBy: request.auth?.uid
   };
-  
+
   const docRef = await getFirestore()
     .collection('courses')
     .add(courseData);
-    
+
   // Log audit event
   await getFirestore()
     .collection('audit_logs')
@@ -242,7 +242,7 @@ export const createCourse = onCall(async (request) => {
       resourceType: 'course',
       resourceId: docRef.id
     });
-    
+
   return { id: docRef.id };
 });
 ```
@@ -256,13 +256,13 @@ export const createCourse = onCall(async (request) => {
 const updateProgress = (courseId: string, lessonId: string, progress: number) => {
   const storedProgress = localStorage.getItem('userProgress');
   const progressData = storedProgress ? JSON.parse(storedProgress) : {};
-  
+
   progressData[courseId] = {
     lessonId,
     progress,
     lastWatched: new Date().toISOString()
   };
-  
+
   localStorage.setItem('userProgress', JSON.stringify(progressData));
 };
 ```
@@ -274,12 +274,12 @@ const updateProgress = (courseId: string, lessonId: string, progress: number) =>
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 
 const updateUserProgress = async (
-  userId: string, 
-  courseId: string, 
+  userId: string,
+  courseId: string,
   progressData: Partial<UserProgress>
 ) => {
   const docRef = doc(db, `progress/${userId}/courses/${courseId}`);
-  
+
   await setDoc(docRef, {
     ...progressData,
     userId,
@@ -294,12 +294,12 @@ const updateUserProgress = async (
 import { doc, onSnapshot } from 'firebase/firestore';
 
 const subscribeToUserProgress = (
-  userId: string, 
-  courseId: string, 
+  userId: string,
+  courseId: string,
   callback: (progress: UserProgress | null) => void
 ) => {
   const docRef = doc(db, `progress/${userId}/courses/${courseId}`);
-  
+
   return onSnapshot(docRef, (doc) => {
     if (doc.exists()) {
       callback({ id: doc.id, ...doc.data() } as UserProgress);
@@ -324,11 +324,11 @@ import { getStorage } from 'firebase-admin/storage';
 export const generateCertificate = onCall(async (request) => {
   const { courseId, courseTitle, studentName, instructor } = request.data;
   const userId = request.auth?.uid;
-  
+
   if (!userId) {
     throw new Error('Authentication required');
   }
-  
+
   // Verify course completion
   const progressDoc = await getFirestore()
     .collection('progress')
@@ -336,14 +336,14 @@ export const generateCertificate = onCall(async (request) => {
     .collection('courses')
     .doc(courseId)
     .get();
-    
+
   if (!progressDoc.exists() || !progressDoc.data()?.completed) {
     throw new Error('Course not completed');
   }
-  
+
   // Generate verification code
   const verificationCode = Math.random().toString(36).substring(2, 15).toUpperCase();
-  
+
   // Create certificate document
   const certificateData = {
     userId,
@@ -355,34 +355,34 @@ export const generateCertificate = onCall(async (request) => {
     earnedDate: new Date(),
     createdAt: new Date()
   };
-  
+
   const docRef = await getFirestore()
     .collection('certificates')
     .add(certificateData);
-    
+
   // Generate PDF and upload to Storage
   const pdfBuffer = await generateCertificatePDF(certificateData);
   const bucket = getStorage().bucket();
   const file = bucket.file(`certificates/${docRef.id}.pdf`);
-  
+
   await file.save(pdfBuffer, {
     metadata: {
       contentType: 'application/pdf'
     }
   });
-  
+
   const [url] = await file.getSignedUrl({
     action: 'read',
     expires: '03-09-2491' // Far future date
   });
-  
+
   // Update certificate with PDF URL
   await docRef.update({ pdfUrl: url });
-  
-  return { 
-    certificateId: docRef.id, 
+
+  return {
+    certificateId: docRef.id,
     verificationCode,
-    pdfUrl: url 
+    pdfUrl: url
   };
 });
 ```
@@ -403,28 +403,28 @@ export const createAdminUser = onCall(async (request) => {
     .collection('users')
     .doc(request.auth?.uid)
     .get();
-    
+
   const currentUserRole = currentUserDoc.data()?.role;
-  
+
   // Only admins and super admins can create admin users
   if (!['admin', 'super_admin'].includes(currentUserRole)) {
     throw new Error('Insufficient permissions');
   }
-  
+
   const { email, password, name, role } = request.data;
-  
+
   // Only super admins can create super admin accounts
   if (role === 'super_admin' && currentUserRole !== 'super_admin') {
     throw new Error('Only super admins can create super admin accounts');
   }
-  
+
   // Create user in Firebase Auth
   const userRecord = await getAuth().createUser({
     email,
     password,
     displayName: name
   });
-  
+
   // Create user profile in Firestore
   await getFirestore()
     .collection('users')
@@ -438,7 +438,7 @@ export const createAdminUser = onCall(async (request) => {
       isActive: true,
       onboardingCompleted: true
     });
-    
+
   // Log audit event
   await getFirestore()
     .collection('audit_logs')
@@ -450,7 +450,7 @@ export const createAdminUser = onCall(async (request) => {
       resourceType: 'user',
       resourceId: userRecord.uid
     });
-    
+
   return { userId: userRecord.uid };
 });
 ```
@@ -484,13 +484,13 @@ const subscribeToUserProgress = (userId: string, callback: (progress: UserProgre
   const q = query(
     collection(db, `progress/${userId}/courses`)
   );
-  
+
   return onSnapshot(q, (snapshot) => {
     const progress = snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
     })) as UserProgress[];
-    
+
     callback(progress);
   });
 };
@@ -501,13 +501,13 @@ const subscribeToNotifications = (userId: string, callback: (notifications: Noti
     collection(db, `notifications/${userId}/messages`),
     orderBy('createdAt', 'desc')
   );
-  
+
   return onSnapshot(q, (snapshot) => {
     const notifications = snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
     })) as Notification[];
-    
+
     callback(notifications);
   });
 };
@@ -599,47 +599,47 @@ service cloud.firestore {
     function isAuthenticated() {
       return request.auth != null;
     }
-    
+
     function getUserRole() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
     }
-    
+
     function isAdmin() {
       return getUserRole() in ['admin', 'super_admin'];
     }
-    
+
     function canManageCourses() {
       return getUserRole() in ['content_manager', 'admin', 'super_admin'];
     }
-    
+
     // User profiles
     match /users/{userId} {
       allow read, write: if isAuthenticated() && request.auth.uid == userId;
       allow read: if isAuthenticated() && isAdmin();
       allow write: if isAuthenticated() && isAdmin();
     }
-    
+
     // Courses
     match /courses/{courseId} {
       allow read: if isAuthenticated();
       allow create, update: if isAuthenticated() && canManageCourses();
       allow delete: if isAuthenticated() && isAdmin();
     }
-    
+
     // User progress
     match /progress/{userId}/courses/{courseId} {
       allow read, write: if isAuthenticated() && request.auth.uid == userId;
       allow read: if isAuthenticated() && isAdmin();
     }
-    
+
     // Certificates
     match /certificates/{certificateId} {
-      allow read: if isAuthenticated() && 
+      allow read: if isAuthenticated() &&
         (resource.data.userId == request.auth.uid || isAdmin());
-      allow create: if isAuthenticated() && 
+      allow create: if isAuthenticated() &&
         request.auth.uid == resource.data.userId;
     }
-    
+
     // Audit logs (admin only)
     match /audit_logs/{logId} {
       allow read, write: if isAuthenticated() && isAdmin();
@@ -658,24 +658,24 @@ service firebase.storage {
       allow read: if true; // Public read
       allow write: if request.auth != null && request.auth.uid == userId;
     }
-    
+
     // Course media (admin managed)
     match /course-media/{courseId}/{allPaths=**} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null && 
+      allow write: if request.auth != null &&
         getUserRole() in ['content_manager', 'admin', 'super_admin'];
     }
-    
+
     // Certificates (private)
     match /certificates/{certificateId} {
-      allow read: if request.auth != null && 
+      allow read: if request.auth != null &&
         (resource.metadata.userId == request.auth.uid || isAdmin());
     }
-    
+
     function getUserRole() {
       return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role;
     }
-    
+
     function isAdmin() {
       return getUserRole() in ['admin', 'super_admin'];
     }

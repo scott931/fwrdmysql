@@ -7,7 +7,7 @@ import { updateUserProfile } from '../lib/supabase';
 
 const OnboardingPage: React.FC = () => {
   const navigate = useNavigate();
-  const { user, refreshProfile } = useAuth();
+  const { user, updateProfile } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState({
     education_level: '',
@@ -73,12 +73,20 @@ const OnboardingPage: React.FC = () => {
       await updateUserProfile(user.id, {
         ...formData,
         onboarding_completed: true,
-        full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || '',
-        avatar_url: user.user_metadata?.avatar_url || '',
+        full_name: user.full_name || user.email?.split('@')[0] || '',
+        avatar_url: user.avatar_url || '',
         email: user.email
       });
 
-      await refreshProfile();
+      // Refresh the user profile by calling updateProfile
+      await updateProfile(user.id, {
+        ...formData,
+        onboarding_completed: true,
+        full_name: user.full_name || user.email?.split('@')[0] || '',
+        avatar_url: user.avatar_url || '',
+        email: user.email
+      });
+
       navigate('/home');
     } catch (error) {
       console.error('Error completing onboarding:', error);
@@ -149,8 +157,8 @@ const OnboardingPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Header */}
-      <header className="relative z-10 px-6 py-8">
+      {/* Onboarding Header */}
+      <div className="relative z-10 px-6 py-8">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center">
             <span className="text-red-600 font-bold text-2xl tracking-tight">FORWARD</span>
@@ -160,7 +168,7 @@ const OnboardingPage: React.FC = () => {
             Step {currentStep} of 3
           </div>
         </div>
-      </header>
+      </div>
 
       {/* Main Content */}
       <main className="relative z-10 flex-1 flex items-center justify-center px-6 py-12">

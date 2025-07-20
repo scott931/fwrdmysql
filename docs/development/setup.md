@@ -12,7 +12,7 @@ This guide provides step-by-step instructions for setting up the Forward Africa 
    ```bash
    # Check version
    node --version
-   
+
    # Install via nvm (recommended)
    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
    nvm install 18
@@ -23,7 +23,7 @@ This guide provides step-by-step instructions for setting up the Forward Africa 
    ```bash
    # Check version
    npm --version
-   
+
    # Update npm
    npm install -g npm@latest
    ```
@@ -32,7 +32,7 @@ This guide provides step-by-step instructions for setting up the Forward Africa 
    ```bash
    # Check version
    git --version
-   
+
    # Configure Git (if not already done)
    git config --global user.name "Your Name"
    git config --global user.email "your.email@example.com"
@@ -432,7 +432,7 @@ The application includes mock data for development without Supabase:
    ```bash
    # Kill process on port 5173
    lsof -ti:5173 | xargs kill -9
-   
+
    # Or use different port
    npm run dev -- --port 3000
    ```
@@ -441,7 +441,7 @@ The application includes mock data for development without Supabase:
    ```bash
    # Clear npm cache
    npm cache clean --force
-   
+
    # Delete node_modules and reinstall
    rm -rf node_modules package-lock.json
    npm install
@@ -451,7 +451,7 @@ The application includes mock data for development without Supabase:
    ```bash
    # Check TypeScript configuration
    npx tsc --noEmit
-   
+
    # Restart TypeScript server in VS Code
    Ctrl+Shift+P -> "TypeScript: Restart TS Server"
    ```
@@ -481,13 +481,13 @@ const apiCall = async (url: string, options?: RequestInit) => {
   if (import.meta.env.DEV) {
     console.log('API Call:', url, options);
   }
-  
+
   const response = await fetch(url, options);
-  
+
   if (import.meta.env.DEV) {
     console.log('API Response:', response.status, await response.clone().json());
   }
-  
+
   return response;
 };
 ```
@@ -544,7 +544,7 @@ import { useEffect, useRef } from 'react';
 
 const useRenderCount = (componentName: string) => {
   const renderCount = useRef(0);
-  
+
   useEffect(() => {
     renderCount.current += 1;
     console.log(`${componentName} rendered ${renderCount.current} times`);

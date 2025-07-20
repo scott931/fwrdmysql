@@ -9,7 +9,7 @@ const UnauthorizedPage: React.FC = () => {
   const roleDisplay = adminRole.replace('_', ' ').toUpperCase();
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-gray-900 to-black px-4">
+    <div className="min-h-screen flex items-center justify-center px-4 py-12">
       <div className="max-w-md w-full bg-gray-800 rounded-lg shadow-lg p-8 text-center">
         <div className="flex justify-center mb-6">
           <div className="bg-red-500/20 p-4 rounded-full">

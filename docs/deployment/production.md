@@ -125,7 +125,7 @@ Create storage buckets:
 
 ```sql
 -- Create storage buckets
-INSERT INTO storage.buckets (id, name, public) VALUES 
+INSERT INTO storage.buckets (id, name, public) VALUES
 ('avatars', 'avatars', true),
 ('course-media', 'course-media', true),
 ('certificates', 'certificates', false);
@@ -136,7 +136,7 @@ CREATE POLICY "Avatar images are publicly accessible" ON storage.objects
 
 CREATE POLICY "Users can upload their own avatar" ON storage.objects
   FOR INSERT WITH CHECK (
-    bucket_id = 'avatars' AND 
+    bucket_id = 'avatars' AND
     auth.uid()::text = (storage.foldername(name))[1]
   );
 ```
@@ -498,13 +498,13 @@ npm audit fix
 
 ```sql
 -- Add performance indexes
-CREATE INDEX CONCURRENTLY idx_courses_category_featured 
+CREATE INDEX CONCURRENTLY idx_courses_category_featured
 ON courses(category, featured) WHERE NOT coming_soon;
 
-CREATE INDEX CONCURRENTLY idx_user_progress_user_course 
+CREATE INDEX CONCURRENTLY idx_user_progress_user_course
 ON user_progress(user_id, course_id);
 
-CREATE INDEX CONCURRENTLY idx_notifications_user_unread 
+CREATE INDEX CONCURRENTLY idx_notifications_user_unread
 ON notifications(user_id, read, created_at);
 ```
 
@@ -519,7 +519,7 @@ Configure in Supabase dashboard:
 
 ```sql
 -- Optimize common queries
-EXPLAIN ANALYZE SELECT 
+EXPLAIN ANALYZE SELECT
   c.id, c.title, c.thumbnail, f.name as facilitator_name
 FROM courses c
 LEFT JOIN facilitators f ON c.facilitator_id = f.id

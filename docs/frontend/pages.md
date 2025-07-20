@@ -153,8 +153,8 @@ const [allCategories, setAllCategories] = useState(getAllCategories());
 
 **Filtering Logic**:
 ```typescript
-const filteredCourses = selectedCategory === 'all' 
-  ? allCourses 
+const filteredCourses = selectedCategory === 'all'
+  ? allCourses
   : allCourses.filter(course => course.category === selectedCategory);
 ```
 
@@ -227,13 +227,13 @@ const [searchResults, setSearchResults] = useState({
 ```typescript
 const performSearch = (query: string, coursesToSearch = allCourses) => {
   const lowercaseQuery = query.toLowerCase();
-  
-  const filteredCourses = coursesToSearch.filter(course => 
+
+  const filteredCourses = coursesToSearch.filter(course =>
     course.title.toLowerCase().includes(lowercaseQuery) ||
     course.description.toLowerCase().includes(lowercaseQuery) ||
     // ... other search criteria
   );
-  
+
   // Update results
 };
 ```
@@ -340,7 +340,7 @@ const [isLoading, setIsLoading] = useState(false);
 ```typescript
 const generateAfrisageResponse = (userInput: string): string => {
   const input = userInput.toLowerCase();
-  
+
   if (input.includes('business') && input.includes('kenya')) {
     return "Kenya offers excellent business opportunities...";
   }

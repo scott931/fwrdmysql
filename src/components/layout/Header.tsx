@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { useLocation, useNavigate } from '../../lib/router';
+import { useRouter } from 'next/router';
 import { Search, Menu, X, Bell, User, ChevronDown, LogOut, Settings } from 'lucide-react';
 import NotificationsDropdown from '../ui/NotificationsDropdown';
 import { useNotifications } from '../../hooks/useNotifications';
@@ -12,12 +12,9 @@ const Header: React.FC = () => {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isResourcesOpen, setIsResourcesOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const location = useLocation();
-  const navigate = useNavigate();
+  const router = useRouter();
   const { notifications, markAsRead, markAllAsRead, unreadCount } = useNotifications();
   const { user, profile, signOut } = useAuth();
-
-
 
   useEffect(() => {
     const handleScroll = () => {
@@ -37,11 +34,11 @@ const Header: React.FC = () => {
     setIsNotificationsOpen(false);
     setIsResourcesOpen(false);
     // Don't reset profile dropdown on location change
-  }, [location]);
+  }, [router.pathname]);
 
   const handleSignOut = async () => {
     await signOut();
-    navigate('/');
+    router.push('/');
   };
 
   const toggleProfileDropdown = () => {
@@ -157,10 +154,10 @@ const Header: React.FC = () => {
                     aria-expanded={isProfileOpen}
                     aria-haspopup="true"
                   >
-                    {profile?.avatarUrl ? (
+                    {profile?.avatar_url ? (
                       <img
-                        src={profile.avatarUrl}
-                        alt={profile.fullName || 'User'}
+                        src={profile.avatar_url}
+                        alt={profile.full_name || 'User'}
                         className="h-6 w-6 rounded-full object-cover border border-gray-600"
                       />
                     ) : (
@@ -174,7 +171,7 @@ const Header: React.FC = () => {
                     <div className="absolute top-full right-0 mt-2 w-56 bg-gray-800 rounded-lg shadow-xl py-2 border border-gray-700 z-50">
                       <div className="px-4 py-3 border-b border-gray-700">
                         <p className="text-sm font-medium text-white">
-                          {profile?.fullName || user?.email || 'User'}
+                          {profile?.full_name || user?.email || 'User'}
                         </p>
                         <p className="text-xs text-gray-400 mt-1">
                           {user?.email}

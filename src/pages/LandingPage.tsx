@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from '../lib/router';
+import { useRouter } from 'next/router';
 import { ChevronRight, Brain, Users, TrendingUp, Globe } from 'lucide-react';
 import Button from '../components/ui/Button';
 
@@ -7,12 +7,12 @@ import { useAuth } from '../contexts/AuthContext';
 
 const LandingPage: React.FC = () => {
   const [isSigningIn, setIsSigningIn] = useState(false);
-  const navigate = useNavigate();
+  const router = useRouter();
   const { loading: authLoading } = useAuth();
 
   const handleGoogleSignIn = async () => {
     // Navigate to the main login page for better user experience
-    navigate('/login');
+    router.push('/login');
   };
 
   if (authLoading) {

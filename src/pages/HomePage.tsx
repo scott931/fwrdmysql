@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { useRouter } from 'next/router';
 import Layout from '../components/layout/Layout';
 import HeroBanner from '../components/ui/HeroBanner';
 import CategoryRow from '../components/ui/CategoryRow';
@@ -7,7 +8,6 @@ import { CourseProgress, Course } from '../types';
 import { Award, Users, Star, BookOpen } from 'lucide-react';
 import { useCourses, useUserProgress, useAnalytics } from '../hooks/useDatabase';
 import { useAuth } from '../contexts/AuthContext';
-import { useNavigate } from '../lib/router';
 
 // Fallback data to prevent flickering
 const fallbackCourse: Course = {
@@ -35,7 +35,7 @@ const fallbackCourse: Course = {
 };
 
 const HomePage: React.FC = () => {
-  const navigate = useNavigate();
+  const router = useRouter();
   const { user } = useAuth();
   const [inProgressCourses, setInProgressCourses] = useState<CourseProgress[]>([]);
 
@@ -107,7 +107,7 @@ const HomePage: React.FC = () => {
   }, [userProgress, allCourses]);
 
   const handlePlayCourse = (courseId: string) => {
-    navigate(`/course/${courseId}`);
+    router.push(`/course/${courseId}`);
   };
 
   // Test API connection
