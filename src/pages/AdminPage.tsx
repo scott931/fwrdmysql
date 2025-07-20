@@ -29,7 +29,8 @@ import {
   PlayCircle,
   GraduationCap,
   MessageSquare,
-  Globe
+  Globe,
+  Crown
 } from 'lucide-react';
 import { useNavigate } from '../lib/router';
 import Button from '../components/ui/Button';
@@ -60,12 +61,12 @@ const AdminPage: React.FC = () => {
   // Get admin role from context
   const adminRole = userRole;
   const adminEmail = profile?.email || 'admin@forwardafrica.com';
-  const canAccessAudit = hasPermission('access_audit_logs');
-  const canManageUsers = hasPermission('manage_users');
-  const canManageSettings = hasPermission('manage_settings');
-  const canCreateAdminUsers = hasPermission('create_admin_users');
-  const canDeleteCourses = hasPermission('delete_courses');
-  const canManageInstructors = hasPermission('manage_instructors');
+  const canAccessAudit = hasPermission('audit:view_logs');
+  const canManageUsers = hasPermission('users:view');
+  const canManageSettings = hasPermission('system:configuration');
+  const canCreateAdminUsers = hasPermission('users:create');
+  const canDeleteCourses = hasPermission('courses:delete');
+  const canManageInstructors = hasPermission('instructors:view');
 
   // Scroll to top on component mount
   useEffect(() => {
@@ -292,7 +293,7 @@ const AdminPage: React.FC = () => {
         </div>
         <div className="flex items-center space-x-4">
           <div className="text-right">
-            <p className="text-white font-medium">{adminRole === 'super_admin' ? 'Super Administrator' : adminRole === 'admin' ? 'Administrator' : 'Content Manager'}</p>
+            <p className="text-white font-medium">{adminRole === 'super_admin' ? 'Super Administrator' : adminRole === 'content_manager' ? 'Content Manager' : 'Administrator'}</p>
             <p className="text-gray-400 text-sm">{adminEmail}</p>
           </div>
           <Button
@@ -310,13 +311,13 @@ const AdminPage: React.FC = () => {
       <div className="border-b border-gray-700 mb-8">
         <div className="flex space-x-8 overflow-x-auto">
           {[
-            { id: 'dashboard', label: 'Dashboard', icon: BarChart3, permission: 'view_admin_dashboard' },
-            { id: 'courses', label: 'Courses', icon: BookOpen, permission: 'view_courses' },
-            { id: 'instructors', label: 'Instructors', icon: Users, permission: 'manage_instructors' },
-            { id: 'analytics', label: 'Analytics', icon: TrendingUp, permission: 'view_analytics' },
-            { id: 'audit', label: 'Audit Logs', icon: Activity, permission: 'access_audit_logs' }
+            { id: 'dashboard', label: 'Dashboard', icon: BarChart3, permission: 'analytics:view' },
+            { id: 'courses', label: 'Courses', icon: BookOpen, permission: 'courses:view' },
+            { id: 'instructors', label: 'Instructors', icon: Users, permission: 'instructors:view' },
+            { id: 'analytics', label: 'Analytics', icon: TrendingUp, permission: 'analytics:view' },
+            { id: 'audit', label: 'Audit Logs', icon: Activity, permission: 'audit:view_logs' }
           ].map(({ id, label, icon: Icon, permission }) => (
-            <PermissionGuard key={id} permission={permission} role={userRole}>
+            <PermissionGuard key={id} permission={permission}>
               <button
                 onClick={() => setActiveTab(id as any)}
                 className={`pb-4 relative flex items-center space-x-2 whitespace-nowrap ${
@@ -453,7 +454,7 @@ const AdminPage: React.FC = () => {
           <div className="bg-gray-800 rounded-lg p-6">
             <h2 className="text-xl font-semibold text-white mb-6">Quick Actions</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-              <PermissionGuard permission="create_courses" role={userRole}>
+              <PermissionGuard permission="courses:create">
                 <Button
                   variant="primary"
                   onClick={() => navigate('/admin/upload-course')}
@@ -464,7 +465,7 @@ const AdminPage: React.FC = () => {
                 </Button>
               </PermissionGuard>
 
-              <PermissionGuard permission="manage_instructors" role={userRole}>
+              <PermissionGuard permission="instructors:create">
                 <Button
                   variant="outline"
                   onClick={() => navigate('/admin/add-instructor')}
@@ -475,7 +476,7 @@ const AdminPage: React.FC = () => {
                 </Button>
               </PermissionGuard>
 
-              <PermissionGuard permission="create_admin_users" role={userRole}>
+              <PermissionGuard permission="users:create">
                 <Button
                   variant="outline"
                   onClick={() => navigate('/admin/create-user')}
@@ -486,7 +487,7 @@ const AdminPage: React.FC = () => {
                 </Button>
               </PermissionGuard>
 
-              <PermissionGuard permission="manage_users" role={userRole}>
+              <PermissionGuard permission="users:view">
                 <Button
                   variant="outline"
                   onClick={() => navigate('/admin/manage-users')}
@@ -497,7 +498,7 @@ const AdminPage: React.FC = () => {
                 </Button>
               </PermissionGuard>
 
-              <PermissionGuard permission="manage_settings" role={userRole}>
+              <PermissionGuard permission="system:configuration">
                 <Button
                   variant="outline"
                   onClick={() => navigate('/admin/security-settings')}
@@ -509,6 +510,53 @@ const AdminPage: React.FC = () => {
               </PermissionGuard>
             </div>
           </div>
+
+          {/* Super Admin Features */}
+          {userRole === 'super_admin' && (
+            <div className="bg-gray-800 rounded-lg p-6">
+              <h2 className="text-xl font-semibold text-white mb-6 flex items-center">
+                <Crown className="h-5 w-5 mr-2 text-yellow-500" />
+                Super Admin Controls
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <Button
+                  variant="outline"
+                  onClick={() => navigate('/admin/system-configuration')}
+                  className="flex items-center justify-center bg-red-600/10 border-red-600/20 text-red-400 hover:bg-red-600/20"
+                >
+                  <Settings className="h-4 w-4 mr-2" />
+                  System Config
+                </Button>
+
+                <Button
+                  variant="outline"
+                  onClick={() => navigate('/admin/financial-management')}
+                  className="flex items-center justify-center bg-green-600/10 border-green-600/20 text-green-400 hover:bg-green-600/20"
+                >
+                  <DollarSign className="h-4 w-4 mr-2" />
+                  Financial Mgmt
+                </Button>
+
+                <Button
+                  variant="outline"
+                  onClick={() => navigate('/admin/communication-center')}
+                  className="flex items-center justify-center bg-blue-600/10 border-blue-600/20 text-blue-400 hover:bg-blue-600/20"
+                >
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  Communication
+                </Button>
+
+                <Button
+                  variant="outline"
+                  onClick={() => navigate('/admin/security-center')}
+                  className="flex items-center justify-center bg-purple-600/10 border-purple-600/20 text-purple-400 hover:bg-purple-600/20"
+                >
+                  <Shield className="h-4 w-4 mr-2" />
+                  Security Center
+                </Button>
+              </div>
+            </div>
+          )}
 
           {/* Recent Activity */}
           <div className="bg-gray-800 rounded-lg p-6">
@@ -539,9 +587,7 @@ const AdminPage: React.FC = () => {
 
       {activeTab === 'courses' && (
         <PermissionGuard
-          permission="view_courses"
-          role={userRole}
-          showError={true}
+          permission="courses:view"
         >
           <div className="space-y-6">
             {/* Course Management Header */}
@@ -550,7 +596,7 @@ const AdminPage: React.FC = () => {
                 <h2 className="text-2xl font-bold text-white">Course Management</h2>
                 <p className="text-gray-400">Manage all courses and content</p>
               </div>
-              <PermissionGuard permission="create_courses" role={userRole}>
+              <PermissionGuard permission="courses:create">
                 <Button
                   variant="primary"
                   onClick={() => navigate('/admin/upload-course')}
@@ -678,7 +724,7 @@ const AdminPage: React.FC = () => {
                               View
                             </Button>
 
-                            <PermissionGuard permission="edit_courses" role={userRole}>
+                            <PermissionGuard permission="courses:edit">
                               <Button
                                 variant="outline"
                                 size="sm"
@@ -689,7 +735,7 @@ const AdminPage: React.FC = () => {
                               </Button>
                             </PermissionGuard>
 
-                            <PermissionGuard permission="delete_courses" role={userRole}>
+                            <PermissionGuard permission="courses:delete">
                               <Button
                                 variant="outline"
                                 size="sm"
@@ -713,7 +759,7 @@ const AdminPage: React.FC = () => {
                   <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                   <h3 className="text-white text-lg font-medium mb-2">No courses found</h3>
                   <p className="text-gray-400 mb-4">Get started by creating your first course.</p>
-                  <PermissionGuard permission="create_courses" role={userRole}>
+                  <PermissionGuard permission="courses:create">
                     <Button
                       variant="primary"
                       onClick={() => navigate('/admin/upload-course')}
@@ -729,12 +775,10 @@ const AdminPage: React.FC = () => {
         </PermissionGuard>
       )}
 
-      {activeTab === 'instructors' && (
-        <PermissionGuard
-          permission="manage_instructors"
-          role={userRole}
-          showError={true}
-        >
+              {activeTab === 'instructors' && (
+          <PermissionGuard
+            permission="instructors:view"
+          >
           <div className="space-y-6">
             {/* Instructor Management Header */}
             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
@@ -871,12 +915,10 @@ const AdminPage: React.FC = () => {
         </PermissionGuard>
       )}
 
-      {activeTab === 'analytics' && (
-        <PermissionGuard
-          permission="view_analytics"
-          role={userRole}
-          showError={true}
-        >
+              {activeTab === 'analytics' && (
+          <PermissionGuard
+            permission="analytics:view"
+          >
           <div className="space-y-8">
             {/* Analytics Header */}
             <div className="flex justify-between items-center">
@@ -1144,12 +1186,10 @@ const AdminPage: React.FC = () => {
         </PermissionGuard>
       )}
 
-      {activeTab === 'audit' && (
-        <PermissionGuard
-          permission="access_audit_logs"
-          role={userRole}
-          showError={true}
-        >
+              {activeTab === 'audit' && (
+          <PermissionGuard
+            permission="audit:view_logs"
+          >
           <div className="space-y-6">
             <div className="flex justify-between items-center">
               <div>
