@@ -19,6 +19,21 @@ self.__BUILD_MANIFEST = {
       "static/chunks/main.js",
       "static/chunks/pages/_error.js"
     ],
+    "/about": [
+      "static/chunks/webpack.js",
+      "static/chunks/main.js",
+      "static/chunks/pages/about.js"
+    ],
+    "/course/[courseId]": [
+      "static/chunks/webpack.js",
+      "static/chunks/main.js",
+      "static/chunks/pages/course/[courseId].js"
+    ],
+    "/course/[courseId]/lesson/[lessonId]": [
+      "static/chunks/webpack.js",
+      "static/chunks/main.js",
+      "static/chunks/pages/course/[courseId]/lesson/[lessonId].js"
+    ],
     "/courses": [
       "static/chunks/webpack.js",
       "static/chunks/main.js",
@@ -28,6 +43,11 @@ self.__BUILD_MANIFEST = {
       "static/chunks/webpack.js",
       "static/chunks/main.js",
       "static/chunks/pages/home.js"
+    ],
+    "/login": [
+      "static/chunks/webpack.js",
+      "static/chunks/main.js",
+      "static/chunks/pages/login.js"
     ]
   },
   "ampFirstPages": []

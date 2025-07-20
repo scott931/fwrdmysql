@@ -2,6 +2,10 @@
   "/_app": "pages/_app.js",
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
+  "/home": "pages/home.js",
+  "/login": "pages/login.js",
+  "/about": "pages/about.js",
   "/courses": "pages/courses.js",
-  "/home": "pages/home.js"
+  "/course/[courseId]/lesson/[lessonId]": "pages/course/[courseId]/lesson/[lessonId].js",
+  "/course/[courseId]": "pages/course/[courseId].js"
 }

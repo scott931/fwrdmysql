@@ -92,6 +92,52 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'Server is running' });
 });
 
+// Database initialization endpoint
+app.post('/api/init-db', async (req, res) => {
+  try {
+    // Create users table if it doesn't exist
+    await executeQuery(`
+      CREATE TABLE IF NOT EXISTS users (
+        id VARCHAR(36) PRIMARY KEY,
+        email VARCHAR(191) UNIQUE NOT NULL,
+        full_name VARCHAR(255) NOT NULL,
+        password_hash VARCHAR(255),
+        avatar_url TEXT,
+        education_level ENUM('high-school', 'associate', 'bachelor', 'master', 'phd', 'professional', 'other'),
+        job_title VARCHAR(255),
+        topics_of_interest JSON,
+        onboarding_completed BOOLEAN DEFAULT FALSE,
+        role ENUM('user', 'content_manager', 'community_manager', 'user_support', 'super_admin') DEFAULT 'user',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Create a test user if it doesn't exist
+    const [existingUser] = await executeQuery('SELECT id FROM users WHERE email = ?', ['admin@forwardafrica.com']);
+
+    if (!existingUser) {
+      const hashedPassword = await bcrypt.hash('admin123', 10);
+      await executeQuery(
+        'INSERT INTO users (id, email, full_name, password_hash, role, onboarding_completed) VALUES (?, ?, ?, ?, ?, ?)',
+        [uuidv4(), 'admin@forwardafrica.com', 'System Administrator', hashedPassword, 'super_admin', true]
+      );
+    }
+
+    res.json({
+      status: 'OK',
+      message: 'Database initialized successfully',
+      testUser: {
+        email: 'admin@forwardafrica.com',
+        password: 'admin123'
+      }
+    });
+  } catch (error) {
+    console.error('Database initialization error:', error);
+    res.status(500).json({ error: 'Failed to initialize database' });
+  }
+});
+
 // Authentication API
 app.post('/api/auth/register', async (req, res) => {
   try {
