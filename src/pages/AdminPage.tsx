@@ -34,8 +34,8 @@ import {
 } from 'lucide-react';
 import { useNavigate } from '../lib/router';
 import Button from '../components/ui/Button';
-import { getAllCourses, getAllCategories, getAllInstructors } from '../data/mockData';
-import { Course, Category, Instructor } from '../types';
+import { useCourses, useAnalytics, useAuditLogs, useCategories, useInstructors } from '../hooks/useDatabase';
+import { Course, Category, Instructor, Permission } from '../types';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, AreaChart, Area } from 'recharts';
 import { usePermissions } from '../contexts/PermissionContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -45,9 +45,6 @@ import PermissionGuard from '../components/ui/PermissionGuard';
 const AdminPage: React.FC = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'dashboard' | 'courses' | 'instructors' | 'analytics' | 'audit'>('dashboard');
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [instructors, setInstructors] = useState<Instructor[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedInstructor, setSelectedInstructor] = useState<string>('all');
@@ -57,6 +54,44 @@ const AdminPage: React.FC = () => {
   // Get user permissions
   const { userRole, hasPermission } = usePermissions();
   const { profile } = useAuth();
+
+  // Database hooks
+  const {
+    courses,
+    loading: coursesLoading,
+    error: coursesError,
+    fetchAllCourses
+  } = useCourses();
+
+  const {
+    stats: analyticsStats,
+    detailedStats,
+    loading: analyticsLoading,
+    error: analyticsError,
+    fetchPlatformStats,
+    fetchDetailedAnalytics
+  } = useAnalytics();
+
+  const {
+    logs: auditLogsData,
+    loading: auditLogsLoading,
+    error: auditLogsError,
+    fetchAuditLogs
+  } = useAuditLogs();
+
+  const {
+    categories,
+    loading: categoriesLoading,
+    error: categoriesError,
+    fetchAllCategories
+  } = useCategories();
+
+  const {
+    instructors,
+    loading: instructorsLoading,
+    error: instructorsError,
+    fetchAllInstructors
+  } = useInstructors();
 
   // Get admin role from context
   const adminRole = userRole;
@@ -73,39 +108,19 @@ const AdminPage: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'instant' });
   }, []);
 
-  // Load data on component mount and listen for changes
+  // Load data on component mount
   useEffect(() => {
-    const loadData = () => {
-      setCourses(getAllCourses());
-      setCategories(getAllCategories());
-      setInstructors(getAllInstructors());
-    };
+    console.log('🔄 AdminPage: Loading data...');
+    console.log('👤 User role:', userRole);
+    console.log('🔑 Auth token:', localStorage.getItem('forward_africa_token'));
 
-    loadData();
-
-    // Listen for storage changes
-    const handleStorageChange = () => {
-      loadData();
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-    window.addEventListener('coursesUpdated', handleStorageChange);
-
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('coursesUpdated', handleStorageChange);
-    };
-  }, []);
-
-  // Initialize instructors in localStorage if not present
-  useEffect(() => {
-    const savedInstructors = localStorage.getItem('instructors');
-    if (!savedInstructors) {
-      // Add the current mock instructors to localStorage
-      localStorage.setItem('instructors', JSON.stringify(getAllInstructors()));
-      console.log('Initialized instructors in localStorage');
-    }
-  }, []);
+    fetchAllCourses();
+    fetchAllCategories();
+    fetchAllInstructors();
+    fetchPlatformStats();
+    fetchDetailedAnalytics();
+    fetchAuditLogs();
+  }, [fetchAllCourses, fetchAllCategories, fetchAllInstructors, fetchPlatformStats, fetchDetailedAnalytics, fetchAuditLogs, userRole]);
 
   // Clear permission error after 5 seconds
   useEffect(() => {
@@ -171,8 +186,8 @@ const AdminPage: React.FC = () => {
   };
 
   const filteredCourses = courses.filter(course => {
-    const matchesSearch = course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         course.description.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = (course.title?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+                         (course.description?.toLowerCase() || '').includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || course.category === selectedCategory;
     const matchesInstructor = selectedInstructor === 'all' || course.instructorId === selectedInstructor;
 
@@ -185,17 +200,34 @@ const AdminPage: React.FC = () => {
     instructor.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Enhanced Analytics data
-  const totalStudents = 1250;
-  const activeStudents = 890;
-  const totalInstructors = instructors.length;
-  const totalCourses = courses.length;
-  const completionRate = 78.5;
-  const monthlyRevenue = 45000;
-  const avgSessionDuration = 24; // minutes
-  const totalWatchTime = 15420; // hours
-  const certificatesIssued = 342;
-  const userRetentionRate = 85.2;
+  // Enhanced Analytics data from database
+  const totalStudents = analyticsStats?.totalUsers || 0;
+  const activeStudents = analyticsStats?.activeStudents || 0;
+  const totalInstructors = analyticsStats?.totalInstructors || 0;
+  const totalCourses = analyticsStats?.totalCourses || 0;
+  const completionRate = detailedStats?.metrics?.completionRate || 0;
+  const monthlyRevenue = 45000; // Mock data for now
+  const avgSessionDuration = 24; // minutes - Mock data for now
+  const totalWatchTime = 15420; // hours - Mock data for now
+  const certificatesIssued = analyticsStats?.totalCertificates || 0;
+  const userRetentionRate = 85.2; // Mock data for now
+
+  // Debug logging
+  console.log('📊 AdminPage Analytics State:', {
+    analyticsStats,
+    detailedStats,
+    analyticsLoading,
+    analyticsError
+  });
+  console.log('📋 AdminPage Audit Logs State:', {
+    auditLogsData,
+    auditLogsLoading,
+    auditLogsError
+  });
+
+  // Check if user is authenticated
+  const isAuthenticated = !!localStorage.getItem('forward_africa_token');
+  console.log('🔐 Authentication status:', isAuthenticated);
 
   // Time-based data for charts
   const getTimeRangeData = (range: string) => {
@@ -237,20 +269,26 @@ const AdminPage: React.FC = () => {
 
   const categoryData = categories.map(category => ({
     name: category.name,
-    courses: courses.filter(course => course.category === category.id).length,
-    students: Math.floor(Math.random() * 500) + 100,
-    revenue: Math.floor(Math.random() * 15000) + 5000
+    courses: courses.filter(course => course.category === category.name).length,
+    students: Math.floor(Math.random() * 500) + 100, // Mock data for now
+    revenue: Math.floor(Math.random() * 15000) + 5000 // Mock data for now
   }));
 
-  const topPerformingCourses = courses
-    .map(course => ({
+  const topPerformingCourses = (detailedStats?.topCourses || courses
+    .map((course: Course) => ({
       ...course,
       enrollments: Math.floor(Math.random() * 500) + 50,
       rating: (Math.random() * 1.5 + 3.5).toFixed(1),
       revenue: Math.floor(Math.random() * 8000) + 2000
     }))
-    .sort((a, b) => b.enrollments - a.enrollments)
-    .slice(0, 5);
+    .sort((a: any, b: any) => b.enrollments - a.enrollments)
+    .slice(0, 5)).map((course: any) => ({
+      ...course,
+      instructor: course.instructor || {
+        name: (course as any).instructor_name || 'Unknown Instructor',
+        title: (course as any).instructor_title || 'Instructor'
+      }
+    }));
 
   const userEngagementData = [
     { metric: 'Daily Active Users', value: 420, change: '+12%', trend: 'up' },
@@ -268,9 +306,30 @@ const AdminPage: React.FC = () => {
     { source: 'Partnerships', amount: 1300, percentage: 2.9, color: '#f59e0b' },
   ];
 
-  const auditLogs = JSON.parse(localStorage.getItem('auditLogs') || '[]');
+  const auditLogs = auditLogsData || [];
 
   const COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6'];
+
+  // Show login prompt if not authenticated (commented out for testing)
+  /*
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Authentication Required</h1>
+          <p className="text-gray-400 mb-6">Please log in to access the admin dashboard.</p>
+          <Button
+            variant="primary"
+            onClick={() => navigate('/login')}
+            className="flex items-center"
+          >
+            Go to Login
+          </Button>
+        </div>
+      </div>
+    );
+  }
+  */
 
   return (
     <div className="max-w-screen-xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
@@ -310,29 +369,28 @@ const AdminPage: React.FC = () => {
       {/* Tabs */}
       <div className="border-b border-gray-700 mb-8">
         <div className="flex space-x-8 overflow-x-auto">
-          {[
-            { id: 'dashboard', label: 'Dashboard', icon: BarChart3, permission: 'analytics:view' },
-            { id: 'courses', label: 'Courses', icon: BookOpen, permission: 'courses:view' },
-            { id: 'instructors', label: 'Instructors', icon: Users, permission: 'instructors:view' },
-            { id: 'analytics', label: 'Analytics', icon: TrendingUp, permission: 'analytics:view' },
-            { id: 'audit', label: 'Audit Logs', icon: Activity, permission: 'audit:view_logs' }
-          ].map(({ id, label, icon: Icon, permission }) => (
-            <PermissionGuard key={id} permission={permission}>
-              <button
-                onClick={() => setActiveTab(id as any)}
-                className={`pb-4 relative flex items-center space-x-2 whitespace-nowrap ${
-                  activeTab === id
-                    ? 'text-white'
-                    : 'text-gray-400 hover:text-white'
-                }`}
-              >
-                <Icon className="h-5 w-5" />
-                <span>{label}</span>
-                {activeTab === id && (
-                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-red-600"></div>
-                )}
-              </button>
-            </PermissionGuard>
+          {([
+            { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
+            { id: 'courses', label: 'Courses', icon: BookOpen },
+            { id: 'instructors', label: 'Instructors', icon: Users },
+            { id: 'analytics', label: 'Analytics', icon: TrendingUp },
+            { id: 'audit', label: 'Audit Logs', icon: Activity }
+          ]).map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              onClick={() => setActiveTab(id as any)}
+              className={`pb-4 relative flex items-center space-x-2 whitespace-nowrap ${
+                activeTab === id
+                  ? 'text-white'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              <Icon className="h-5 w-5" />
+              <span>{label}</span>
+              {activeTab === id && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-red-600"></div>
+              )}
+            </button>
           ))}
         </div>
       </div>
@@ -586,69 +644,80 @@ const AdminPage: React.FC = () => {
       )}
 
       {activeTab === 'courses' && (
-        <PermissionGuard
-          permission="courses:view"
-        >
-          <div className="space-y-6">
-            {/* Course Management Header */}
-            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-              <div>
-                <h2 className="text-2xl font-bold text-white">Course Management</h2>
-                <p className="text-gray-400">Manage all courses and content</p>
-              </div>
-              <PermissionGuard permission="courses:create">
-                <Button
-                  variant="primary"
-                  onClick={() => navigate('/admin/upload-course')}
-                  className="flex items-center"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add New Course
-                </Button>
-              </PermissionGuard>
+        <div className="space-y-6">
+          {/* Course Management Header */}
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+            <div>
+              <h2 className="text-2xl font-bold text-white">Course Management</h2>
+              <p className="text-gray-400">Manage all courses and content</p>
             </div>
+            <Button
+              variant="primary"
+              onClick={() => navigate('/admin/upload-course')}
+              className="flex items-center"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add New Course
+            </Button>
+          </div>
 
-            {/* Filters */}
-            <div className="bg-gray-800 rounded-lg p-6">
-              <div className="flex flex-col lg:flex-row gap-4">
-                <div className="flex-1">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                    <input
-                      type="text"
-                      placeholder="Search courses..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="w-full pl-10 pr-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500"
-                    />
-                  </div>
+          {/* Filters */}
+          <div className="bg-gray-800 rounded-lg p-6">
+            <div className="flex flex-col lg:flex-row gap-4">
+              <div className="flex-1">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search courses..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500"
+                  />
                 </div>
-                <select
-                  value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
-                  className="px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500"
-                >
-                  <option value="all">All Categories</option>
-                  {categories.map(category => (
-                    <option key={category.id} value={category.id}>{category.name}</option>
-                  ))}
-                </select>
-                <select
-                  value={selectedInstructor}
-                  onChange={(e) => setSelectedInstructor(e.target.value)}
-                  className="px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500"
-                >
-                  <option value="all">All Instructors</option>
-                  {instructors.map(instructor => (
-                    <option key={instructor.id} value={instructor.id}>{instructor.name}</option>
-                  ))}
-                </select>
               </div>
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+              >
+                <option value="all">All Categories</option>
+                {categories.map(category => (
+                  <option key={category.id} value={category.id}>{category.name}</option>
+                ))}
+              </select>
+              <select
+                value={selectedInstructor}
+                onChange={(e) => setSelectedInstructor(e.target.value)}
+                className="px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+              >
+                <option value="all">All Instructors</option>
+                {instructors.map(instructor => (
+                  <option key={instructor.id} value={instructor.id}>{instructor.name}</option>
+                ))}
+              </select>
             </div>
+          </div>
 
-            {/* Courses Table */}
-            <div className="bg-gray-800 rounded-lg overflow-hidden">
-              <div className="overflow-x-auto">
+          {/* Courses Table */}
+          <div className="bg-gray-800 rounded-lg overflow-hidden">
+            <div className="overflow-x-auto">
+              {filteredCourses.length === 0 ? (
+                <div className="text-center py-12">
+                  <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-white text-lg font-medium mb-2">No courses found</h3>
+                  <p className="text-gray-400 mb-4">Get started by creating your first course.</p>
+                  <PermissionGuard permission="courses:create">
+                    <Button
+                      variant="primary"
+                      onClick={() => navigate('/admin/upload-course')}
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Course
+                    </Button>
+                  </PermissionGuard>
+                </div>
+              ) : (
                 <table className="w-full">
                   <thead className="bg-gray-700">
                     <tr>
@@ -682,19 +751,26 @@ const AdminPage: React.FC = () => {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
                             <img
-                              src={course.instructor.image}
-                              alt={course.instructor.name}
+                              src={course.instructor?.image || (course as any).instructor_image || '/placeholder-avatar.jpg'}
+                              alt={course.instructor?.name || (course as any).instructor_name || 'Instructor'}
                               className="h-8 w-8 rounded-full object-cover mr-3"
+                              onError={(e) => {
+                                e.currentTarget.src = '/placeholder-avatar.jpg';
+                              }}
                             />
                             <div>
-                              <div className="text-sm font-medium text-white">{course.instructor.name}</div>
-                              <div className="text-sm text-gray-400">{course.instructor.title}</div>
+                              <div className="text-sm font-medium text-white">
+                                {course.instructor?.name || (course as any).instructor_name || 'Unknown Instructor'}
+                              </div>
+                              <div className="text-sm text-gray-400">
+                                {course.instructor?.title || (course as any).instructor_title || 'Instructor'}
+                              </div>
                             </div>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-500/20 text-blue-400">
-                            {categories.find(c => c.id === course.category)?.name || course.category}
+                            {categories.find(c => c.id === course.category)?.name || course.category || 'Uncategorized'}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -711,7 +787,7 @@ const AdminPage: React.FC = () => {
                           )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                          {course.lessons.length} lessons
+                          {(course.lessons?.length || 0)} lessons
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex items-center space-x-2">
@@ -752,173 +828,152 @@ const AdminPage: React.FC = () => {
                     ))}
                   </tbody>
                 </table>
-              </div>
-
-              {filteredCourses.length === 0 && (
-                <div className="text-center py-12">
-                  <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-white text-lg font-medium mb-2">No courses found</h3>
-                  <p className="text-gray-400 mb-4">Get started by creating your first course.</p>
-                  <PermissionGuard permission="courses:create">
-                    <Button
-                      variant="primary"
-                      onClick={() => navigate('/admin/upload-course')}
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Course
-                    </Button>
-                  </PermissionGuard>
-                </div>
               )}
             </div>
           </div>
-        </PermissionGuard>
+        </div>
       )}
 
-              {activeTab === 'instructors' && (
-          <PermissionGuard
-            permission="instructors:view"
-          >
-          <div className="space-y-6">
-            {/* Instructor Management Header */}
-            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-              <div>
-                <h2 className="text-2xl font-bold text-white">Instructor Management</h2>
-                <p className="text-gray-400">Manage instructor profiles and assignments</p>
-              </div>
+      {activeTab === 'instructors' && (
+        <div className="space-y-6">
+          {/* Instructor Management Header */}
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+            <div>
+              <h2 className="text-2xl font-bold text-white">Instructor Management</h2>
+              <p className="text-gray-400">Manage instructor profiles and assignments</p>
+            </div>
+            <Button
+              variant="primary"
+              onClick={() => navigate('/admin/add-instructor')}
+              className="flex items-center"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add New Instructor
+            </Button>
+          </div>
+
+          {/* Search */}
+          <div className="bg-gray-800 rounded-lg p-6">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search instructors..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500"
+              />
+            </div>
+          </div>
+
+          {/* Instructors Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredInstructors.map((instructor) => {
+              const instructorCourses = courses.filter(course => course.instructorId === instructor.id);
+
+              return (
+                <div key={instructor.id} className="bg-gray-800 rounded-lg p-6">
+                  <div className="flex items-center mb-4">
+                    <img
+                      src={instructor.image}
+                      alt={instructor.name}
+                      className="h-16 w-16 rounded-full object-cover mr-4"
+                    />
+                    <div className="flex-1">
+                      <h3 className="text-white font-semibold">{instructor.name}</h3>
+                      <p className="text-gray-400 text-sm">{instructor.title}</p>
+                      <p className="text-gray-500 text-xs">{instructor.email}</p>
+                    </div>
+                  </div>
+
+                  {/* Expertise Tags */}
+                  {instructor.expertise && instructor.expertise.length > 0 && (
+                    <div className="mb-4">
+                      <div className="flex flex-wrap gap-1">
+                        {instructor.expertise.slice(0, 3).map((skill, index) => (
+                          <span
+                            key={index}
+                            className="px-2 py-1 bg-red-500/20 text-red-400 rounded text-xs"
+                          >
+                            {skill}
+                          </span>
+                        ))}
+                        {instructor.expertise.length > 3 && (
+                          <span className="px-2 py-1 bg-gray-600 text-gray-300 rounded text-xs">
+                            +{instructor.expertise.length - 3} more
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Stats */}
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-white">{instructorCourses.length}</div>
+                      <div className="text-xs text-gray-400">Courses</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-white">{instructor.experience}</div>
+                      <div className="text-xs text-gray-400">Years Exp.</div>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => navigate(`/instructor/${instructor.id}`)}
+                      className="flex-1"
+                    >
+                      <Eye className="h-3 w-3 mr-1" />
+                      View
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => navigate(`/admin/add-instructor?edit=${instructor.id}`)}
+                      className="flex-1"
+                    >
+                      <Edit className="h-3 w-3 mr-1" />
+                      Edit
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDeleteInstructor(instructor.id)}
+                      className="text-red-500 border-red-500 hover:bg-red-500/10"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {filteredInstructors.length === 0 && (
+            <div className="text-center py-12">
+              <User className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-white text-lg font-medium mb-2">No instructors found</h3>
+              <p className="text-gray-400 mb-4">Get started by adding your first instructor.</p>
               <Button
                 variant="primary"
                 onClick={() => navigate('/admin/add-instructor')}
-                className="flex items-center"
               >
                 <Plus className="h-4 w-4 mr-2" />
-                Add New Instructor
+                Add Instructor
               </Button>
             </div>
-
-            {/* Search */}
-            <div className="bg-gray-800 rounded-lg p-6">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search instructors..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500"
-                />
-              </div>
-            </div>
-
-            {/* Instructors Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredInstructors.map((instructor) => {
-                const instructorCourses = courses.filter(course => course.instructorId === instructor.id);
-
-                return (
-                  <div key={instructor.id} className="bg-gray-800 rounded-lg p-6">
-                    <div className="flex items-center mb-4">
-                      <img
-                        src={instructor.image}
-                        alt={instructor.name}
-                        className="h-16 w-16 rounded-full object-cover mr-4"
-                      />
-                      <div className="flex-1">
-                        <h3 className="text-white font-semibold">{instructor.name}</h3>
-                        <p className="text-gray-400 text-sm">{instructor.title}</p>
-                        <p className="text-gray-500 text-xs">{instructor.email}</p>
-                      </div>
-                    </div>
-
-                    {/* Expertise Tags */}
-                    {instructor.expertise && instructor.expertise.length > 0 && (
-                      <div className="mb-4">
-                        <div className="flex flex-wrap gap-1">
-                          {instructor.expertise.slice(0, 3).map((skill, index) => (
-                            <span
-                              key={index}
-                              className="px-2 py-1 bg-red-500/20 text-red-400 rounded text-xs"
-                            >
-                              {skill}
-                            </span>
-                          ))}
-                          {instructor.expertise.length > 3 && (
-                            <span className="px-2 py-1 bg-gray-600 text-gray-300 rounded text-xs">
-                              +{instructor.expertise.length - 3} more
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Stats */}
-                    <div className="grid grid-cols-2 gap-4 mb-4">
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-white">{instructorCourses.length}</div>
-                        <div className="text-xs text-gray-400">Courses</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-white">{instructor.experience}</div>
-                        <div className="text-xs text-gray-400">Years Exp.</div>
-                      </div>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => navigate(`/instructor/${instructor.id}`)}
-                        className="flex-1"
-                      >
-                        <Eye className="h-3 w-3 mr-1" />
-                        View
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => navigate(`/admin/add-instructor?edit=${instructor.id}`)}
-                        className="flex-1"
-                      >
-                        <Edit className="h-3 w-3 mr-1" />
-                        Edit
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDeleteInstructor(instructor.id)}
-                        className="text-red-500 border-red-500 hover:bg-red-500/10"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {filteredInstructors.length === 0 && (
-              <div className="text-center py-12">
-                <User className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-white text-lg font-medium mb-2">No instructors found</h3>
-                <p className="text-gray-400 mb-4">Get started by adding your first instructor.</p>
-                <Button
-                  variant="primary"
-                  onClick={() => navigate('/admin/add-instructor')}
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Instructor
-                </Button>
-              </div>
-            )}
-          </div>
-        </PermissionGuard>
+          )}
+        </div>
       )}
 
-              {activeTab === 'analytics' && (
-          <PermissionGuard
-            permission="analytics:view"
-          >
+      {activeTab === 'analytics' && (
+        <PermissionGuard
+          permission="analytics:view"
+        >
           <div className="space-y-8">
             {/* Analytics Header */}
             <div className="flex justify-between items-center">
@@ -1141,32 +1196,37 @@ const AdminPage: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-700">
-                    {topPerformingCourses.map((course, index) => (
+                    {topPerformingCourses && topPerformingCourses.length > 0 ? topPerformingCourses.map((course: any, index: number) => (
                       <tr key={course.id}>
                         <td className="px-4 py-4 whitespace-nowrap">
                           <div className="flex items-center">
                             <img
-                              src={course.thumbnail}
-                              alt={course.title}
+                              src={course.thumbnail || '/placeholder-course.jpg'}
+                              alt={course.title || 'Course'}
                               className="h-10 w-10 rounded-lg object-cover mr-3"
+                              onError={(e) => {
+                                e.currentTarget.src = '/placeholder-course.jpg';
+                              }}
                             />
                             <div>
                               <div className="text-sm font-medium text-white">{course.title}</div>
-                              <div className="text-sm text-gray-400">{course.instructor.name}</div>
+                              <div className="text-sm text-gray-400">
+                                {course.instructor?.name || (course as any).instructor_name || 'Unknown Instructor'}
+                              </div>
                             </div>
                           </div>
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap text-sm text-white">
-                          {course.enrollments.toLocaleString()}
+                          {(course.enrollments || 0).toLocaleString()}
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap">
                           <div className="flex items-center">
                             <Star className="h-4 w-4 text-yellow-500 mr-1" />
-                            <span className="text-sm text-white">{course.rating}</span>
+                            <span className="text-sm text-white">{course.rating || 'N/A'}</span>
                           </div>
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap text-sm text-white">
-                          ${course.revenue.toLocaleString()}
+                          ${(course.revenue || 0).toLocaleString()}
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap">
                           <div className="w-full bg-gray-600 rounded-full h-2">
@@ -1177,7 +1237,13 @@ const AdminPage: React.FC = () => {
                           </div>
                         </td>
                       </tr>
-                    ))}
+                    )) : (
+                      <tr>
+                        <td colSpan={5} className="px-4 py-8 text-center text-gray-400">
+                          No course data available
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -1186,10 +1252,10 @@ const AdminPage: React.FC = () => {
         </PermissionGuard>
       )}
 
-              {activeTab === 'audit' && (
-          <PermissionGuard
-            permission="audit:view_logs"
-          >
+      {activeTab === 'audit' && (
+        <PermissionGuard
+          permission="audit:view_logs"
+        >
           <div className="space-y-6">
             <div className="flex justify-between items-center">
               <div>
@@ -1204,49 +1270,49 @@ const AdminPage: React.FC = () => {
 
             <div className="bg-gray-800 rounded-lg overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-700">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Timestamp</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">User</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Action</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Details</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">IP Address</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-700">
-                    {auditLogs.slice(0, 20).map((log: any) => (
-                      <tr key={log.id} className="hover:bg-gray-700/50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                          {new Date(log.timestamp).toLocaleString()}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-white">
-                          {log.user}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-500/20 text-blue-400">
-                            {log.action.replace('_', ' ').toUpperCase()}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-300 max-w-md truncate">
-                          {log.details}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                          {log.ipAddress}
-                        </td>
+                {auditLogs.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Activity className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-white text-lg font-medium mb-2">No audit logs</h3>
+                    <p className="text-gray-400">System activity will appear here.</p>
+                  </div>
+                ) : (
+                  <table className="w-full">
+                    <thead className="bg-gray-700">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Timestamp</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">User</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Action</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Details</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">IP Address</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-gray-700">
+                      {auditLogs.slice(0, 20).map((log: any) => (
+                        <tr key={log.id} className="hover:bg-gray-700/50">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                            {new Date(log.created_at).toLocaleString()}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-white">
+                            {log.user_name || log.user_id || 'Unknown'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-500/20 text-blue-400">
+                              {log.action.replace('_', ' ').toUpperCase()}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-300 max-w-md truncate">
+                            {log.details ? JSON.stringify(log.details) : log.resource_type}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                            {log.ipAddress}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
               </div>
-
-              {auditLogs.length === 0 && (
-                <div className="text-center py-12">
-                  <Activity className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-white text-lg font-medium mb-2">No audit logs</h3>
-                  <p className="text-gray-400">System activity will appear here.</p>
-                </div>
-              )}
             </div>
           </div>
         </PermissionGuard>

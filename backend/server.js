@@ -347,6 +347,25 @@ app.delete('/api/users/:id', authenticateToken, async (req, res) => {
   }
 });
 
+// Admin-only endpoint to update a user's permissions
+app.put('/api/users/:id/permissions', authenticateToken, async (req, res) => {
+  try {
+    // Only super_admin can update permissions
+    if (req.user.role !== 'super_admin') {
+      return res.status(403).json({ error: 'Only super admins can update permissions.' });
+    }
+    const { permissions } = req.body;
+    if (!Array.isArray(permissions)) {
+      return res.status(400).json({ error: 'Permissions must be an array.' });
+    }
+    await executeQuery('UPDATE users SET permissions = ? WHERE id = ?', [JSON.stringify(permissions), req.params.id]);
+    res.json({ message: 'Permissions updated successfully.' });
+  } catch (error) {
+    console.error('Update permissions error:', error);
+    res.status(500).json({ error: 'Failed to update permissions.' });
+  }
+});
+
 // Courses API
 app.get('/api/courses', async (req, res) => {
   try {
@@ -613,19 +632,162 @@ app.get('/api/achievements/:userId', async (req, res) => {
 // Analytics API
 app.get('/api/analytics/platform', async (req, res) => {
   try {
+    console.log('📊 Fetching platform analytics from database...');
+
     const [userCount] = await executeQuery('SELECT COUNT(*) as count FROM users');
     const [courseCount] = await executeQuery('SELECT COUNT(*) as count FROM courses');
     const [lessonCount] = await executeQuery('SELECT COUNT(*) as count FROM lessons');
     const [certificateCount] = await executeQuery('SELECT COUNT(*) as count FROM certificates');
+    const [instructorCount] = await executeQuery('SELECT COUNT(*) as count FROM instructors');
+    const [completedCoursesCount] = await executeQuery('SELECT COUNT(*) as count FROM user_progress WHERE completed = true');
+    const [activeStudentsCount] = await executeQuery('SELECT COUNT(DISTINCT user_id) as count FROM user_progress');
+    const [totalXP] = await executeQuery('SELECT SUM(xp_earned) as total FROM user_progress');
+    const [totalEnrollments] = await executeQuery('SELECT COUNT(*) as count FROM user_progress');
+
+    // Calculate completion rate
+    const completionRate = totalEnrollments.count > 0 ? (completedCoursesCount.count / totalEnrollments.count * 100).toFixed(1) : 0;
+
+    // Get recent activity (last 7 days)
+    const [recentActivity] = await executeQuery(`
+      SELECT COUNT(*) as count FROM user_progress
+      WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+    `);
+
+    console.log('📊 Platform analytics calculated:', {
+      users: userCount.count,
+      courses: courseCount.count,
+      lessons: lessonCount.count,
+      certificates: certificateCount.count,
+      instructors: instructorCount.count,
+      completedCourses: completedCoursesCount.count,
+      activeStudents: activeStudentsCount.count,
+      totalXP: totalXP.total || 0,
+      completionRate: parseFloat(completionRate),
+      recentActivity: recentActivity.count
+    });
 
     res.json({
       totalUsers: userCount.count,
       totalCourses: courseCount.count,
       totalLessons: lessonCount.count,
-      totalCertificates: certificateCount.count
+      totalCertificates: certificateCount.count,
+      totalInstructors: instructorCount.count,
+      completedCourses: completedCoursesCount.count,
+      activeStudents: activeStudentsCount.count,
+      totalXP: totalXP.total || 0,
+      completionRate: parseFloat(completionRate),
+      recentActivity: recentActivity.count
     });
   } catch (error) {
+    console.error('Platform analytics error:', error);
     res.status(500).json({ error: 'Failed to fetch platform analytics' });
+  }
+});
+
+// Enhanced Analytics API with detailed statistics
+app.get('/api/analytics/detailed', async (req, res) => {
+  try {
+    console.log('📊 Fetching detailed analytics from database...');
+
+    // Basic counts
+    const [userCount] = await executeQuery('SELECT COUNT(*) as count FROM users');
+    const [courseCount] = await executeQuery('SELECT COUNT(*) as count FROM courses');
+    const [lessonCount] = await executeQuery('SELECT COUNT(*) as count FROM lessons');
+    const [certificateCount] = await executeQuery('SELECT COUNT(*) as count FROM certificates');
+    const [instructorCount] = await executeQuery('SELECT COUNT(*) as count FROM instructors');
+    const [completedCoursesCount] = await executeQuery('SELECT COUNT(*) as count FROM user_progress WHERE completed = true');
+    const [activeStudentsCount] = await executeQuery('SELECT COUNT(DISTINCT user_id) as count FROM user_progress');
+    const [totalXP] = await executeQuery('SELECT SUM(xp_earned) as total FROM user_progress');
+
+    // Course completion rate
+    const [totalEnrollments] = await executeQuery('SELECT COUNT(*) as count FROM user_progress');
+    const completionRate = totalEnrollments.count > 0 ? (completedCoursesCount.count / totalEnrollments.count * 100).toFixed(1) : 0;
+
+    // Top performing courses with instructor info
+    const topCourses = await executeQuery(`
+      SELECT
+        c.title,
+        c.id,
+        c.thumbnail,
+        i.name as instructor_name,
+        COUNT(up.id) as enrollments,
+        SUM(CASE WHEN up.completed = 1 THEN 1 ELSE 0 END) as completions,
+        AVG(up.progress) as avg_progress
+      FROM courses c
+      LEFT JOIN instructors i ON c.instructor_id = i.id
+      LEFT JOIN user_progress up ON c.id = up.course_id
+      GROUP BY c.id, c.title, c.thumbnail, i.name
+      ORDER BY enrollments DESC
+      LIMIT 5
+    `);
+
+    // Category statistics
+    const categoryStats = await executeQuery(`
+      SELECT
+        cat.name,
+        COUNT(c.id) as course_count,
+        COUNT(up.id) as enrollments,
+        SUM(CASE WHEN up.completed = 1 THEN 1 ELSE 0 END) as completions
+      FROM categories cat
+      LEFT JOIN courses c ON cat.id = c.category_id
+      LEFT JOIN user_progress up ON c.id = up.course_id
+      GROUP BY cat.id, cat.name
+      ORDER BY enrollments DESC
+    `);
+
+    // Recent activity (last 30 days)
+    const recentActivity = await executeQuery(`
+      SELECT COUNT(*) as count FROM user_progress
+      WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+    `);
+
+    // User engagement metrics
+    const [avgSessionDuration] = await executeQuery(`
+      SELECT AVG(progress) as avg_duration FROM user_progress WHERE progress > 0
+    `);
+
+    // Revenue simulation (mock data for now)
+    const monthlyRevenue = 45000;
+    const userRetentionRate = 85.2;
+
+    console.log('📊 Analytics data calculated:', {
+      users: userCount.count,
+      courses: courseCount.count,
+      lessons: lessonCount.count,
+      certificates: certificateCount.count,
+      instructors: instructorCount.count,
+      completedCourses: completedCoursesCount.count,
+      activeStudents: activeStudentsCount.count,
+      totalXP: totalXP.total || 0,
+      completionRate: parseFloat(completionRate),
+      topCoursesCount: topCourses.length,
+      categoryStatsCount: categoryStats.length
+    });
+
+    res.json({
+      basic: {
+        totalUsers: userCount.count,
+        totalCourses: courseCount.count,
+        totalLessons: lessonCount.count,
+        totalCertificates: certificateCount.count,
+        totalInstructors: instructorCount.count,
+        completedCourses: completedCoursesCount.count,
+        activeStudents: activeStudentsCount.count,
+        totalXP: totalXP.total || 0
+      },
+      metrics: {
+        completionRate: parseFloat(completionRate),
+        recentActivity: recentActivity[0].count,
+        avgSessionDuration: avgSessionDuration.avg_duration || 0,
+        monthlyRevenue,
+        userRetentionRate
+      },
+      topCourses,
+      categoryStats
+    });
+  } catch (error) {
+    console.error('Detailed analytics error:', error);
+    res.status(500).json({ error: 'Failed to fetch detailed analytics' });
   }
 });
 
@@ -682,6 +844,121 @@ app.get('/api/community/groups/:groupId/messages', authenticateToken, async (req
     res.json(messages);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch messages' });
+  }
+});
+
+// Audit Logs API
+app.get('/api/audit-logs', async (req, res) => {
+  try {
+    // First check if the audit_logs table exists
+    const tableExists = await executeQuery(`
+      SELECT COUNT(*) as count
+      FROM information_schema.tables
+      WHERE table_schema = 'forward_africa_db'
+      AND table_name = 'audit_logs'
+    `);
+
+    console.log('🔍 Checking if audit_logs table exists:', tableExists[0].count);
+
+    if (tableExists[0].count === 0) {
+      console.log('📋 Audit logs table does not exist, creating it...');
+
+      // Create the audit_logs table
+      await executeQuery(`
+        CREATE TABLE audit_logs (
+          id VARCHAR(36) PRIMARY KEY,
+          user_id VARCHAR(36),
+          action VARCHAR(100) NOT NULL,
+          resource_type VARCHAR(50) NOT NULL,
+          resource_id VARCHAR(36),
+          details JSON,
+          ip_address VARCHAR(45),
+          user_agent TEXT,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+        )
+      `);
+
+      // Insert sample audit logs
+      await executeQuery(`
+        INSERT INTO audit_logs (id, user_id, action, resource_type, resource_id, details, ip_address) VALUES
+        ('audit1', 'u1', 'login', 'user', 'u1', '{"method": "email", "success": true}', '192.168.1.100'),
+        ('audit2', 'u2', 'create_course', 'course', 'course1', '{"title": "Business Fundamentals", "instructor": "inst1"}', '192.168.1.101'),
+        ('audit3', 'u4', 'complete_course', 'course', 'course1', '{"courseTitle": "Business Fundamentals", "xpEarned": 500}', '192.168.1.102'),
+        ('audit4', 'u3', 'join_group', 'community_group', 'group2', '{"groupName": "Tech Innovators"}', '192.168.1.103'),
+        ('audit5', 'u2', 'update_profile', 'user', 'u2', '{"fields": ["job_title", "topics_of_interest"]}', '192.168.1.101')
+      `);
+
+      console.log('📋 Audit logs table created and populated with sample data');
+    }
+
+    const { action, resource_type, user_id, start_date, end_date, limit = 100 } = req.query;
+
+    let query = `
+      SELECT al.*, u.full_name as user_name, u.email as user_email
+      FROM audit_logs al
+      LEFT JOIN users u ON al.user_id = u.id
+      WHERE 1=1
+    `;
+    const params = [];
+
+    if (action) {
+      query += ' AND al.action = ?';
+      params.push(action);
+    }
+
+    if (resource_type) {
+      query += ' AND al.resource_type = ?';
+      params.push(resource_type);
+    }
+
+    if (user_id) {
+      query += ' AND al.user_id = ?';
+      params.push(user_id);
+    }
+
+    if (start_date) {
+      query += ' AND al.created_at >= ?';
+      params.push(start_date);
+    }
+
+    if (end_date) {
+      query += ' AND al.created_at <= ?';
+      params.push(end_date);
+    }
+
+    query += ' ORDER BY al.created_at DESC LIMIT ?';
+    params.push(parseInt(limit));
+
+    console.log('🔍 Executing audit logs query:', query);
+    console.log('📋 Query parameters:', params);
+
+    const logs = await executeQuery(query, params);
+    console.log('📋 Audit logs found:', logs.length);
+
+    res.json(logs);
+  } catch (error) {
+    console.error('Audit logs error:', error);
+    res.status(500).json({ error: 'Failed to fetch audit logs' });
+  }
+});
+
+app.post('/api/audit-logs', authenticateToken, async (req, res) => {
+  try {
+    const { action, resource_type, resource_id, details } = req.body;
+    const id = uuidv4();
+    const ip_address = req.ip || req.connection.remoteAddress;
+    const user_agent = req.headers['user-agent'];
+
+    await executeQuery(
+      'INSERT INTO audit_logs (id, user_id, action, resource_type, resource_id, details, ip_address, user_agent) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [id, req.user.id, action, resource_type, resource_id, JSON.stringify(details), ip_address, user_agent]
+    );
+
+    res.status(201).json({ id, message: 'Audit log created successfully' });
+  } catch (error) {
+    console.error('Create audit log error:', error);
+    res.status(500).json({ error: 'Failed to create audit log' });
   }
 });
 

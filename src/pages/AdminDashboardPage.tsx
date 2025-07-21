@@ -72,15 +72,15 @@ export default function AdminDashboardPage() {
       </nav>
 
       {/* Header */}
-      <div className="flex justify-between items-center px-8 pt-8 pb-4">
+      <div className="mb-8 flex justify-between items-start">
         <div>
-          <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-          <p className="text-gray-400 mt-1">Manage courses, instructors, and platform settings</p>
+          <h1 className="text-3xl font-bold text-white mb-2">Admin Dashboard</h1>
+          <p className="text-gray-400">Manage courses, instructors, and platform settings</p>
         </div>
         <div className="flex items-center space-x-4">
           <div className="text-right">
-            <div className="font-semibold">{profile?.full_name || getDisplayName(userRole)}</div>
-            <div className="text-xs text-gray-400">{user?.email || profile?.email || 'admin@forwardafrica.com'}</div>
+            <p className="text-white font-medium">{userRole === 'super_admin' ? 'Super Administrator' : userRole === 'content_manager' ? 'Content Manager' : 'Administrator'}</p>
+            <p className="text-gray-400 text-sm">{user?.email || profile?.email || 'admin@forwardafrica.com'}</p>
           </div>
           <button
             className="bg-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-600"

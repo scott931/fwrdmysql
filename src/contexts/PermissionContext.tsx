@@ -35,14 +35,17 @@ export const PermissionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   }, [user]);
 
   const hasPermission = (permission: Permission): boolean => {
+    if (userRole === 'super_admin') return true;
     return checkPermission(permissions, permission);
   };
 
   const hasAnyPermissionCheck = (requiredPermissions: Permission[]): boolean => {
+    if (userRole === 'super_admin') return true;
     return hasAnyPermission(permissions, requiredPermissions);
   };
 
   const hasAllPermissionsCheck = (requiredPermissions: Permission[]): boolean => {
+    if (userRole === 'super_admin') return true;
     return hasAllPermissions(permissions, requiredPermissions);
   };
 

@@ -2,7 +2,7 @@
 // This hook provides easy access to database operations throughout the app
 
 import { useState, useEffect, useCallback } from 'react';
-import { courseAPI, categoryAPI, instructorAPI, progressAPI, certificateAPI, achievementAPI, analyticsAPI, userAPI } from '../lib/api';
+import { courseAPI, categoryAPI, instructorAPI, progressAPI, certificateAPI, achievementAPI, analyticsAPI, userAPI, auditLogsAPI } from '../lib/api';
 import { Course, Category, Instructor, UserProgress, Certificate, Achievement } from '../types';
 import { getAllCourses as getMockCourses, getFeaturedCourses as getMockFeaturedCourses } from '../data/mockData';
 
@@ -106,6 +106,124 @@ export const useCourses = () => {
     error,
     fetchAllCourses,
     fetchFeaturedCourses
+  };
+};
+
+
+
+// Custom hook for audit logs
+export const useAuditLogs = () => {
+  const [logs, setLogs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchAuditLogs = useCallback(async (filters?: {
+    action?: string;
+    resource_type?: string;
+    user_id?: string;
+    start_date?: string;
+    end_date?: string;
+    limit?: number;
+  }) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      console.log('📋 Fetching audit logs...');
+      const data = await auditLogsAPI.getAuditLogs(filters);
+      console.log('📋 Audit logs received:', data);
+      setLogs(data);
+    } catch (err) {
+      console.error('Failed to fetch audit logs:', err);
+      setError('Failed to load audit logs');
+      setLogs([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const createAuditLog = useCallback(async (auditData: {
+    action: string;
+    resource_type: string;
+    resource_id?: string;
+    details?: any;
+  }) => {
+    try {
+      await auditLogsAPI.createAuditLog(auditData);
+      // Refresh logs after creating new one
+      await fetchAuditLogs();
+    } catch (err) {
+      console.error('Failed to create audit log:', err);
+      throw err;
+    }
+  }, [fetchAuditLogs]);
+
+  return {
+    logs,
+    loading,
+    error,
+    fetchAuditLogs,
+    createAuditLog
+  };
+};
+
+// Custom hook for categories
+export const useCategories = () => {
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchAllCategories = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const data = await categoryAPI.getAllCategories();
+      setCategories(data);
+    } catch (err) {
+      console.error('Failed to fetch categories:', err);
+      setError('Failed to load categories');
+      setCategories([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  return {
+    categories,
+    loading,
+    error,
+    fetchAllCategories
+  };
+};
+
+// Custom hook for instructors
+export const useInstructors = () => {
+  const [instructors, setInstructors] = useState<Instructor[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchAllInstructors = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const data = await instructorAPI.getAllInstructors();
+      setInstructors(data);
+    } catch (err) {
+      console.error('Failed to fetch instructors:', err);
+      setError('Failed to load instructors');
+      setInstructors([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  return {
+    instructors,
+    loading,
+    error,
+    fetchAllInstructors
   };
 };
 
@@ -324,6 +442,7 @@ export const useUsers = () => {
 // Hook for platform analytics
 export const useAnalytics = () => {
   const [stats, setStats] = useState<any>(null);
+  const [detailedStats, setDetailedStats] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -331,21 +450,48 @@ export const useAnalytics = () => {
     setLoading(true);
     setError(null);
     try {
+      console.log('📊 Fetching platform stats...');
       const data = await analyticsAPI.getPlatformStats();
+      console.log('📊 Platform stats received:', data);
       setStats(data);
     } catch (err) {
       setError('Failed to fetch platform stats');
       console.error('Error fetching platform stats:', err);
+      // Set fallback data
+      setStats({
+        totalUsers: 0,
+        totalCourses: 0,
+        totalLessons: 0,
+        totalCertificates: 0,
+        totalInstructors: 0,
+        completedCourses: 0,
+        activeStudents: 0,
+        totalXP: 0
+      });
     } finally {
       setLoading(false);
     }
   }, []);
 
+  const fetchDetailedAnalytics = useCallback(async () => {
+    try {
+      console.log('📈 Fetching detailed analytics...');
+      const data = await analyticsAPI.getDetailedAnalytics();
+      console.log('📈 Detailed analytics received:', data);
+      setDetailedStats(data);
+    } catch (err) {
+      console.error('Failed to fetch detailed analytics:', err);
+      setError('Failed to load detailed analytics');
+    }
+  }, []);
+
   return {
     stats,
+    detailedStats,
     loading,
     error,
     fetchPlatformStats,
+    fetchDetailedAnalytics,
   };
 };
 

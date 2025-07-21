@@ -237,11 +237,49 @@ export const analyticsAPI = {
   // Get platform statistics
   getPlatformStats: () => apiRequest('/analytics/platform'),
 
+  // Get detailed analytics
+  getDetailedAnalytics: () => apiRequest('/analytics/detailed'),
+
   // Get user statistics
   getUserStats: (userId: string) => apiRequest(`/analytics/user/${userId}`),
 
   // Get course statistics
   getCourseStats: (courseId: string) => apiRequest(`/analytics/course/${courseId}`),
+};
+
+// Audit Logs API
+export const auditLogsAPI = {
+  // Get all audit logs with optional filtering
+  getAuditLogs: (filters?: {
+    action?: string;
+    resource_type?: string;
+    user_id?: string;
+    start_date?: string;
+    end_date?: string;
+    limit?: number;
+  }) => {
+    const params = new URLSearchParams();
+    if (filters) {
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== undefined) {
+          params.append(key, value.toString());
+        }
+      });
+    }
+    return apiRequest(`/audit-logs?${params.toString()}`);
+  },
+
+  // Create audit log
+  createAuditLog: (auditData: {
+    action: string;
+    resource_type: string;
+    resource_id?: string;
+    details?: any;
+  }) =>
+    apiRequest('/audit-logs', {
+      method: 'POST',
+      body: JSON.stringify(auditData),
+    }),
 };
 
 // Export all APIs
@@ -254,4 +292,5 @@ export const api = {
   certificate: certificateAPI,
   achievement: achievementAPI,
   analytics: analyticsAPI,
+  auditLogs: auditLogsAPI,
 };
