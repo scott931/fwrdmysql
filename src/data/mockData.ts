@@ -364,7 +364,35 @@ export const initializeMockData = () => {
 
   if (savedCourses) {
     try {
-      courses.push(...JSON.parse(savedCourses));
+      const parsedCourses = JSON.parse(savedCourses);
+      // Clean up any courses with incorrect instructor IDs and save back to localStorage
+      const cleanedCourses = parsedCourses.map((course: any) => {
+        if (course.instructorId && course.instructorId.startsWith('inst')) {
+          const instructorIdMap: { [key: string]: string } = {
+            'inst1': 'ray-dalio',
+            'inst2': 'sara-blakely',
+            'inst3': 'howard-marks',
+            'inst4': 'brene-brown',
+            'inst5': 'elon-musk'
+          };
+
+          if (instructorIdMap[course.instructorId]) {
+            course.instructorId = instructorIdMap[course.instructorId];
+            // Also update the instructor object if it exists
+            if (course.instructor) {
+              const correctInstructor = instructors.find(inst => inst.id === course.instructorId);
+              if (correctInstructor) {
+                course.instructor = correctInstructor;
+              }
+            }
+          }
+        }
+        return course;
+      });
+
+      // Save cleaned courses back to localStorage
+      setLocalStorage('courses', JSON.stringify(cleanedCourses));
+      courses.push(...cleanedCourses);
     } catch (error) {
       console.error('Error parsing saved courses:', error);
     }
@@ -391,7 +419,34 @@ export const initializeMockData = () => {
 export const getAllCourses = () => {
   try {
     const savedCourses = JSON.parse(localStorage.getItem('courses') || '[]');
-    return [...courses, ...savedCourses];
+
+    // Clean up any courses with incorrect instructor IDs
+    const cleanedSavedCourses = savedCourses.map((course: any) => {
+      if (course.instructorId && course.instructorId.startsWith('inst')) {
+        // Map old instructor IDs to correct ones
+        const instructorIdMap: { [key: string]: string } = {
+          'inst1': 'ray-dalio',
+          'inst2': 'sara-blakely',
+          'inst3': 'howard-marks',
+          'inst4': 'brene-brown',
+          'inst5': 'elon-musk'
+        };
+
+        if (instructorIdMap[course.instructorId]) {
+          course.instructorId = instructorIdMap[course.instructorId];
+          // Also update the instructor object if it exists
+          if (course.instructor) {
+            const correctInstructor = instructors.find(inst => inst.id === course.instructorId);
+            if (correctInstructor) {
+              course.instructor = correctInstructor;
+            }
+          }
+        }
+      }
+      return course;
+    });
+
+    return [...courses, ...cleanedSavedCourses];
   } catch (error) {
     console.error('Error loading saved courses:', error);
     return courses;
@@ -412,8 +467,16 @@ export const getAllCategories = () => {
 // Helper functions to get all instructors including saved ones
 export const getAllInstructors = () => {
   try {
-    const savedInstructors = JSON.parse(localStorage.getItem('instructors') || '[]');
-    return [...instructors, ...savedInstructors];
+    const savedInstructors = JSON.parse(localStorage.getItem('instructors') || '[]').map((inst: any) => ({
+      ...inst,
+      createdAt: inst.createdAt ? new Date(inst.createdAt) : new Date(),
+    }));
+    const allInstructors = [...instructors, ...savedInstructors];
+    // Deduplicate by id
+    const unique = allInstructors.filter(
+      (inst, idx, arr) => arr.findIndex(i => i.id === inst.id) === idx
+    );
+    return unique;
   } catch (error) {
     console.error('Error loading saved instructors:', error);
     return instructors;

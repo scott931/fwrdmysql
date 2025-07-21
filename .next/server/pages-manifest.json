@@ -3,10 +3,6 @@
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
   "/admin": "pages/admin.js",
-  "/home": "pages/home.js",
-  "/": "pages/index.js",
-  "/login": "pages/login.js",
   "/instructor/[instructorId]": "pages/instructor/[instructorId].js",
-  "/courses": "pages/courses.js",
-  "/course/[courseId]/lesson/[lessonId]": "pages/course/[courseId]/lesson/[lessonId].js"
+  "/admin/upload-course": "pages/admin/upload-course.js"
 }

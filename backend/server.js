@@ -525,6 +525,16 @@ app.get('/api/instructors/:id', async (req, res) => {
   }
 });
 
+// Get all courses for a specific instructor
+app.get('/api/instructors/:id/courses', async (req, res) => {
+  try {
+    const courses = await executeQuery('SELECT * FROM courses WHERE instructor_id = ?', [req.params.id]);
+    res.json(courses);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch courses for instructor' });
+  }
+});
+
 // User Progress API
 app.get('/api/progress/:userId/:courseId', async (req, res) => {
   try {

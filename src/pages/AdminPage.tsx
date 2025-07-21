@@ -924,7 +924,10 @@ const AdminPage: React.FC = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => navigate(`/instructor/${instructor.id}`)}
+                      onClick={() => {
+                        console.log('Navigating to instructor profile:', instructor.id);
+                        navigate(`/instructor/${instructor.id}`);
+                      }}
                       className="flex-1"
                     >
                       <Eye className="h-3 w-3 mr-1" />

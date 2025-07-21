@@ -1,30 +1,60 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import CourseCard from '../components/ui/CourseCard';
-import { getInstructorById, getCoursesByInstructor } from '../data/mockData';
-import { Instructor, Course } from '../types';
+import { instructorAPI } from '../lib/api';
 
 const InstructorPage: React.FC = () => {
   const router = useRouter();
   const { instructorId } = router.query;
-  const [instructor, setInstructor] = useState<Instructor | null>(null);
-  const [courses, setCourses] = useState<Course[]>([]);
+  const [instructor, setInstructor] = useState<any>(null);
+  const [courses, setCourses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (instructorId && typeof instructorId === 'string') {
-      const foundInstructor = getInstructorById(instructorId);
-      if (foundInstructor) {
-        setInstructor(foundInstructor);
-        const instructorCourses = getCoursesByInstructor(instructorId);
-        setCourses(instructorCourses);
-      } else {
-        // Redirect to courses page if instructor not found
-        router.push('/courses');
-      }
-      setLoading(false);
+      instructorAPI.getInstructor(instructorId)
+        .then(data => {
+          if (data) {
+            setInstructor(data);
+            fetch(`/api/instructors/${instructorId}/courses`)
+              .then(res => res.ok ? res.json() : [])
+              .then(coursesData => {
+                setCourses(coursesData || []);
+                setLoading(false);
+              });
+          } else {
+            setInstructor({
+              id: instructorId,
+              name: 'Unknown Instructor',
+              title: 'Unknown',
+              image: '/placeholder-avatar.jpg',
+              bio: 'This instructor profile does not exist or could not be found.',
+              email: '',
+              expertise: [],
+              experience: 0,
+              createdAt: new Date(),
+            });
+            setCourses([]);
+            setLoading(false);
+          }
+        })
+        .catch(() => {
+          setInstructor({
+            id: instructorId,
+            name: 'Unknown Instructor',
+            title: 'Unknown',
+            image: '/placeholder-avatar.jpg',
+            bio: 'This instructor profile does not exist or could not be found.',
+            email: '',
+            expertise: [],
+            experience: 0,
+            createdAt: new Date(),
+          });
+          setCourses([]);
+          setLoading(false);
+        });
     }
-  }, [instructorId, router]);
+  }, [instructorId]);
 
   if (loading) {
     return (
@@ -35,156 +65,69 @@ const InstructorPage: React.FC = () => {
   }
 
   if (!instructor) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20 px-4">
-        <h1 className="text-white text-3xl font-bold mb-6">Instructor Not Found</h1>
-        <button
-          onClick={() => router.push('/')}
-          className="bg-red-600 text-white px-6 py-3 rounded-md hover:bg-red-700 transition-colors"
-        >
-          Return Home
-        </button>
-      </div>
-    );
+    return null;
   }
 
   return (
-    <div className="pb-16">
-      {/* Instructor Hero */}
-      <div className="relative w-full h-[50vh] min-h-[400px] overflow-hidden">
-        {/* Background Gradient */}
-        <div className="absolute inset-0 bg-gradient-to-r from-black via-gray-900 to-black"></div>
-
-        {/* Content */}
-        <div className="absolute inset-0 flex items-center">
-          <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
-            <div className="flex flex-col md:flex-row items-center md:items-start space-y-8 md:space-y-0 md:space-x-12">
-              {/* Instructor Image */}
-              <div className="w-48 h-48 md:w-64 md:h-64 rounded-full overflow-hidden border-4 border-red-600">
-                <img
-                  src={instructor.image}
-                  alt={instructor.name}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-
-              {/* Instructor Info */}
-              <div className="text-center md:text-left max-w-2xl">
-                <h1 className="text-white text-4xl md:text-5xl font-bold mb-2">{instructor.name}</h1>
-                <p className="text-red-500 text-xl font-medium mb-6">{instructor.title}</p>
-
-                <div className="flex flex-wrap justify-center md:justify-start gap-4 mb-8">
-                  <div className="flex items-center">
-                    <span className="text-gray-300">{courses.length} Classes</span>
-                  </div>
-                  <div className="flex items-center">
-                    <span className="text-gray-300">{instructor.experience} Years Experience</span>
-                  </div>
-                  <div className="flex items-center">
-                    <span className="text-gray-300">Expert Instructor</span>
-                  </div>
-                </div>
-
-                <p className="text-gray-300 mb-8 leading-relaxed">{instructor.bio}</p>
-
-                {/* Expertise Tags */}
-                {instructor.expertise && instructor.expertise.length > 0 && (
-                  <div className="mb-8">
-                    <h3 className="text-white font-medium mb-3">Areas of Expertise</h3>
-                    <div className="flex flex-wrap gap-2">
-                      {instructor.expertise.map((skill, index) => (
-                        <span
-                          key={index}
-                          className="px-3 py-1 bg-red-500/20 text-red-400 rounded-full text-sm border border-red-500/30"
-                        >
-                          {skill}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Social Links */}
-                {instructor.socialLinks && (
-                  <div className="flex flex-wrap justify-center md:justify-start gap-4 mb-8">
-                    {instructor.socialLinks.linkedin && (
-                      <a
-                        href={instructor.socialLinks.linkedin}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center text-gray-300 hover:text-white transition-colors"
-                      >
-                        LinkedIn
-                      </a>
-                    )}
-                    {instructor.socialLinks.twitter && (
-                      <a
-                        href={instructor.socialLinks.twitter}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center text-gray-300 hover:text-white transition-colors"
-                      >
-                        Twitter
-                      </a>
-                    )}
-                    {instructor.socialLinks.website && (
-                      <a
-                        href={instructor.socialLinks.website}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center text-gray-300 hover:text-white transition-colors"
-                      >
-                        Website
-                      </a>
-                    )}
-                  </div>
-                )}
-
-                <div className="flex flex-wrap justify-center md:justify-start gap-4">
-                  <button
-                    onClick={() => router.push('/courses')}
-                    className="bg-red-600 text-white px-6 py-3 rounded-md hover:bg-red-700 transition-colors"
-                  >
-                    Subscribe to All Classes
-                  </button>
-                  <button
-                    onClick={() => router.push('/contact')}
-                    className="bg-gray-800 text-white px-6 py-3 rounded-md hover:bg-gray-700 transition-colors"
-                  >
-                    Contact Instructor
-                  </button>
-                </div>
-              </div>
+    <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-gray-800 text-white">
+      <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row gap-12">
+        {/* Sidebar */}
+        <aside className="w-full md:w-1/3 lg:w-1/4 flex-shrink-0">
+          <div className="bg-gray-900 rounded-2xl shadow-lg p-6 flex flex-col items-center">
+            <img
+              src={instructor.image}
+              alt={instructor.name}
+              className="w-40 h-40 rounded-full object-cover border-4 border-red-600 mb-4"
+            />
+            <h2 className="text-2xl font-bold mb-1">{instructor.name}</h2>
+            <p className="text-red-500 text-lg mb-2">{instructor.title}</p>
+            <div className="flex gap-4 mb-4">
+              <span className="text-gray-300">{courses.length} Courses</span>
+              <span className="text-gray-300">{instructor.experience} Years Exp.</span>
+            </div>
+            <p className="text-gray-400 text-center mb-4">{instructor.bio}</p>
+            <div className="flex flex-wrap gap-2 mb-4">
+              {instructor.expertise.map((tag: string, i: number) => (
+                <span key={i} className="bg-red-600/20 text-red-400 px-3 py-1 rounded-full text-xs">{tag}</span>
+              ))}
+            </div>
+            {/* Social Links or Favorite Profiles */}
+            <div className="flex gap-3 mt-2">
+              {/* Example: */}
+              {instructor.socialLinks?.linkedin && (
+                <a href={instructor.socialLinks.linkedin} target="_blank" rel="noopener noreferrer" className="hover:text-red-400">
+                  <svg className="w-6 h-6" /* ...linkedin icon... */ />
+                </a>
+              )}
+              {/* Add more icons as needed */}
             </div>
           </div>
-        </div>
-      </div>
+        </aside>
 
-      {/* Instructor Classes */}
-      <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 mt-16">
-        <h2 className="text-white text-3xl font-bold mb-8">Classes by {instructor.name}</h2>
+        {/* Main Content */}
+        <main className="flex-1">
+          {/* Featured Courses */}
+          <section className="mb-10">
+            <h3 className="text-xl font-bold mb-4">Featured Courses</h3>
+            <div className="flex gap-4 overflow-x-auto pb-2">
+              {courses.filter((c: any) => c.featured).map((course: any) => (
+                <div key={course.id} className="min-w-[220px]">
+                  <CourseCard course={course} />
+                </div>
+              ))}
+            </div>
+          </section>
 
-        {courses.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {courses.map(course => (
-              <CourseCard key={course.id} course={course} />
-            ))}
-          </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center py-20">
-            <h3 className="text-white text-2xl font-medium mb-4">No classes available yet</h3>
-            <p className="text-gray-400 text-center max-w-md mb-8">
-              We're working on bringing you amazing content from this instructor.
-              Check back soon for new classes!
-            </p>
-            <button
-              onClick={() => router.push('/courses')}
-              className="bg-red-600 text-white px-6 py-3 rounded-md hover:bg-red-700 transition-colors"
-            >
-              Explore Other Instructors
-            </button>
-          </div>
-        )}
+          {/* All Courses */}
+          <section>
+            <h3 className="text-xl font-bold mb-4">All Courses</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {courses.map((course: any) => (
+                <CourseCard key={course.id} course={course} />
+              ))}
+            </div>
+          </section>
+        </main>
       </div>
     </div>
   );
