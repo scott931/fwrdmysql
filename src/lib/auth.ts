@@ -11,6 +11,12 @@ export interface AuthUser {
   permissions: string[];
   avatar_url?: string;
   onboarding_completed: boolean;
+  industry?: string;
+  experience_level?: string;
+  business_stage?: string;
+  country?: string;
+  state_province?: string;
+  city?: string;
 }
 
 export interface LoginCredentials {
@@ -25,6 +31,12 @@ export interface RegisterData {
   education_level?: string;
   job_title?: string;
   topics_of_interest?: string[];
+  industry?: string;
+  experience_level?: string;
+  business_stage?: string;
+  country?: string;
+  state_province?: string;
+  city?: string;
 }
 
 export interface AuthResponse {
@@ -155,6 +167,10 @@ export const authService = {
       throw new Error('No authentication token');
     }
 
+    console.log('Updating profile for user:', user.id);
+    console.log('Update data:', updates);
+    console.log('API URL:', `${API_BASE_URL}/users/${user.id}`);
+
     const response = await fetch(`${API_BASE_URL}/users/${user.id}`, {
       method: 'PUT',
       headers: {
@@ -164,11 +180,22 @@ export const authService = {
       body: JSON.stringify(updates),
     });
 
+    console.log('Response status:', response.status);
+    console.log('Response ok:', response.ok);
+
     if (!response.ok) {
-      throw new Error('Failed to update profile');
+      try {
+        const errorData = await response.json();
+        console.error('Error response:', errorData);
+        throw new Error(errorData.error || `HTTP ${response.status}: Failed to update profile`);
+      } catch (parseError) {
+        console.error('Failed to parse error response:', parseError);
+        throw new Error(`HTTP ${response.status}: Failed to update profile`);
+      }
     }
 
     const updatedUser: AuthUser = await response.json();
+    console.log('Updated user data:', updatedUser);
     authService.setAuthData(token, updatedUser);
     return updatedUser;
   },

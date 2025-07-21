@@ -30,6 +30,12 @@ CREATE TABLE users (
     education_level ENUM('high-school', 'associate', 'bachelor', 'master', 'phd', 'professional', 'other'),
     job_title VARCHAR(255),
     topics_of_interest JSON,
+    industry VARCHAR(255),
+    experience_level VARCHAR(100),
+    business_stage VARCHAR(100),
+    country VARCHAR(100),
+    state_province VARCHAR(100),
+    city VARCHAR(100),
     onboarding_completed BOOLEAN DEFAULT FALSE,
     role ENUM('user', 'content_manager', 'admin', 'super_admin') DEFAULT 'user',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -146,12 +152,12 @@ CREATE TABLE achievements (
 -- Insert sample data
 
 -- Users
-INSERT INTO users (id, email, full_name, avatar_url, education_level, job_title, topics_of_interest, onboarding_completed, role) VALUES
-('u1', 'john.doe@example.com', 'John Doe', 'https://images.pexels.com/photos/2182970/pexels-photo-2182970.jpeg', 'bachelor', 'Software Developer', '["technology", "programming", "business"]', TRUE, 'user'),
-('u2', 'jane.smith@example.com', 'Jane Smith', 'https://images.pexels.com/photos/1587009/pexels-photo-1587009.jpeg', 'master', 'Product Manager', '["business", "leadership", "innovation"]', TRUE, 'admin'),
-('u3', 'mike.johnson@example.com', 'Mike Johnson', 'https://images.pexels.com/photos/5439367/pexels-photo-5439367.jpeg', 'phd', 'Data Scientist', '["technology", "data-science", "analytics"]', TRUE, 'content_manager'),
-('u4', 'sarah.wilson@example.com', 'Sarah Wilson', 'https://images.pexels.com/photos/1181686/pexels-photo-1181686.jpeg', 'bachelor', 'Marketing Specialist', '["marketing", "business", "social-media"]', TRUE, 'user'),
-('u5', 'admin@forwardafrica.com', 'Super Administrator', 'https://images.pexels.com/photos/2182970/pexels-photo-2182970.jpeg', 'master', 'System Administrator', '["technology", "management", "leadership"]', TRUE, 'super_admin');
+INSERT INTO users (id, email, full_name, avatar_url, education_level, job_title, topics_of_interest, industry, experience_level, business_stage, country, state_province, city, onboarding_completed, role) VALUES
+('u1', 'john.doe@example.com', 'John Doe', 'https://images.pexels.com/photos/2182970/pexels-photo-2182970.jpeg', 'bachelor', 'Software Developer', '["technology", "programming", "business"]', 'Technology', 'Mid-level', 'Growth', 'Nigeria', 'Lagos', 'Lagos', TRUE, 'user'),
+('u2', 'jane.smith@example.com', 'Jane Smith', 'https://images.pexels.com/photos/1587009/pexels-photo-1587009.jpeg', 'master', 'Product Manager', '["business", "leadership", "innovation"]', 'Finance', 'Senior', 'Established', 'Kenya', 'Nairobi', 'Nairobi', TRUE, 'admin'),
+('u3', 'mike.johnson@example.com', 'Mike Johnson', 'https://images.pexels.com/photos/5439367/pexels-photo-5439367.jpeg', 'phd', 'Data Scientist', '["technology", "data-science", "analytics"]', 'Technology', 'Expert', 'Scale-up', 'South Africa', 'Gauteng', 'Johannesburg', TRUE, 'content_manager'),
+('u4', 'sarah.wilson@example.com', 'Sarah Wilson', 'https://images.pexels.com/photos/1181686/pexels-photo-1181686.jpeg', 'bachelor', 'Marketing Specialist', '["marketing", "business", "social-media"]', 'Marketing', 'Entry-level', 'Startup', 'Ghana', 'Greater Accra', 'Accra', TRUE, 'user'),
+('u5', 'admin@forwardafrica.com', 'Super Administrator', 'https://images.pexels.com/photos/2182970/pexels-photo-2182970.jpeg', 'master', 'System Administrator', '["technology", "management", "leadership"]', 'Technology', 'Senior', 'Established', 'Nigeria', 'Lagos', 'Lagos', TRUE, 'super_admin');
 
 -- Categories
 INSERT INTO categories (id, name, description) VALUES

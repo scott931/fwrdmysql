@@ -1,285 +1,196 @@
-# Forward Africa Learning Platform - Database Setup Guide
+# Database Setup Guide
 
-This guide will help you set up the MySQL database and connect it to your React application.
+## Overview
+This document provides instructions for setting up the Forward Africa Learning Platform database with all the new user registration fields.
 
-## 📋 Prerequisites
+## Database Schema Updates
 
-- MySQL Server (version 8.0 or higher)
-- Node.js (version 16 or higher)
-- npm or yarn package manager
+### Users Table - New Fields Added
 
-## 🗄️ Database Setup
+The `users` table has been enhanced with the following new fields for comprehensive user profiles:
 
-### 1. Install MySQL
+#### Professional Information
+- `industry` VARCHAR(255) - User's industry sector
+- `experience_level` VARCHAR(100) - Professional experience level
+- `business_stage` VARCHAR(100) - Current business development stage
 
-**Windows:**
-- Download MySQL Installer from [mysql.com](https://dev.mysql.com/downloads/installer/)
-- Run the installer and follow the setup wizard
-- Remember your root password
+#### Geographic Location
+- `country` VARCHAR(100) - User's country
+- `state_province` VARCHAR(100) - State or province
+- `city` VARCHAR(100) - City
 
-**macOS:**
-```bash
-brew install mysql
-brew services start mysql
+#### Enhanced Profile Data
+- `education_level` ENUM - Educational background
+- `job_title` VARCHAR(255) - Professional title
+- `topics_of_interest` JSON - Array of learning interests
+
+### Complete Users Table Schema
+
+```sql
+CREATE TABLE users (
+    id VARCHAR(36) PRIMARY KEY,
+    email VARCHAR(191) UNIQUE NOT NULL,
+    full_name VARCHAR(255) NOT NULL,
+    password_hash VARCHAR(255),
+    avatar_url TEXT,
+    education_level ENUM('high-school', 'associate', 'bachelor', 'master', 'phd', 'professional', 'other'),
+    job_title VARCHAR(255),
+    topics_of_interest JSON,
+    industry VARCHAR(255),
+    experience_level VARCHAR(100),
+    business_stage VARCHAR(100),
+    country VARCHAR(100),
+    state_province VARCHAR(100),
+    city VARCHAR(100),
+    onboarding_completed BOOLEAN DEFAULT FALSE,
+    role ENUM('user', 'content_manager', 'admin', 'super_admin') DEFAULT 'user',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
 ```
 
-**Linux (Ubuntu/Debian):**
+## Setup Instructions
+
+### 1. Database Creation
 ```bash
-sudo apt update
-sudo apt install mysql-server
-sudo systemctl start mysql
-sudo systemctl enable mysql
-```
-
-### 2. Create Database and Tables
-
-1. **Open MySQL Command Line Client** or use a GUI tool like MySQL Workbench
-
-2. **Run the SQL Script:**
-```bash
+# Run the complete database schema
 mysql -u root -p < database_schema.sql
 ```
 
-Or copy and paste the contents of `database_schema.sql` into your MySQL client.
-
-3. **Verify the setup:**
-```sql
-USE forward_africa_db;
-SHOW TABLES;
-SELECT COUNT(*) as total_users FROM users;
-SELECT COUNT(*) as total_courses FROM courses;
-```
-
-## 🚀 Backend Server Setup
-
-### 1. Navigate to Backend Directory
+### 2. Backend Server Setup
 ```bash
 cd backend
-```
-
-### 2. Install Dependencies
-```bash
 npm install
-```
-
-### 3. Create Environment File
-Create a `.env` file in the backend directory:
-```env
-# Database Configuration
-DB_HOST=localhost
-DB_PORT=3306
-DB_USER=root
-DB_PASSWORD=your_mysql_password
-DB_NAME=forward_africa_db
-
-# Server Configuration
-PORT=3001
-NODE_ENV=development
-```
-
-### 4. Start the Backend Server
-```bash
-# Development mode (with auto-restart)
-npm run dev
-
-# Production mode
 npm start
 ```
 
-The server will start on `http://localhost:3001`
-
-### 5. Test the API
+### 3. Database Initialization
+The backend server includes an automatic database initialization endpoint:
 ```bash
-# Health check
-curl http://localhost:3001/api/health
-
-# Get all courses
-curl http://localhost:3001/api/courses
-
-# Get featured courses
-curl http://localhost:3001/api/courses/featured
+curl -X POST http://localhost:3002/api/init-db
 ```
 
-## 🔗 Frontend Integration
+## Sample Data
 
-### 1. Update Environment Variables
-Create a `.env` file in your React project root:
-```env
-# Database Configuration
-REACT_APP_DB_HOST=localhost
-REACT_APP_DB_PORT=3306
-REACT_APP_DB_USER=root
-REACT_APP_DB_PASSWORD=your_mysql_password
-REACT_APP_DB_NAME=forward_africa_db
+The database includes sample users with all new fields populated:
 
-# API Configuration
-REACT_APP_API_URL=http://localhost:3001/api
+```sql
+INSERT INTO users (id, email, full_name, avatar_url, education_level, job_title, topics_of_interest, industry, experience_level, business_stage, country, state_province, city, onboarding_completed, role) VALUES
+('u1', 'john.doe@example.com', 'John Doe', 'avatar_url', 'bachelor', 'Software Developer', '["technology", "programming", "business"]', 'Technology', 'Mid-level', 'Growth', 'Nigeria', 'Lagos', 'Lagos', TRUE, 'user'),
+('u2', 'jane.smith@example.com', 'Jane Smith', 'avatar_url', 'master', 'Product Manager', '["business", "leadership", "innovation"]', 'Finance', 'Senior', 'Established', 'Kenya', 'Nairobi', 'Nairobi', TRUE, 'admin');
 ```
 
-### 2. Update Database Configuration
-Edit `src/lib/mysql.ts` to match your MySQL credentials:
-```typescript
-export const dbConfig: DatabaseConfig = {
-  host: 'localhost',
-  port: 3306,
-  user: 'root', // Your MySQL username
-  password: 'your_mysql_password', // Your MySQL password
-  database: 'forward_africa_db'
-};
+## API Endpoints
+
+### User Registration
+```http
+POST /api/auth/register
+Content-Type: application/json
+
+{
+  "email": "user@example.com",
+  "password": "password123",
+  "full_name": "John Doe",
+  "education_level": "bachelor",
+  "job_title": "Software Developer",
+  "topics_of_interest": ["technology", "programming"],
+  "industry": "Technology",
+  "experience_level": "Mid-level",
+  "business_stage": "Growth",
+  "country": "Nigeria",
+  "state_province": "Lagos",
+  "city": "Lagos"
+}
 ```
 
-### 3. Test the Connection
-The API service is already configured in `src/lib/api.ts`. You can test it by:
+### User Profile Update
+```http
+PUT /api/users/:id
+Authorization: Bearer <token>
+Content-Type: application/json
 
-```typescript
-import { api } from '../lib/api';
-
-// Test API calls
-const testAPI = async () => {
-  try {
-    const courses = await api.course.getAllCourses();
-    console.log('Courses:', courses);
-
-    const featured = await api.course.getFeaturedCourses();
-    console.log('Featured courses:', featured);
-  } catch (error) {
-    console.error('API Error:', error);
-  }
-};
+{
+  "email": "user@example.com",
+  "full_name": "John Doe",
+  "education_level": "bachelor",
+  "job_title": "Software Developer",
+  "topics_of_interest": ["technology", "programming"],
+  "industry": "Technology",
+  "experience_level": "Mid-level",
+  "business_stage": "Growth",
+  "country": "Nigeria",
+  "state_province": "Lagos",
+  "city": "Lagos"
+}
 ```
 
-## 📊 Database Schema Overview
+## Frontend Integration
 
-### Tables Created:
+The frontend registration form now includes all new fields:
 
-1. **users** - User accounts and profiles
-2. **categories** - Course categories
-3. **instructors** - Course instructors
-4. **courses** - Course information
-5. **lessons** - Individual course lessons
-6. **user_progress** - User learning progress
-7. **certificates** - Course completion certificates
-8. **achievements** - User achievements and badges
+- **Basic Information**: Full Name, Email
+- **Password**: Password, Confirm Password
+- **Professional Info**: Education Level, Job Title
+- **Business Info**: Industry, Experience Level, Business Stage
+- **Geographic Location**: Country, State/Province, City
+- **Topics of Interest**: Multi-select learning interests
 
-### Sample Data Included:
-- 5 users with different roles
-- 5 course categories
-- 5 instructors (including Ray Dalio, Elon Musk, etc.)
-- 5 courses with lessons
-- Sample user progress and certificates
-- Sample achievements
+## Validation Rules
 
-## 🔧 API Endpoints
+### Required Fields
+- Email (unique)
+- Full Name
+- Password
+- Topics of Interest (at least one)
 
-### Users
-- `GET /api/users` - Get all users
-- `GET /api/users/:id` - Get user by ID
-- `GET /api/users/email/:email` - Get user by email
-- `POST /api/users` - Create new user
-- `PUT /api/users/:id` - Update user
-- `DELETE /api/users/:id` - Delete user
+### Optional Fields
+- Education Level
+- Job Title
+- Industry
+- Experience Level
+- Business Stage
+- Country
+- State/Province
+- City
 
-### Courses
-- `GET /api/courses` - Get all courses
-- `GET /api/courses/featured` - Get featured courses
-- `GET /api/courses/:id` - Get course by ID
-- `GET /api/courses/category/:categoryId` - Get courses by category
-- `POST /api/courses` - Create new course
+## Data Types
 
-### Categories
-- `GET /api/categories` - Get all categories
-- `GET /api/categories/:id` - Get category by ID
+- **Industry**: Predefined African market sectors
+- **Experience Level**: Entry-level, Mid-level, Senior, Expert
+- **Business Stage**: Startup, Growth, Scale-up, Established
+- **Topics of Interest**: JSON array of selected topics
+- **Geographic Data**: String fields for location information
 
-### Instructors
-- `GET /api/instructors` - Get all instructors
-- `GET /api/instructors/:id` - Get instructor by ID
+## Migration Notes
 
-### User Progress
-- `GET /api/progress/:userId/:courseId` - Get user progress for course
-- `GET /api/progress/:userId` - Get all user progress
-- `POST /api/progress` - Create progress record
-- `PUT /api/progress/:userId/:courseId` - Update progress
+If upgrading from a previous version:
 
-### Certificates
-- `GET /api/certificates/:userId` - Get user certificates
-- `GET /api/certificates/verify/:code` - Verify certificate
+1. **Backup existing data** before running schema updates
+2. **Run the new schema** to add missing columns
+3. **Update existing records** with default values if needed
+4. **Test registration flow** with new fields
+5. **Verify profile updates** work correctly
 
-### Achievements
-- `GET /api/achievements/:userId` - Get user achievements
+## Troubleshooting
 
-### Analytics
-- `GET /api/analytics/platform` - Get platform statistics
+### Common Issues
 
-## 🛠️ Troubleshooting
+1. **Database Connection**: Ensure MySQL is running and credentials are correct
+2. **Port Conflicts**: Check that port 3002 is available for the backend
+3. **CORS Issues**: Verify frontend and backend URLs are properly configured
+4. **Field Validation**: Ensure all required fields are provided during registration
 
-### Common Issues:
+### Error Messages
 
-1. **Database Connection Failed**
-   - Verify MySQL is running
-   - Check credentials in `.env` file
-   - Ensure database exists
+- `User already exists`: Email is already registered
+- `Failed to register user`: Database connection or validation error
+- `Invalid credentials`: Login authentication failed
+- `Failed to update profile`: Profile update permission or validation error
 
-2. **CORS Errors**
-   - Backend CORS is configured for development
-   - Check if frontend and backend ports match
+## Security Considerations
 
-3. **API Endpoints Not Found**
-   - Ensure backend server is running
-   - Check API_BASE_URL in frontend configuration
-
-4. **Permission Denied**
-   - Check MySQL user permissions
-   - Ensure user has access to the database
-
-### Useful Commands:
-
-```bash
-# Check MySQL status
-sudo systemctl status mysql
-
-# Connect to MySQL
-mysql -u root -p
-
-# Show databases
-SHOW DATABASES;
-
-# Use database
-USE forward_africa_db;
-
-# Show tables
-SHOW TABLES;
-
-# Check table structure
-DESCRIBE users;
-DESCRIBE courses;
-```
-
-## 🚀 Production Deployment
-
-For production deployment:
-
-1. **Use Environment Variables** for all sensitive data
-2. **Set up a production MySQL instance**
-3. **Configure proper CORS settings**
-4. **Add authentication and authorization**
-5. **Set up SSL/TLS certificates**
-6. **Configure proper logging and monitoring**
-
-## 📝 Next Steps
-
-1. **Test all API endpoints** using Postman or curl
-2. **Integrate API calls** into your React components
-3. **Add error handling** for API failures
-4. **Implement user authentication**
-5. **Add data validation** on both frontend and backend
-6. **Set up automated backups** for the database
-
-## 🆘 Support
-
-If you encounter any issues:
-1. Check the console logs for error messages
-2. Verify all environment variables are set correctly
-3. Ensure MySQL server is running
-4. Check network connectivity between frontend and backend
-
-The database is now ready to power your Forward Africa Learning Platform! 🎉
+- Passwords are hashed using bcrypt
+- JWT tokens for authentication
+- Role-based access control
+- Input validation on all fields
+- SQL injection prevention with parameterized queries

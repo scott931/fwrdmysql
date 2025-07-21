@@ -7,7 +7,7 @@ import { useUserProgress, useCertificates } from '../hooks/useDatabase';
 
 const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
-  const { user, profile, signOut } = useAuth();
+  const { user, profile, signOut, updateProfile } = useAuth();
   const [activeTab, setActiveTab] = useState<'profile' | 'settings' | 'security'>('profile');
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -53,6 +53,20 @@ const ProfilePage: React.FC = () => {
   });
 
   const [deleteConfirm, setDeleteConfirm] = useState('');
+  const [showEditProfile, setShowEditProfile] = useState(false);
+  const [editProfileForm, setEditProfileForm] = useState({
+    full_name: '',
+    avatar_url: '',
+    industry: '',
+    experience_level: '',
+    business_stage: '',
+    country: '',
+    state_province: '',
+    city: ''
+  });
+  const [profileErrors, setProfileErrors] = useState<string[]>([]);
+  const [profileSuccess, setProfileSuccess] = useState(false);
+  const [profileLoading, setProfileLoading] = useState(false);
 
   // Database hooks
   const {
@@ -79,6 +93,22 @@ const ProfilePage: React.FC = () => {
       fetchUserCertificates();
     }
   }, [user?.id, fetchUserProgress, fetchUserCertificates]);
+
+  // Initialize edit form with current user data
+  useEffect(() => {
+    if (user) {
+      setEditProfileForm({
+        full_name: user.full_name || '',
+        avatar_url: user.avatar_url || '',
+        industry: user.industry || '',
+        experience_level: user.experience_level || '',
+        business_stage: user.business_stage || '',
+        country: user.country || '',
+        state_province: user.state_province || '',
+        city: user.city || ''
+      });
+    }
+  }, [user]);
 
   // Calculate user statistics from database
   const completedCourses = userProgress.filter(p => p.completed).length;
@@ -194,6 +224,55 @@ const ProfilePage: React.FC = () => {
       navigate('/');
     } catch (error) {
       console.error('Failed to delete account:', error);
+    }
+  };
+
+  const handleEditProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setProfileErrors([]);
+    setProfileSuccess(false);
+    setProfileLoading(true);
+
+    try {
+      // Validate form
+      if (!editProfileForm.full_name.trim()) {
+        setProfileErrors(['Full name is required']);
+        setProfileLoading(false);
+        return;
+      }
+
+      // Debug: Check if user is logged in
+      console.log('Current user:', user);
+      console.log('User ID:', user?.id);
+      console.log('Update data:', {
+        full_name: editProfileForm.full_name.trim(),
+        avatar_url: editProfileForm.avatar_url
+      });
+
+      // Update profile using auth service
+      await updateProfile(user?.id || '', {
+        full_name: editProfileForm.full_name.trim(),
+        avatar_url: editProfileForm.avatar_url,
+        industry: editProfileForm.industry,
+        experience_level: editProfileForm.experience_level,
+        business_stage: editProfileForm.business_stage,
+        country: editProfileForm.country,
+        state_province: editProfileForm.state_province,
+        city: editProfileForm.city
+      });
+
+      setProfileSuccess(true);
+      setTimeout(() => {
+        setShowEditProfile(false);
+        setProfileSuccess(false);
+      }, 2000);
+
+    } catch (error) {
+      console.error('Profile update error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      setProfileErrors([`Failed to update profile: ${errorMessage}`]);
+    } finally {
+      setProfileLoading(false);
     }
   };
 
@@ -326,7 +405,11 @@ const ProfilePage: React.FC = () => {
                   </div>
                 </div>
               </div>
-              <Button variant="outline" className="mt-6">
+              <Button
+                variant="outline"
+                className="mt-6"
+                onClick={() => setShowEditProfile(true)}
+              >
                 Edit Profile
               </Button>
             </div>
@@ -868,6 +951,228 @@ const ProfilePage: React.FC = () => {
                 Upgrade Plan
               </Button>
             </div>
+          </div>
+        </Modal>
+
+        {/* Edit Profile Modal */}
+        <Modal isOpen={showEditProfile} onClose={() => setShowEditProfile(false)} title="Edit Profile">
+          <div className="space-y-6">
+            {profileSuccess && (
+              <div className="mb-6 p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
+                <div className="flex items-center">
+                  <CheckCircle className="h-5 w-5 text-green-500 mr-2" />
+                  <span className="text-green-400">Profile updated successfully!</span>
+                </div>
+              </div>
+            )}
+
+            {profileErrors.length > 0 && (
+              <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-lg">
+                <div className="flex items-start">
+                  <AlertTriangle className="h-5 w-5 text-red-500 mr-2 mt-0.5 flex-shrink-0" />
+                  <div>
+                    {profileErrors.map((error, index) => (
+                      <p key={index} className="text-red-400 text-sm">{error}</p>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <form onSubmit={handleEditProfile} className="space-y-4">
+              {/* Profile Image */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Profile Image
+                </label>
+                <div className="space-y-3">
+                  <input
+                    type="url"
+                    value={editProfileForm.avatar_url}
+                    onChange={(e) => setEditProfileForm(prev => ({ ...prev, avatar_url: e.target.value }))}
+                    className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                    placeholder="https://example.com/avatar.jpg"
+                  />
+                  <div className="text-sm text-gray-400">
+                    Or use a default avatar by leaving this field empty
+                  </div>
+                  {editProfileForm.avatar_url && (
+                    <div className="mt-2">
+                      <p className="text-sm text-gray-400 mb-2">Preview:</p>
+                      <img
+                        src={editProfileForm.avatar_url}
+                        alt="Preview"
+                        className="w-16 h-16 rounded-full object-cover border-2 border-gray-600"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Full Name */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Full Name
+                </label>
+                <input
+                  type="text"
+                  value={editProfileForm.full_name}
+                  onChange={(e) => setEditProfileForm(prev => ({ ...prev, full_name: e.target.value }))}
+                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                  placeholder="Enter your full name"
+                  required
+                />
+              </div>
+
+              {/* Industry */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Industry
+                </label>
+                <select
+                  value={editProfileForm.industry}
+                  onChange={(e) => setEditProfileForm(prev => ({ ...prev, industry: e.target.value }))}
+                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                >
+                  <option value="">Select your industry</option>
+                  <option value="Agriculture & Agribusiness">Agriculture & Agribusiness</option>
+                  <option value="Technology & Digital Innovation">Technology & Digital Innovation</option>
+                  <option value="Financial Services & Fintech">Financial Services & Fintech</option>
+                  <option value="Healthcare & Pharmaceuticals">Healthcare & Pharmaceuticals</option>
+                  <option value="Manufacturing & Industrial">Manufacturing & Industrial</option>
+                  <option value="Energy & Renewable Resources">Energy & Renewable Resources</option>
+                  <option value="Tourism & Hospitality">Tourism & Hospitality</option>
+                  <option value="Education & Training">Education & Training</option>
+                  <option value="Real Estate & Construction">Real Estate & Construction</option>
+                  <option value="Transportation & Logistics">Transportation & Logistics</option>
+                  <option value="Retail & E-commerce">Retail & E-commerce</option>
+                  <option value="Media & Entertainment">Media & Entertainment</option>
+                  <option value="Telecommunications">Telecommunications</option>
+                  <option value="Mining & Natural Resources">Mining & Natural Resources</option>
+                  <option value="Textiles & Fashion">Textiles & Fashion</option>
+                  <option value="Food & Beverage">Food & Beverage</option>
+                  <option value="Consulting & Professional Services">Consulting & Professional Services</option>
+                  <option value="Non-profit & Social Enterprise">Non-profit & Social Enterprise</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+
+              {/* Experience Level */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Experience Level
+                </label>
+                <select
+                  value={editProfileForm.experience_level}
+                  onChange={(e) => setEditProfileForm(prev => ({ ...prev, experience_level: e.target.value }))}
+                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                >
+                  <option value="">Select your experience level</option>
+                  <option value="Entry Level (0-2 years)">Entry Level (0-2 years)</option>
+                  <option value="Mid-Level (3-7 years)">Mid-Level (3-7 years)</option>
+                  <option value="Senior (8+ years)">Senior (8+ years)</option>
+                </select>
+              </div>
+
+              {/* Business Stage */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Business Stage
+                </label>
+                <select
+                  value={editProfileForm.business_stage}
+                  onChange={(e) => setEditProfileForm(prev => ({ ...prev, business_stage: e.target.value }))}
+                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                >
+                  <option value="">Select your business stage</option>
+                  <option value="Idea Stage">Idea Stage</option>
+                  <option value="Startup">Startup</option>
+                  <option value="Growth Stage">Growth Stage</option>
+                  <option value="Established Business">Established Business</option>
+                </select>
+              </div>
+
+              {/* Geographic Location */}
+              <div className="space-y-3">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Geographic Location
+                </label>
+
+                {/* Country */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-400 mb-1">
+                    Country
+                  </label>
+                  <select
+                    value={editProfileForm.country}
+                    onChange={(e) => setEditProfileForm(prev => ({ ...prev, country: e.target.value }))}
+                    className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                  >
+                    <option value="">Select your country</option>
+                    <option value="Nigeria">Nigeria</option>
+                    <option value="Kenya">Kenya</option>
+                    <option value="South Africa">South Africa</option>
+                    <option value="Ghana">Ghana</option>
+                    <option value="Ethiopia">Ethiopia</option>
+                    <option value="Tanzania">Tanzania</option>
+                    <option value="Uganda">Uganda</option>
+                    <option value="Morocco">Morocco</option>
+                    <option value="Algeria">Algeria</option>
+                    <option value="Egypt">Egypt</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+
+                {/* State/Province */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-400 mb-1">
+                    State/Province
+                  </label>
+                  <input
+                    type="text"
+                    value={editProfileForm.state_province}
+                    onChange={(e) => setEditProfileForm(prev => ({ ...prev, state_province: e.target.value }))}
+                    className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                    placeholder="Enter your state or province"
+                  />
+                </div>
+
+                {/* City */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-400 mb-1">
+                    City
+                  </label>
+                  <input
+                    type="text"
+                    value={editProfileForm.city}
+                    onChange={(e) => setEditProfileForm(prev => ({ ...prev, city: e.target.value }))}
+                    className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                    placeholder="Enter your city"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-3 pt-4 border-t border-gray-700">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowEditProfile(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  disabled={profileLoading}
+                  className="flex items-center"
+                >
+                  {profileLoading ? 'Updating...' : 'Update Profile'}
+                </Button>
+              </div>
+            </form>
           </div>
         </Modal>
 

@@ -106,6 +106,12 @@ app.post('/api/init-db', async (req, res) => {
         education_level ENUM('high-school', 'associate', 'bachelor', 'master', 'phd', 'professional', 'other'),
         job_title VARCHAR(255),
         topics_of_interest JSON,
+        industry VARCHAR(255),
+        experience_level VARCHAR(100),
+        business_stage VARCHAR(100),
+        country VARCHAR(100),
+        state_province VARCHAR(100),
+        city VARCHAR(100),
         onboarding_completed BOOLEAN DEFAULT FALSE,
         role ENUM('user', 'content_manager', 'community_manager', 'user_support', 'super_admin') DEFAULT 'user',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -141,7 +147,20 @@ app.post('/api/init-db', async (req, res) => {
 // Authentication API
 app.post('/api/auth/register', async (req, res) => {
   try {
-    const { email, password, full_name, education_level, job_title, topics_of_interest } = req.body;
+    const {
+      email,
+      password,
+      full_name,
+      education_level,
+      job_title,
+      topics_of_interest,
+      industry,
+      experience_level,
+      business_stage,
+      country,
+      state_province,
+      city
+    } = req.body;
 
     // Check if user already exists
     const [existingUser] = await executeQuery('SELECT id FROM users WHERE email = ?', [email]);
@@ -155,8 +174,8 @@ app.post('/api/auth/register', async (req, res) => {
 
     // Create user
     await executeQuery(
-      'INSERT INTO users (id, email, full_name, education_level, job_title, topics_of_interest, password_hash) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [id, email, full_name, education_level, job_title, JSON.stringify(topics_of_interest), hashedPassword]
+      'INSERT INTO users (id, email, full_name, education_level, job_title, topics_of_interest, industry, experience_level, business_stage, country, state_province, city, password_hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [id, email, full_name, education_level, job_title, JSON.stringify(topics_of_interest), industry, experience_level, business_stage, country, state_province, city, hashedPassword]
     );
 
     // Generate JWT token
@@ -272,26 +291,58 @@ app.post('/api/users', async (req, res) => {
   }
 });
 
-app.put('/api/users/:id', async (req, res) => {
+app.put('/api/users/:id', authenticateToken, async (req, res) => {
   try {
-    const { email, full_name, avatar_url, education_level, job_title, topics_of_interest, role } = req.body;
+    const {
+      email,
+      full_name,
+      avatar_url,
+      education_level,
+      job_title,
+      topics_of_interest,
+      industry,
+      experience_level,
+      business_stage,
+      country,
+      state_province,
+      city,
+      role
+    } = req.body;
+
+    // Ensure user can only update their own profile unless they're admin
+    if (req.user.id !== req.params.id && req.user.role !== 'super_admin') {
+      return res.status(403).json({ error: 'You can only update your own profile' });
+    }
 
     await executeQuery(
-      'UPDATE users SET email = ?, full_name = ?, avatar_url = ?, education_level = ?, job_title = ?, topics_of_interest = ?, role = ? WHERE id = ?',
-      [email, full_name, avatar_url, education_level, job_title, JSON.stringify(topics_of_interest), role, req.params.id]
+      'UPDATE users SET email = ?, full_name = ?, avatar_url = ?, education_level = ?, job_title = ?, topics_of_interest = ?, industry = ?, experience_level = ?, business_stage = ?, country = ?, state_province = ?, city = ?, role = ? WHERE id = ?',
+      [email, full_name, avatar_url, education_level, job_title, JSON.stringify(topics_of_interest), industry, experience_level, business_stage, country, state_province, city, role, req.params.id]
     );
 
-    res.json({ message: 'User updated successfully' });
+    // Return the updated user data
+    const [updatedUser] = await executeQuery(
+      'SELECT id, email, full_name, avatar_url, role, permissions, onboarding_completed, industry, experience_level, business_stage, country, state_province, city FROM users WHERE id = ?',
+      [req.params.id]
+    );
+
+    res.json(updatedUser);
   } catch (error) {
+    console.error('User update error:', error);
     res.status(500).json({ error: 'Failed to update user' });
   }
 });
 
-app.delete('/api/users/:id', async (req, res) => {
+app.delete('/api/users/:id', authenticateToken, async (req, res) => {
   try {
+    // Ensure user can only delete their own account unless they're admin
+    if (req.user.id !== req.params.id && req.user.role !== 'super_admin') {
+      return res.status(403).json({ error: 'You can only delete your own account' });
+    }
+
     await executeQuery('DELETE FROM users WHERE id = ?', [req.params.id]);
     res.json({ message: 'User deleted successfully' });
   } catch (error) {
+    console.error('User delete error:', error);
     res.status(500).json({ error: 'Failed to delete user' });
   }
 });
