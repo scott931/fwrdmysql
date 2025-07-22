@@ -528,7 +528,25 @@ app.get('/api/instructors/:id', async (req, res) => {
 // Get all courses for a specific instructor
 app.get('/api/instructors/:id/courses', async (req, res) => {
   try {
-    const courses = await executeQuery('SELECT * FROM courses WHERE instructor_id = ?', [req.params.id]);
+    const courses = await executeQuery(`
+      SELECT c.*, i.name as instructor_name, i.title as instructor_title, i.image as instructor_image,
+             cat.name as category_name
+      FROM courses c
+      JOIN instructors i ON c.instructor_id = i.id
+      JOIN categories cat ON c.category_id = cat.id
+      WHERE c.instructor_id = ?
+      ORDER BY c.created_at DESC
+    `, [req.params.id]);
+
+    // Get lessons for each course
+    for (let course of courses) {
+      const lessons = await executeQuery(
+        'SELECT * FROM lessons WHERE course_id = ? ORDER BY order_index ASC',
+        [course.id]
+      );
+      course.lessons = lessons;
+    }
+
     res.json(courses);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch courses for instructor' });
