@@ -4,6 +4,7 @@ import Button from '../components/ui/Button';
 import { useNavigate } from '../lib/router';
 import { usePermissions } from '../contexts/PermissionContext';
 import PermissionGuard from '../components/ui/PermissionGuard';
+import { Permission } from '../types';
 import ErrorMessage from '../components/ui/ErrorMessage';
 
 interface SecuritySettings {
@@ -50,18 +51,17 @@ const SecuritySettingsPage: React.FC = () => {
   }, []);
 
   // Check if user has permission to access this page
-  const canManageSettings = hasPermission('manage_settings');
-  const canAccessAuditLogs = hasPermission('access_audit_logs');
+  const canManageSettings = hasPermission('system:configuration');
+  const canAccessAuditLogs = hasPermission('audit:view_logs');
 
   // Redirect if user doesn't have permission
   if (!canManageSettings) {
     return (
       <div className="max-w-screen-xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
-        <PermissionGuard
-          permission="manage_settings"
-          role={userRole}
-          showError={true}
-        />
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-white mb-4">Access Denied</h2>
+          <p className="text-gray-400">You do not have permission to access security settings.</p>
+        </div>
       </div>
     );
   }
@@ -290,11 +290,11 @@ const SecuritySettingsPage: React.FC = () => {
       <div className="border-b border-gray-700 mb-8">
         <div className="flex space-x-8">
           {[
-            { id: 'security', label: 'Security Policies', icon: Shield, permission: 'manage_settings' },
-            { id: 'roles', label: 'Role Management', icon: Users, permission: 'manage_settings' },
-            { id: 'audit', label: 'Audit Settings', icon: Activity, permission: 'access_audit_logs' }
+                  { id: 'security', label: 'Security Policies', icon: Shield, permission: 'system:configuration' },
+      { id: 'roles', label: 'Role Management', icon: Users, permission: 'system:configuration' },
+      { id: 'audit', label: 'Audit Settings', icon: Activity, permission: 'audit:view_logs' }
           ].map(({ id, label, icon: Icon, permission }) => (
-            <PermissionGuard key={id} permission={permission} role={userRole}>
+            <PermissionGuard key={id} permission={permission as Permission}>
               <button
                 onClick={() => setActiveTab(id as any)}
                 className={`pb-4 relative flex items-center space-x-2 ${
@@ -317,9 +317,7 @@ const SecuritySettingsPage: React.FC = () => {
       {/* Tab Content */}
       {activeTab === 'security' && (
         <PermissionGuard
-          permission="manage_settings"
-          role={userRole}
-          showError={true}
+          permission="system:configuration"
         >
           <div className="space-y-8">
             {/* Password Policy */}
@@ -528,9 +526,7 @@ const SecuritySettingsPage: React.FC = () => {
 
       {activeTab === 'roles' && (
         <PermissionGuard
-          permission="manage_settings"
-          role={userRole}
-          showError={true}
+          permission="system:configuration"
         >
           <div className="space-y-8">
             <div className="bg-gray-800 rounded-lg p-6">
@@ -594,9 +590,7 @@ const SecuritySettingsPage: React.FC = () => {
 
       {activeTab === 'audit' && (
         <PermissionGuard
-          permission="access_audit_logs"
-          role={userRole}
-          showError={true}
+          permission="audit:view_logs"
         >
           <div className="space-y-8">
             {/* Audit Settings */}

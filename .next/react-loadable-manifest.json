@@ -1,38 +1,20 @@
 {
-  "node_modules\\jspdf\\dist\\jspdf.es.min.js -> canvg": {
-    "id": "node_modules\\jspdf\\dist\\jspdf.es.min.js -> canvg",
-    "files": [
-      "static/chunks/node_modules_canvg_lib_index_es_js.js"
-    ]
-  },
-  "node_modules\\jspdf\\dist\\jspdf.es.min.js -> dompurify": {
-    "id": "node_modules\\jspdf\\dist\\jspdf.es.min.js -> dompurify",
-    "files": [
-      "static/chunks/node_modules_dompurify_dist_purify_js.js"
-    ]
-  },
-  "node_modules\\jspdf\\dist\\jspdf.es.min.js -> html2canvas": {
-    "id": "node_modules\\jspdf\\dist\\jspdf.es.min.js -> html2canvas",
-    "files": [
-      "static/chunks/node_modules_html2canvas_dist_html2canvas_js.js"
-    ]
-  },
   "pages\\admin.tsx -> ../src/pages/AdminPage": {
     "id": "pages\\admin.tsx -> ../src/pages/AdminPage",
     "files": [
       "static/chunks/src_pages_AdminPage_tsx.js"
     ]
   },
-  "pages\\admin\\upload-course.tsx -> ../../src/pages/UploadCoursePage": {
-    "id": "pages\\admin\\upload-course.tsx -> ../../src/pages/UploadCoursePage",
+  "pages\\admin\\add-instructor.tsx -> ../../src/pages/AddFacilitatorPage": {
+    "id": "pages\\admin\\add-instructor.tsx -> ../../src/pages/AddFacilitatorPage",
     "files": [
-      "static/chunks/src_pages_UploadCoursePage_tsx.js"
+      "static/chunks/src_pages_AddFacilitatorPage_tsx.js"
     ]
   },
-  "pages\\course\\[courseId].tsx -> ../../src/pages/CoursePage": {
-    "id": "pages\\course\\[courseId].tsx -> ../../src/pages/CoursePage",
+  "pages\\instructor\\[instructorId].tsx -> ../../src/pages/InstructorPage": {
+    "id": "pages\\instructor\\[instructorId].tsx -> ../../src/pages/InstructorPage",
     "files": [
-      "static/chunks/src_pages_CoursePage_tsx.js"
+      "static/chunks/src_pages_InstructorPage_tsx.js"
     ]
   }
 }

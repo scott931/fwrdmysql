@@ -1091,6 +1091,192 @@ app.get('/api/instructors/:id/courses', async (req, res) => {
   }
 });
 
+// Create new instructor
+app.post('/api/instructors', authenticateToken, authorizeRole(['super_admin', 'content_manager']), async (req, res) => {
+  try {
+    const {
+      name,
+      title,
+      email,
+      phone,
+      bio,
+      image,
+      experience,
+      expertise,
+      socialLinks
+    } = req.body;
+
+    // Validate required fields
+    if (!name || !title || !email || !bio || !image) {
+      return res.status(400).json({ error: 'Missing required fields: name, title, email, bio, image' });
+    }
+
+    // Check if instructor with this email already exists
+    const [existingInstructor] = await executeQuery('SELECT id FROM instructors WHERE email = ?', [email]);
+    if (existingInstructor) {
+      return res.status(400).json({ error: 'Instructor with this email already exists' });
+    }
+
+    const id = uuidv4();
+
+    // Insert new instructor
+    await executeQuery(
+      'INSERT INTO instructors (id, name, title, email, phone, bio, image, experience, expertise, social_links) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [
+        id,
+        name,
+        title,
+        email,
+        phone || null,
+        bio,
+        image,
+        experience || 0,
+        JSON.stringify(expertise || []),
+        JSON.stringify(socialLinks || {})
+      ]
+    );
+
+    // Log audit event (don't let audit logging failure prevent instructor creation)
+    try {
+      await executeQuery(
+        'INSERT INTO audit_logs (id, user_id, action, details, ip_address, user_agent) VALUES (?, ?, ?, ?, ?, ?)',
+        [uuidv4(), req.user?.id || 'system', 'instructor_created', `Created instructor: ${name} (${email})`, req.ip, req.get('User-Agent')]
+      );
+    } catch (auditError) {
+      console.warn('Audit logging failed, but instructor was created:', auditError.message);
+    }
+
+    res.status(201).json({
+      id,
+      message: 'Instructor created successfully',
+      instructor: {
+        id,
+        name,
+        title,
+        email,
+        phone,
+        bio,
+        image,
+        experience: experience || 0,
+        expertise: expertise || [],
+        socialLinks: socialLinks || {},
+        createdAt: new Date()
+      }
+    });
+  } catch (error) {
+    console.error('Error creating instructor:', error);
+    res.status(500).json({ error: 'Failed to create instructor' });
+  }
+});
+
+// Update instructor
+app.put('/api/instructors/:id', authenticateToken, authorizeRole(['super_admin', 'content_manager']), async (req, res) => {
+  try {
+    const {
+      name,
+      title,
+      email,
+      phone,
+      bio,
+      image,
+      experience,
+      expertise,
+      socialLinks
+    } = req.body;
+
+    // Validate required fields
+    if (!name || !title || !email || !bio || !image) {
+      return res.status(400).json({ error: 'Missing required fields: name, title, email, bio, image' });
+    }
+
+    // Check if instructor exists
+    const [existingInstructor] = await executeQuery('SELECT id FROM instructors WHERE id = ?', [req.params.id]);
+    if (!existingInstructor) {
+      return res.status(404).json({ error: 'Instructor not found' });
+    }
+
+    // Check if email is already taken by another instructor
+    const [emailConflict] = await executeQuery('SELECT id FROM instructors WHERE email = ? AND id != ?', [email, req.params.id]);
+    if (emailConflict) {
+      return res.status(400).json({ error: 'Email is already taken by another instructor' });
+    }
+
+    // Update instructor
+    await executeQuery(
+      'UPDATE instructors SET name = ?, title = ?, email = ?, phone = ?, bio = ?, image = ?, experience = ?, expertise = ?, social_links = ? WHERE id = ?',
+      [
+        name,
+        title,
+        email,
+        phone || null,
+        bio,
+        image,
+        experience || 0,
+        JSON.stringify(expertise || []),
+        JSON.stringify(socialLinks || {}),
+        req.params.id
+      ]
+    );
+
+    // Log audit event
+    await executeQuery(
+      'INSERT INTO audit_logs (id, user_id, action, details, ip_address, user_agent) VALUES (?, ?, ?, ?, ?, ?)',
+      [uuidv4(), req.user?.id || 'system', 'instructor_updated', `Updated instructor: ${name} (${email})`, req.ip, req.get('User-Agent')]
+    );
+
+    res.json({
+      message: 'Instructor updated successfully',
+      instructor: {
+        id: req.params.id,
+        name,
+        title,
+        email,
+        phone,
+        bio,
+        image,
+        experience: experience || 0,
+        expertise: expertise || [],
+        socialLinks: socialLinks || {},
+        createdAt: new Date()
+      }
+    });
+  } catch (error) {
+    console.error('Error updating instructor:', error);
+    res.status(500).json({ error: 'Failed to update instructor' });
+  }
+});
+
+// Delete instructor
+app.delete('/api/instructors/:id', authenticateToken, authorizeRole(['super_admin', 'content_manager']), async (req, res) => {
+  try {
+    // Check if instructor exists
+    const [instructor] = await executeQuery('SELECT name, email FROM instructors WHERE id = ?', [req.params.id]);
+    if (!instructor) {
+      return res.status(404).json({ error: 'Instructor not found' });
+    }
+
+    // Check if instructor has courses
+    const [courseCount] = await executeQuery('SELECT COUNT(*) as count FROM courses WHERE instructor_id = ?', [req.params.id]);
+    if (courseCount.count > 0) {
+      return res.status(400).json({ error: 'Cannot delete instructor with existing courses' });
+    }
+
+    // Delete instructor
+    await executeQuery('DELETE FROM instructors WHERE id = ?', [req.params.id]);
+
+    // Log audit event
+    await executeQuery(
+      'INSERT INTO audit_logs (id, user_id, action, details, ip_address, user_agent) VALUES (?, ?, ?, ?, ?, ?)',
+      [uuidv4(), req.user?.id || 'system', 'instructor_deleted', `Deleted instructor: ${instructor.name} (${instructor.email})`, req.ip, req.get('User-Agent')]
+    );
+
+    res.json({ message: 'Instructor deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting instructor:', error);
+    res.status(500).json({ error: 'Failed to delete instructor' });
+  }
+});
+
 // User Progress API
 app.get('/api/progress/:userId/:courseId', async (req, res) => {
   try {

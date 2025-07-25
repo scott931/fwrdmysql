@@ -340,6 +340,8 @@ class AuditLogger {
   }
 
   private storeLocally(log: AuditLog): void {
+    if (typeof window === 'undefined') return;
+
     const storedLogs = localStorage.getItem('audit_logs');
     const logs = storedLogs ? JSON.parse(storedLogs) : [];
     logs.push(log);

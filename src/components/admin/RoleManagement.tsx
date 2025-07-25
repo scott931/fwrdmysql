@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { User, Shield, Edit, Trash2, Plus, Save, X, Check, AlertTriangle } from 'lucide-react';
 import Button from '../ui/Button';
-import { UserRole, Permission, ROLE_PERMISSIONS, ROLE_HIERARCHY, getRoleDisplayName, getRoleDescription } from '../../types';
-import { hasPermission, canManageRole, getManageableRoles, getPermissionDisplayName, getPermissionCategory, groupPermissionsByCategory } from '../../utils/permissions';
+import { UserRole, Permission, ROLE_PERMISSIONS, ROLE_HIERARCHY } from '../../types';
+import { hasPermission, canManageRole, getManageableRoles, getPermissionDisplayName, getPermissionCategory, groupPermissionsByCategory, getRoleDisplayName, getRoleDescription } from '../../utils/permissions';
 
 interface User {
   id: string;

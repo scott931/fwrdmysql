@@ -52,25 +52,31 @@ const USER_KEY = 'forward_africa_user';
 export const authService = {
   // Store token and user data
   setAuthData: (token: string, user: AuthUser) => {
-    localStorage.setItem(TOKEN_KEY, token);
-    localStorage.setItem(USER_KEY, JSON.stringify(user));
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(TOKEN_KEY, token);
+      localStorage.setItem(USER_KEY, JSON.stringify(user));
+    }
   },
 
   // Get stored token
   getToken: (): string | null => {
+    if (typeof window === 'undefined') return null;
     return localStorage.getItem(TOKEN_KEY);
   },
 
   // Get stored user data
   getUser: (): AuthUser | null => {
+    if (typeof window === 'undefined') return null;
     const userData = localStorage.getItem(USER_KEY);
     return userData ? JSON.parse(userData) : null;
   },
 
   // Clear auth data
   clearAuthData: () => {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(USER_KEY);
+    }
   },
 
   // Check if user is authenticated

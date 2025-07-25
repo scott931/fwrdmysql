@@ -7,7 +7,9 @@ import { Course, Category, Instructor, User, UserProgress, Certificate, Achievem
 // Generic API request function with authentication
 const apiRequest = async (endpoint: string, options: RequestInit = {}) => {
   const url = `${API_BASE_URL}${endpoint}`;
-  const token = localStorage.getItem('forward_africa_token');
+
+  // Check if we're on the client side before accessing localStorage
+  const token = typeof window !== 'undefined' ? localStorage.getItem('forward_africa_token') : null;
 
   const defaultOptions: RequestInit = {
     headers: {
@@ -22,10 +24,12 @@ const apiRequest = async (endpoint: string, options: RequestInit = {}) => {
     const response = await fetch(url, defaultOptions);
 
     if (response.status === 401) {
-      // Clear auth data and redirect to login
-      localStorage.removeItem('forward_africa_token');
-      localStorage.removeItem('forward_africa_user');
-      window.location.href = '/login';
+      // Clear auth data and redirect to login (only on client side)
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('forward_africa_token');
+        localStorage.removeItem('forward_africa_user');
+        window.location.href = '/login';
+      }
       throw new Error('Authentication required');
     }
 

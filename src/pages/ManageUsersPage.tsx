@@ -11,13 +11,13 @@ interface UserData {
   name: string;
   email: string;
   status: 'active' | 'suspended' | 'pending';
-  role: 'user' | 'content_manager' | 'admin' | 'super_admin';
+  role: 'user' | 'content_manager' | 'community_manager' | 'user_support' | 'super_admin';
   joinDate: string;
   lastActive: string;
   coursesEnrolled: number;
   coursesCompleted: number;
   avatar?: string;
-  permissions?: {
+  permissions: {
     view_courses: boolean;
     enroll_courses: boolean;
     create_courses: boolean;
@@ -34,7 +34,7 @@ interface AdminUser {
   id: string;
   name: string;
   email: string;
-  role: 'content_manager' | 'admin' | 'super_admin';
+  role: 'content_manager' | 'community_manager' | 'user_support' | 'super_admin';
   password: string;
   createdAt: Date;
   createdBy: string;
@@ -45,7 +45,7 @@ const ManageUsersPage: React.FC = () => {
   const { userRole, hasPermission } = usePermissions();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'suspended' | 'pending'>('all');
-  const [roleFilter, setRoleFilter] = useState<'all' | 'user' | 'content_manager' | 'admin' | 'super_admin'>('all');
+  const [roleFilter, setRoleFilter] = useState<'all' | 'user' | 'content_manager' | 'community_manager' | 'user_support' | 'super_admin'>('all');
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [showUserModal, setShowUserModal] = useState(false);
   const [showPermissionsModal, setShowPermissionsModal] = useState(false);
@@ -59,17 +59,16 @@ const ManageUsersPage: React.FC = () => {
   }, []);
 
   // Check if user has permission to manage users
-  const canManageUsers = hasPermission('manage_users');
+  const canManageUsers = hasPermission('users:view');
 
   // Redirect if user doesn't have permission
   if (!canManageUsers) {
     return (
       <div className="max-w-screen-xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
-        <PermissionGuard
-          permission="manage_users"
-          role={userRole}
-          showError={true}
-        />
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-white mb-4">Access Denied</h2>
+          <p className="text-gray-400">You do not have permission to manage users.</p>
+        </div>
       </div>
     );
   }
@@ -129,7 +128,7 @@ const ManageUsersPage: React.FC = () => {
       name: 'Jane Smith',
       email: 'jane.smith@example.com',
       status: 'active',
-      role: 'admin',
+      role: 'content_manager',
       joinDate: '2024-01-10',
       lastActive: '2024-01-19',
       coursesEnrolled: 8,
@@ -251,12 +250,12 @@ const ManageUsersPage: React.FC = () => {
     if (!user) return;
 
     // Check permissions for actions
-    if (action === 'delete' && !hasPermission('manage_users')) {
+    if (action === 'delete' && !hasPermission('users:delete')) {
       setPermissionError('You do not have permission to delete users. This action requires Admin or Super Admin privileges.');
       return;
     }
 
-    if ((action === 'suspend' || action === 'activate') && !hasPermission('manage_users')) {
+    if ((action === 'suspend' || action === 'activate') && !hasPermission('users:suspend')) {
       setPermissionError('You do not have permission to change user status. This action requires Admin or Super Admin privileges.');
       return;
     }
@@ -265,7 +264,7 @@ const ManageUsersPage: React.FC = () => {
     if (['suspend', 'activate', 'delete', 'permissions'].includes(action)) {
       if (
         (user.role === 'super_admin' && currentUserRole !== 'super_admin') ||
-        (user.role === 'admin' && currentUserRole !== 'super_admin' && currentUserRole !== 'admin')
+        (user.role === 'content_manager' && currentUserRole !== 'super_admin' && currentUserRole !== 'content_manager')
       ) {
         setPermissionError(`You cannot modify a ${user.role.replace('_', ' ')} account with your current role (${currentUserRole.replace('_', ' ')}).`);
         return;
@@ -312,7 +311,7 @@ const ManageUsersPage: React.FC = () => {
     if (selectedUsers.length === 0) return;
 
     // Check permissions for bulk actions
-    if (!hasPermission('manage_users')) {
+    if (!hasPermission('users:edit')) {
       setPermissionError('You do not have permission to perform bulk user actions. This action requires Admin or Super Admin privileges.');
       return;
     }
@@ -328,7 +327,7 @@ const ManageUsersPage: React.FC = () => {
       .filter(user => selectedUsers.includes(user.id))
       .some(user =>
         (user.role === 'super_admin' && currentUserRole !== 'super_admin') ||
-        (user.role === 'admin' && currentUserRole !== 'super_admin' && currentUserRole !== 'admin')
+        (user.role === 'content_manager' && currentUserRole !== 'super_admin' && currentUserRole !== 'content_manager')
       );
 
     if (hasHigherRoleUsers) {
@@ -342,7 +341,7 @@ const ManageUsersPage: React.FC = () => {
     setSelectedUsers([]);
   };
 
-  const handlePromoteUser = (userId: string, newRole: 'user' | 'content_manager' | 'admin' | 'super_admin') => {
+  const handlePromoteUser = (userId: string, newRole: 'user' | 'content_manager' | 'community_manager' | 'user_support' | 'super_admin') => {
     const user = users.find(u => u.id === userId);
     if (!user) return;
 
@@ -352,9 +351,9 @@ const ManageUsersPage: React.FC = () => {
       return;
     }
 
-    // Check if current user can promote to admin role
-    if (newRole === 'admin' && !['admin', 'super_admin'].includes(currentUserRole)) {
-      setPermissionError('Only admins and super admins can promote users to admin role');
+    // Check if current user can promote to content_manager role
+    if (newRole === 'content_manager' && !['content_manager', 'super_admin'].includes(currentUserRole)) {
+      setPermissionError('Only content managers and super admins can promote users to content manager role');
       return;
     }
 
@@ -378,7 +377,7 @@ const ManageUsersPage: React.FC = () => {
     // Check if current user can modify permissions
     if (
       (user.role === 'super_admin' && currentUserRole !== 'super_admin') ||
-      (user.role === 'admin' && !['admin', 'super_admin'].includes(currentUserRole))
+      (user.role === 'content_manager' && !['content_manager', 'super_admin'].includes(currentUserRole))
     ) {
       setPermissionError(`You cannot modify permissions for a ${user.role.replace('_', ' ')} account with your current role.`);
       return;
@@ -414,9 +413,9 @@ const ManageUsersPage: React.FC = () => {
 
   const getRoleIcon = (role: string) => {
     switch (role) {
-      case 'super_admin': return <Crown className="h-4 w-4 text-purple-500" />;
-      case 'admin': return <Shield className="h-4 w-4 text-blue-500" />;
-      case 'content_manager': return <UserPlus className="h-4 w-4 text-green-500" />;
+              case 'super_admin': return <Crown className="h-4 w-4 text-purple-500" />;
+        case 'content_manager': return <Shield className="h-4 w-4 text-blue-500" />;
+        case 'community_manager': return <UserPlus className="h-4 w-4 text-green-500" />;
       default: return <User className="h-4 w-4 text-gray-400" />;
     }
   };
@@ -501,7 +500,7 @@ const ManageUsersPage: React.FC = () => {
           </div>
         </div>
 
-        <PermissionGuard permission="create_admin_users" role={userRole}>
+        <PermissionGuard permission="users:create">
           <Button
             variant="primary"
             onClick={() => navigate('/admin/create-user')}
@@ -551,7 +550,8 @@ const ManageUsersPage: React.FC = () => {
               <option value="all">All Roles</option>
               <option value="user">User</option>
               <option value="content_manager">Content Manager</option>
-              <option value="admin">Admin</option>
+              <option value="community_manager">Community Manager</option>
+              <option value="user_support">User Support</option>
               <option value="super_admin">Super Admin</option>
             </select>
           </div>
@@ -794,7 +794,7 @@ const ManageUsersPage: React.FC = () => {
             </div>
             <div>
               <div className="text-2xl font-bold text-white">
-                {users.filter(u => u.role === 'admin' || u.role === 'super_admin').length}
+                {users.filter(u => u.role === 'content_manager' || u.role === 'super_admin').length}
               </div>
               <div className="text-sm text-gray-400">Admins</div>
             </div>
@@ -888,7 +888,7 @@ const ManageUsersPage: React.FC = () => {
                 {[
                   { role: 'user', label: 'User', icon: <User className="h-4 w-4" /> },
                   { role: 'content_manager', label: 'Content Manager', icon: <UserPlus className="h-4 w-4" /> },
-                  { role: 'admin', label: 'Admin', icon: <Shield className="h-4 w-4" />, disabled: !['admin', 'super_admin'].includes(currentUserRole) },
+                  { role: 'content_manager', label: 'Content Manager', icon: <Shield className="h-4 w-4" />, disabled: !['content_manager', 'super_admin'].includes(currentUserRole) },
                   { role: 'super_admin', label: 'Super Admin', icon: <Crown className="h-4 w-4" />, disabled: !canCreateSuperAdmin }
                 ].map(({ role, label, icon, disabled }) => (
                   <Button
@@ -975,7 +975,7 @@ const ManageUsersPage: React.FC = () => {
                 // Check if current user can modify this permission for this user
                 const canModify = !(
                   (selectedUser.role === 'super_admin' && currentUserRole !== 'super_admin') ||
-                  (selectedUser.role === 'admin' && !['admin', 'super_admin'].includes(currentUserRole))
+                  (selectedUser.role === 'content_manager' && !['content_manager', 'super_admin'].includes(currentUserRole))
                 );
 
                 return (

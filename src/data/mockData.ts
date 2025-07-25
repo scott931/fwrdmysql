@@ -418,7 +418,7 @@ export const initializeMockData = () => {
 // Helper functions to get all courses including saved ones
 export const getAllCourses = () => {
   try {
-    const savedCourses = JSON.parse(localStorage.getItem('courses') || '[]');
+    const savedCourses = JSON.parse(getLocalStorage('courses') || '[]');
 
     // Clean up any courses with incorrect instructor IDs
     const cleanedSavedCourses = savedCourses.map((course: any) => {
@@ -456,7 +456,7 @@ export const getAllCourses = () => {
 // Helper functions to get all categories including saved ones
 export const getAllCategories = () => {
   try {
-    const savedCategories = JSON.parse(localStorage.getItem('categories') || '[]');
+    const savedCategories = JSON.parse(getLocalStorage('categories') || '[]');
     return [...categories, ...savedCategories];
   } catch (error) {
     console.error('Error loading saved categories:', error);
@@ -467,7 +467,7 @@ export const getAllCategories = () => {
 // Helper functions to get all instructors including saved ones
 export const getAllInstructors = () => {
   try {
-    const savedInstructors = JSON.parse(localStorage.getItem('instructors') || '[]').map((inst: any) => ({
+    const savedInstructors = JSON.parse(getLocalStorage('instructors') || '[]').map((inst: any) => ({
       ...inst,
       createdAt: inst.createdAt ? new Date(inst.createdAt) : new Date(),
     }));

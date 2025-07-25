@@ -98,7 +98,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     profile: user, // For compatibility with existing code
     loading,
     isAuthenticated: !!user,
-    isAdmin: user?.role === 'admin' || user?.role === 'super_admin',
+    isAdmin: user?.role === 'super_admin',
     signIn,
     signUp,
     signOut,

@@ -9,6 +9,7 @@ export const useNavigate = () => {
   const router = useRouter();
 
   const navigate = useCallback((to: string, options?: { replace?: boolean }) => {
+    console.log('Router navigate called with:', to, options);
     if (options?.replace) {
       router.replace(to);
     } else {

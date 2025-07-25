@@ -2,8 +2,8 @@
   "/_app": "pages/_app.js",
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
+  "/home": "pages/home.js",
   "/admin": "pages/admin.js",
-  "/course/[courseId]": "pages/course/[courseId].js",
-  "/admin/upload-course": "pages/admin/upload-course.js",
-  "/profile": "pages/profile.js"
+  "/instructor/[instructorId]": "pages/instructor/[instructorId].js",
+  "/admin/add-instructor": "pages/admin/add-instructor.js"
 }

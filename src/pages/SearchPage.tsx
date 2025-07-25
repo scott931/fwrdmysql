@@ -101,7 +101,7 @@ const SearchPage: React.FC = () => {
       instructor.name.toLowerCase().includes(lowercaseQuery) ||
       instructor.title.toLowerCase().includes(lowercaseQuery) ||
       instructor.bio.toLowerCase().includes(lowercaseQuery) ||
-      (instructor.expertise && instructor.expertise.some(skill =>
+      (instructor.expertise && instructor.expertise.some((skill: string) =>
         skill.toLowerCase().includes(lowercaseQuery)
       ))
     );

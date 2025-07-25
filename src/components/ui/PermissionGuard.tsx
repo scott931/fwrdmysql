@@ -27,7 +27,7 @@ const PermissionGuard: React.FC<PermissionGuardProps> = ({
     return <>{fallback}</>;
   }
 
-  const userPermissions = user.permissions || [];
+  const userPermissions = (user.permissions || []) as Permission[];
   let hasAccess = false;
 
   if (permission) {

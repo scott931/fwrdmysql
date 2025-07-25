@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 // Create a mock client if environment variables are not set
 const createMockClient = () => ({
@@ -26,7 +26,7 @@ const createMockClient = () => ({
   })
 });
 
-export const supabase = (supabaseUrl && supabaseAnonKey) 
+export const supabase = (supabaseUrl && supabaseAnonKey)
   ? createClient(supabaseUrl, supabaseAnonKey)
   : createMockClient() as any;
 
@@ -37,7 +37,7 @@ export const signInWithGoogle = async () => {
     console.log('Mock Google sign in - Supabase not configured');
     return { data: null, error: null };
   }
-  
+
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
