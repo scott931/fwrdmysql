@@ -40,54 +40,88 @@ const UploadCoursePage: React.FC = () => {
   const [availableCategories, setAvailableCategories] = useState(categories);
   const [instructors, setInstructors] = useState<Instructor[]>([]);
 
-  // Load instructors
+  // Load instructors from backend
   useEffect(() => {
-    const savedInstructors = JSON.parse(localStorage.getItem('instructors') || '[]');
-    setInstructors(savedInstructors);
+    const loadInstructors = async () => {
+      try {
+        const response = await fetch('http://localhost:3002/api/instructors');
+        if (response.ok) {
+          const data = await response.json();
+          setInstructors(data);
+        } else {
+          console.error('Failed to load instructors');
+        }
+      } catch (error) {
+        console.error('Error loading instructors:', error);
+      }
+    };
+    loadInstructors();
   }, []);
 
   // Load existing course data if editing
   useEffect(() => {
     if (isEditing && editCourseId) {
-      // Check both mock courses and saved courses
-      const savedCourses = JSON.parse(localStorage.getItem('courses') || '[]');
-      const allCourses = [...mockCourses, ...savedCourses];
-      const existingCourse = allCourses.find(c => c.id === editCourseId);
+      const loadCourse = async () => {
+        try {
+          const response = await fetch(`http://localhost:3002/api/courses/${editCourseId}`);
+          if (response.ok) {
+            const existingCourse = await response.json();
+            console.log('Loading existing course for editing:', existingCourse);
 
-      if (existingCourse) {
-        console.log('Loading existing course for editing:', existingCourse);
-        setTitle(existingCourse.title);
-        setDescription(existingCourse.description);
-        setCategory(existingCourse.category);
-        setThumbnail(existingCourse.thumbnail);
-        setBanner(existingCourse.banner);
-        setIsComingSoon(existingCourse.comingSoon || false);
-        setIsFeatured(existingCourse.featured || false);
-        setReleaseDate(existingCourse.releaseDate || '');
+            setTitle(existingCourse.title);
+            setDescription(existingCourse.description);
+            setCategory(existingCourse.category_id);
+            setThumbnail(existingCourse.thumbnail);
+            setBanner(existingCourse.banner);
+            setIsComingSoon(existingCourse.coming_soon || false);
+            setIsFeatured(existingCourse.featured || false);
+            setReleaseDate(existingCourse.release_date || '');
 
-        // Check if course has an instructor
-        if (existingCourse.instructorId) {
-          setUseInstructor(true);
-          setSelectedInstructorId(existingCourse.instructorId);
+            // Check if course has an instructor
+            if (existingCourse.instructor_id) {
+              setUseInstructor(true);
+              setSelectedInstructorId(existingCourse.instructor_id);
+            }
+
+            // Load lessons for this course
+            const lessonsResponse = await fetch(`http://localhost:3002/api/lessons/${editCourseId}`);
+            if (lessonsResponse.ok) {
+              const lessonsData = await lessonsResponse.json();
+              const lessonForms: LessonForm[] = lessonsData.map((lesson: any) => ({
+                title: lesson.title,
+                description: lesson.description,
+                thumbnail: lesson.thumbnail,
+                videoUrl: lesson.video_url
+              }));
+              setLessons(lessonForms);
+            }
+          } else {
+            console.error('Failed to load course for editing');
+          }
+        } catch (error) {
+          console.error('Error loading course for editing:', error);
         }
-
-        // Convert lessons to form format
-        const lessonForms: LessonForm[] = existingCourse.lessons.map((lesson: any) => ({
-          title: lesson.title,
-          description: lesson.description,
-          thumbnail: lesson.thumbnail,
-          videoUrl: lesson.videoUrl
-        }));
-        setLessons(lessonForms);
-      }
+      };
+      loadCourse();
     }
   }, [isEditing, editCourseId]);
 
-  // Load saved categories
+  // Load categories from backend
   useEffect(() => {
-    const savedCategories = JSON.parse(localStorage.getItem('categories') || '[]');
-    const allCategories = [...categories, ...savedCategories];
-    setAvailableCategories(allCategories);
+    const loadCategories = async () => {
+      try {
+        const response = await fetch('http://localhost:3002/api/categories');
+        if (response.ok) {
+          const data = await response.json();
+          setAvailableCategories(data);
+        } else {
+          console.error('Failed to load categories');
+        }
+      } catch (error) {
+        console.error('Error loading categories:', error);
+      }
+    };
+    loadCategories();
   }, []);
 
   const addLesson = () => {
@@ -115,25 +149,39 @@ const UploadCoursePage: React.FC = () => {
     setLessons(updatedLessons);
   };
 
-  const handleCreateCategory = () => {
+  const handleCreateCategory = async () => {
     if (newCategoryName.trim()) {
-      const newCategory = {
-        id: newCategoryName.toLowerCase().replace(/\s+/g, '-'),
-        name: newCategoryName.trim()
-      };
+      try {
+        const newCategory = {
+          id: newCategoryName.toLowerCase().replace(/\s+/g, '-'),
+          name: newCategoryName.trim()
+        };
 
-      // Save to localStorage
-      const savedCategories = JSON.parse(localStorage.getItem('categories') || '[]');
-      savedCategories.push(newCategory);
-      localStorage.setItem('categories', JSON.stringify(savedCategories));
+        // Create category in backend
+        const response = await fetch('http://localhost:3002/api/categories', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(newCategory)
+        });
 
-      setAvailableCategories(prev => [...prev, newCategory]);
-      setCategory(newCategory.id);
-      setNewCategoryName('');
-      setShowCreateCategory(false);
+        if (response.ok) {
+          setAvailableCategories(prev => [...prev, newCategory]);
+          setCategory(newCategory.id);
+          setNewCategoryName('');
+          setShowCreateCategory(false);
 
-      // Log audit event
-      logAuditEvent('category_created', `Created new category: ${newCategory.name}`);
+          // Log audit event
+          logAuditEvent('category_created', `Created new category: ${newCategory.name}`);
+        } else {
+          console.error('Failed to create category');
+          alert('Failed to create category. Please try again.');
+        }
+      } catch (error) {
+        console.error('Error creating category:', error);
+        alert('Failed to create category. Please try again.');
+      }
     }
   };
 
@@ -152,94 +200,95 @@ const UploadCoursePage: React.FC = () => {
     localStorage.setItem('auditLogs', JSON.stringify(existingLogs.slice(0, 1000))); // Keep last 1000 logs
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    console.log('Submitting course data...');
+    console.log('Submitting course data to backend...');
     console.log('Is editing:', isEditing);
     console.log('Edit course ID:', editCourseId);
 
-    // Get instructor info
-    let instructorInfo;
-    if (useInstructor && selectedInstructorId) {
-      const instructor = instructors.find(f => f.id === selectedInstructorId);
-      if (instructor) {
-        instructorInfo = {
-          id: instructor.id,
-          name: instructor.name,
-          title: instructor.title,
-          image: instructor.image,
-          bio: instructor.bio,
-          email: instructor.email,
-          phone: instructor.phone,
-          expertise: instructor.expertise,
-          experience: instructor.experience,
-          socialLinks: instructor.socialLinks,
-          createdAt: instructor.createdAt
-        };
+    try {
+      // Get instructor info
+      let instructorId = 'instructor-1'; // Default instructor
+      if (useInstructor && selectedInstructorId) {
+        instructorId = selectedInstructorId;
       }
-    }
 
-    // Fallback to default instructor if no instructor selected
-    if (!instructorInfo) {
-      instructorInfo = {
-        id: 'instructor-1',
-        name: 'Demo Instructor',
-        title: 'Expert Educator',
-        image: 'https://images.pexels.com/photos/2182970/pexels-photo-2182970.jpeg',
-        bio: 'Experienced professional in the field.',
-        email: 'demo@forwardafrica.com',
-        expertise: ['General Education'],
-        experience: 10,
-        createdAt: new Date()
+      // Prepare course data for backend
+      const courseData = {
+        title,
+        description,
+        instructor_id: instructorId,
+        category_id: category,
+        thumbnail,
+        banner,
+        video_url: '', // Will be set by lessons
+        featured: isFeatured,
+        total_xp: lessons.length * 100
       };
-    }
 
-    const courseData = {
-      id: isEditing ? editCourseId : `course-${Date.now()}`,
-      title,
-      description,
-      category,
-      thumbnail,
-      banner,
-      comingSoon: isComingSoon,
-      featured: isFeatured,
-      instructorId: useInstructor ? selectedInstructorId : undefined,
-      releaseDate: isComingSoon ? releaseDate : undefined,
-      lessons: lessons.map((lesson, index) => ({
-        ...lesson,
-        id: `lesson-${index + 1}`,
-        duration: '10:00', // Default duration since we removed the field
-        xpPoints: 100
-      })),
-      totalXP: lessons.length * 100,
-      instructor: instructorInfo
-    };
+      console.log('Course data to save:', courseData);
 
-    console.log('Course data to save:', courseData);
+      // Create course in backend
+      const courseResponse = await fetch('http://localhost:3002/api/courses', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(courseData)
+      });
 
-    // Save to localStorage (in real app, this would be an API call)
-    const existingCourses = JSON.parse(localStorage.getItem('courses') || '[]');
-    console.log('Existing courses before save:', existingCourses);
+      if (!courseResponse.ok) {
+        const errorData = await courseResponse.json();
+        throw new Error(errorData.error || 'Failed to create course');
+      }
 
-    if (isEditing) {
-      const updatedCourses = existingCourses.map((c: any) =>
-        c.id === editCourseId ? courseData : c
-      );
-      localStorage.setItem('courses', JSON.stringify(updatedCourses));
-      console.log('Updated courses after edit:', updatedCourses);
-      logAuditEvent('course_updated', `Updated course: ${title}`);
-    } else {
-      existingCourses.push(courseData);
-      localStorage.setItem('courses', JSON.stringify(existingCourses));
-      console.log('Updated courses after add:', existingCourses);
+      const courseResult = await courseResponse.json();
+      const courseId = courseResult.id;
+
+      console.log('Course created with ID:', courseId);
+
+      // Create lessons for the course
+      for (let i = 0; i < lessons.length; i++) {
+        const lesson = lessons[i];
+        const lessonData = {
+          course_id: courseId,
+          title: lesson.title,
+          duration: '10:00',
+          thumbnail: lesson.thumbnail,
+          video_url: lesson.videoUrl,
+          description: lesson.description,
+          xp_points: 100,
+          order_index: i
+        };
+
+        const lessonResponse = await fetch('http://localhost:3002/api/lessons', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(lessonData)
+        });
+
+        if (!lessonResponse.ok) {
+          const errorData = await lessonResponse.json();
+          console.error('Failed to create lesson:', errorData);
+          // Continue with other lessons even if one fails
+        } else {
+          const lessonResult = await lessonResponse.json();
+          console.log('Lesson created with ID:', lessonResult.id);
+        }
+      }
+
+      console.log('Course and lessons created successfully');
       logAuditEvent('course_created', `Created new course: ${title}`);
+
+      // Navigate back to admin page
+      navigate('/admin');
+    } catch (error) {
+      console.error('Error creating course:', error);
+      alert('Failed to create course. Please try again.');
     }
-
-    // Force a storage event to trigger updates in other components
-    window.dispatchEvent(new Event('storage'));
-
-    navigate('/admin');
   };
 
   return (

@@ -165,6 +165,8 @@ app.get('/api/health', (req, res) => {
 // Database initialization endpoint
 app.post('/api/init-db', async (req, res) => {
   try {
+    console.log('🔧 Initializing database...');
+
     // Create users table if it doesn't exist
     await executeQuery(`
       CREATE TABLE IF NOT EXISTS users (
@@ -189,6 +191,289 @@ app.post('/api/init-db', async (req, res) => {
       )
     `);
 
+    // Create categories table if it doesn't exist
+    await executeQuery(`
+      CREATE TABLE IF NOT EXISTS categories (
+        id VARCHAR(36) PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        description TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Create instructors table if it doesn't exist
+    await executeQuery(`
+      CREATE TABLE IF NOT EXISTS instructors (
+        id VARCHAR(36) PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        image TEXT NOT NULL,
+        bio TEXT,
+        email VARCHAR(191) UNIQUE NOT NULL,
+        phone VARCHAR(50),
+        expertise JSON,
+        experience INT,
+        social_links JSON,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Create courses table if it doesn't exist
+    await executeQuery(`
+      CREATE TABLE IF NOT EXISTS courses (
+        id VARCHAR(36) PRIMARY KEY,
+        title VARCHAR(255) NOT NULL,
+        instructor_id VARCHAR(36) NOT NULL,
+        category_id VARCHAR(36) NOT NULL,
+        thumbnail TEXT NOT NULL,
+        banner TEXT NOT NULL,
+        video_url TEXT,
+        description TEXT NOT NULL,
+        featured BOOLEAN DEFAULT FALSE,
+        total_xp INT DEFAULT 0,
+        coming_soon BOOLEAN DEFAULT FALSE,
+        release_date DATE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (instructor_id) REFERENCES instructors(id) ON DELETE CASCADE,
+        FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
+      )
+    `);
+
+    // Create lessons table if it doesn't exist
+    await executeQuery(`
+      CREATE TABLE IF NOT EXISTS lessons (
+        id VARCHAR(36) PRIMARY KEY,
+        course_id VARCHAR(36) NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        duration VARCHAR(10) NOT NULL,
+        thumbnail TEXT NOT NULL,
+        video_url TEXT NOT NULL,
+        description TEXT NOT NULL,
+        xp_points INT DEFAULT 0,
+        order_index INT DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE
+      )
+    `);
+
+    // Create user_progress table if it doesn't exist
+    await executeQuery(`
+      CREATE TABLE IF NOT EXISTS user_progress (
+        id VARCHAR(36) PRIMARY KEY,
+        user_id VARCHAR(36) NOT NULL,
+        course_id VARCHAR(36) NOT NULL,
+        lesson_id VARCHAR(36),
+        completed BOOLEAN DEFAULT FALSE,
+        progress DECIMAL(5,2) DEFAULT 0,
+        xp_earned INT DEFAULT 0,
+        completed_lessons JSON,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE,
+        FOREIGN KEY (lesson_id) REFERENCES lessons(id) ON DELETE SET NULL
+      )
+    `);
+
+    // Create certificates table if it doesn't exist
+    await executeQuery(`
+      CREATE TABLE IF NOT EXISTS certificates (
+        id VARCHAR(36) PRIMARY KEY,
+        user_id VARCHAR(36) NOT NULL,
+        course_id VARCHAR(36) NOT NULL,
+        certificate_url TEXT NOT NULL,
+        verification_code VARCHAR(255) UNIQUE NOT NULL,
+        earned_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE
+      )
+    `);
+
+    // Create achievements table if it doesn't exist
+    await executeQuery(`
+      CREATE TABLE IF NOT EXISTS achievements (
+        id VARCHAR(36) PRIMARY KEY,
+        user_id VARCHAR(36) NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        description TEXT NOT NULL,
+        icon_url TEXT,
+        earned_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `);
+
+    // Create notifications table if it doesn't exist
+    await executeQuery(`
+      CREATE TABLE IF NOT EXISTS notifications (
+        id VARCHAR(36) PRIMARY KEY,
+        user_id VARCHAR(36) NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        message TEXT NOT NULL,
+        type ENUM('info', 'success', 'warning', 'error') DEFAULT 'info',
+        is_read BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `);
+
+    // Create community_groups table if it doesn't exist
+    await executeQuery(`
+      CREATE TABLE IF NOT EXISTS community_groups (
+        id VARCHAR(36) PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        description TEXT,
+        created_by VARCHAR(36) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `);
+
+    // Create group_members table if it doesn't exist
+    await executeQuery(`
+      CREATE TABLE IF NOT EXISTS group_members (
+        id VARCHAR(36) PRIMARY KEY,
+        group_id VARCHAR(36) NOT NULL,
+        user_id VARCHAR(36) NOT NULL,
+        role ENUM('member', 'moderator', 'admin') DEFAULT 'member',
+        joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (group_id) REFERENCES community_groups(id) ON DELETE CASCADE,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `);
+
+    // Create group_messages table if it doesn't exist
+    await executeQuery(`
+      CREATE TABLE IF NOT EXISTS group_messages (
+        id VARCHAR(36) PRIMARY KEY,
+        group_id VARCHAR(36) NOT NULL,
+        user_id VARCHAR(36) NOT NULL,
+        message TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (group_id) REFERENCES community_groups(id) ON DELETE CASCADE,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `);
+
+    // Create audit_logs table if it doesn't exist
+    await executeQuery(`
+      CREATE TABLE IF NOT EXISTS audit_logs (
+        id VARCHAR(36) PRIMARY KEY,
+        user_id VARCHAR(36),
+        action VARCHAR(255) NOT NULL,
+        resource_type VARCHAR(100),
+        resource_id VARCHAR(36),
+        details JSON,
+        ip_address VARCHAR(45),
+        user_agent TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+      )
+    `);
+
+    // Create user_sessions table if it doesn't exist
+    await executeQuery(`
+      CREATE TABLE IF NOT EXISTS user_sessions (
+        id VARCHAR(36) PRIMARY KEY,
+        user_id VARCHAR(36) NOT NULL,
+        ip_address VARCHAR(45),
+        user_agent TEXT,
+        device_type VARCHAR(50) DEFAULT 'desktop',
+        session_start TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        session_end TIMESTAMP NULL,
+        duration_seconds INT DEFAULT 0,
+        pages_visited JSON,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `);
+
+    // Create course_watch_time table if it doesn't exist
+    await executeQuery(`
+      CREATE TABLE IF NOT EXISTS course_watch_time (
+        id VARCHAR(36) PRIMARY KEY,
+        user_id VARCHAR(36) NOT NULL,
+        course_id VARCHAR(36) NOT NULL,
+        lesson_id VARCHAR(36),
+        watch_start TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        watch_end TIMESTAMP NULL,
+        duration_seconds INT DEFAULT 0,
+        progress_percentage DECIMAL(5,2) DEFAULT 0,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE,
+        FOREIGN KEY (lesson_id) REFERENCES lessons(id) ON DELETE SET NULL
+      )
+    `);
+
+    // Create page_views table if it doesn't exist
+    await executeQuery(`
+      CREATE TABLE IF NOT EXISTS page_views (
+        id VARCHAR(36) PRIMARY KEY,
+        user_id VARCHAR(36),
+        page_path VARCHAR(500) NOT NULL,
+        page_title VARCHAR(255),
+        session_id VARCHAR(36),
+        time_spent_seconds INT DEFAULT 0,
+        ip_address VARCHAR(45),
+        user_agent TEXT,
+        referrer VARCHAR(500),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+      )
+    `);
+
+    // Create user_engagement_metrics table if it doesn't exist
+    await executeQuery(`
+      CREATE TABLE IF NOT EXISTS user_engagement_metrics (
+        id VARCHAR(36) PRIMARY KEY,
+        user_id VARCHAR(36) NOT NULL,
+        date DATE NOT NULL,
+        daily_active_minutes INT DEFAULT 0,
+        courses_accessed JSON,
+        lessons_completed INT DEFAULT 0,
+        pages_visited INT DEFAULT 0,
+        login_count INT DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        UNIQUE KEY unique_user_date (user_id, date)
+      )
+    `);
+
+    // Insert default categories if they don't exist
+    const defaultCategories = [
+      { id: 'business', name: 'Business & Entrepreneurship' },
+      { id: 'technology', name: 'Technology & Innovation' },
+      { id: 'leadership', name: 'Leadership & Management' },
+      { id: 'finance', name: 'Finance & Investment' },
+      { id: 'marketing', name: 'Marketing & Sales' },
+      { id: 'personal-development', name: 'Personal Development' }
+    ];
+
+    for (const category of defaultCategories) {
+      await executeQuery(
+        'INSERT IGNORE INTO categories (id, name) VALUES (?, ?)',
+        [category.id, category.name]
+      );
+    }
+
+    // Insert default instructor if it doesn't exist
+    const [existingInstructor] = await executeQuery('SELECT id FROM instructors WHERE email = ?', ['demo@forwardafrica.com']);
+    if (!existingInstructor) {
+      await executeQuery(
+        'INSERT INTO instructors (id, name, title, image, bio, email, expertise, experience) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        [
+          'instructor-1',
+          'Demo Instructor',
+          'Expert Educator',
+          'https://images.pexels.com/photos/2182970/pexels-photo-2182970.jpeg',
+          'Experienced professional in the field with over 10 years of teaching experience.',
+          'demo@forwardafrica.com',
+          JSON.stringify(['General Education', 'Business', 'Technology']),
+          10
+        ]
+      );
+    }
+
     // Create a test user if it doesn't exist
     const [existingUser] = await executeQuery('SELECT id FROM users WHERE email = ?', ['admin@forwardafrica.com']);
 
@@ -200,17 +485,25 @@ app.post('/api/init-db', async (req, res) => {
       );
     }
 
+    console.log('✅ Database initialized successfully');
+
     res.json({
       status: 'OK',
       message: 'Database initialized successfully',
+      tablesCreated: [
+        'users', 'categories', 'instructors', 'courses', 'lessons',
+        'user_progress', 'certificates', 'achievements', 'notifications',
+        'community_groups', 'group_members', 'group_messages', 'audit_logs',
+        'user_sessions', 'course_watch_time', 'page_views', 'user_engagement_metrics'
+      ],
       testUser: {
         email: 'admin@forwardafrica.com',
         password: 'admin123'
       }
     });
   } catch (error) {
-    console.error('Database initialization error:', error);
-    res.status(500).json({ error: 'Failed to initialize database' });
+    console.error('❌ Database initialization error:', error);
+    res.status(500).json({ error: 'Failed to initialize database', details: error.message });
   }
 });
 
@@ -598,7 +891,39 @@ app.post('/api/courses', async (req, res) => {
 
     res.status(201).json({ id, message: 'Course created successfully' });
   } catch (error) {
+    console.error('Course creation error:', error);
     res.status(500).json({ error: 'Failed to create course' });
+  }
+});
+
+// Lessons API
+app.post('/api/lessons', async (req, res) => {
+  try {
+    const { course_id, title, duration, thumbnail, video_url, description, xp_points, order_index } = req.body;
+    const id = uuidv4();
+
+    const result = await executeQuery(
+      'INSERT INTO lessons (id, course_id, title, duration, thumbnail, video_url, description, xp_points, order_index) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [id, course_id, title, duration || '10:00', thumbnail, video_url, description, xp_points || 100, order_index || 0]
+    );
+
+    res.status(201).json({ id, message: 'Lesson created successfully' });
+  } catch (error) {
+    console.error('Lesson creation error:', error);
+    res.status(500).json({ error: 'Failed to create lesson' });
+  }
+});
+
+app.get('/api/lessons/:courseId', async (req, res) => {
+  try {
+    const lessons = await executeQuery(
+      'SELECT * FROM lessons WHERE course_id = ? ORDER BY order_index ASC',
+      [req.params.courseId]
+    );
+    res.json(lessons);
+  } catch (error) {
+    console.error('Error fetching lessons:', error);
+    res.status(500).json({ error: 'Failed to fetch lessons' });
   }
 });
 
@@ -621,6 +946,22 @@ app.get('/api/categories/:id', async (req, res) => {
     res.json(category);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch category' });
+  }
+});
+
+app.post('/api/categories', async (req, res) => {
+  try {
+    const { id, name, description } = req.body;
+
+    const result = await executeQuery(
+      'INSERT INTO categories (id, name, description) VALUES (?, ?, ?)',
+      [id, name, description || null]
+    );
+
+    res.status(201).json({ id, message: 'Category created successfully' });
+  } catch (error) {
+    console.error('Category creation error:', error);
+    res.status(500).json({ error: 'Failed to create category' });
   }
 });
 
