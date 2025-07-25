@@ -507,8 +507,25 @@ app.get('/api/categories/:id', async (req, res) => {
 app.get('/api/instructors', async (req, res) => {
   try {
     const instructors = await executeQuery('SELECT * FROM instructors ORDER BY name');
-    res.json(instructors);
+
+    // Transform database fields to frontend format
+    const transformedInstructors = instructors.map(instructor => ({
+      id: instructor.id,
+      name: instructor.name,
+      title: instructor.title,
+      image: instructor.image,
+      bio: instructor.bio,
+      email: instructor.email,
+      phone: instructor.phone,
+      expertise: Array.isArray(instructor.expertise) ? instructor.expertise : (instructor.expertise ? JSON.parse(instructor.expertise) : []),
+      experience: instructor.experience || 0,
+      socialLinks: typeof instructor.social_links === 'object' ? instructor.social_links : (instructor.social_links ? JSON.parse(instructor.social_links) : {}),
+      createdAt: new Date(instructor.created_at)
+    }));
+
+    res.json(transformedInstructors);
   } catch (error) {
+    console.error('Error fetching instructors:', error);
     res.status(500).json({ error: 'Failed to fetch instructors' });
   }
 });
@@ -519,8 +536,25 @@ app.get('/api/instructors/:id', async (req, res) => {
     if (!instructor) {
       return res.status(404).json({ error: 'Instructor not found' });
     }
-    res.json(instructor);
+
+    // Transform database fields to frontend format
+    const transformedInstructor = {
+      id: instructor.id,
+      name: instructor.name,
+      title: instructor.title,
+      image: instructor.image,
+      bio: instructor.bio,
+      email: instructor.email,
+      phone: instructor.phone,
+      expertise: Array.isArray(instructor.expertise) ? instructor.expertise : (instructor.expertise ? JSON.parse(instructor.expertise) : []),
+      experience: instructor.experience || 0,
+      socialLinks: typeof instructor.social_links === 'object' ? instructor.social_links : (instructor.social_links ? JSON.parse(instructor.social_links) : {}),
+      createdAt: new Date(instructor.created_at)
+    };
+
+    res.json(transformedInstructor);
   } catch (error) {
+    console.error('Error fetching instructor:', error);
     res.status(500).json({ error: 'Failed to fetch instructor' });
   }
 });
@@ -530,6 +564,8 @@ app.get('/api/instructors/:id/courses', async (req, res) => {
   try {
     const courses = await executeQuery(`
       SELECT c.*, i.name as instructor_name, i.title as instructor_title, i.image as instructor_image,
+             i.bio as instructor_bio, i.email as instructor_email, i.expertise as instructor_expertise,
+             i.experience as instructor_experience, i.social_links as instructor_social_links,
              cat.name as category_name
       FROM courses c
       JOIN instructors i ON c.instructor_id = i.id
@@ -538,17 +574,57 @@ app.get('/api/instructors/:id/courses', async (req, res) => {
       ORDER BY c.created_at DESC
     `, [req.params.id]);
 
+    // Transform courses to frontend format
+    const transformedCourses = courses.map(course => ({
+      id: course.id,
+      title: course.title,
+      instructorId: course.instructor_id,
+      category: course.category_name,
+      thumbnail: course.thumbnail,
+      banner: course.banner,
+      videoUrl: course.video_url,
+      description: course.description,
+      featured: course.featured,
+      totalXP: course.total_xp,
+      comingSoon: course.coming_soon,
+      releaseDate: course.release_date,
+              instructor: {
+          id: course.instructor_id,
+          name: course.instructor_name,
+          title: course.instructor_title,
+          image: course.instructor_image,
+          bio: course.instructor_bio,
+          email: course.instructor_email,
+          expertise: Array.isArray(course.instructor_expertise) ? course.instructor_expertise : (course.instructor_expertise ? JSON.parse(course.instructor_expertise) : []),
+          experience: course.instructor_experience || 0,
+          socialLinks: typeof course.instructor_social_links === 'object' ? course.instructor_social_links : (course.instructor_social_links ? JSON.parse(course.instructor_social_links) : {}),
+          createdAt: new Date()
+        }
+    }));
+
     // Get lessons for each course
-    for (let course of courses) {
+    for (let course of transformedCourses) {
       const lessons = await executeQuery(
         'SELECT * FROM lessons WHERE course_id = ? ORDER BY order_index ASC',
         [course.id]
       );
-      course.lessons = lessons;
+
+      // Transform lessons to frontend format
+      course.lessons = lessons.map(lesson => ({
+        id: lesson.id,
+        title: lesson.title,
+        duration: lesson.duration,
+        thumbnail: lesson.thumbnail,
+        videoUrl: lesson.video_url,
+        description: lesson.description,
+        xpPoints: lesson.xp_points,
+        orderIndex: lesson.order_index
+      }));
     }
 
-    res.json(courses);
+    res.json(transformedCourses);
   } catch (error) {
+    console.error('Error fetching instructor courses:', error);
     res.status(500).json({ error: 'Failed to fetch courses for instructor' });
   }
 });
