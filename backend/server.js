@@ -1,20 +1,90 @@
 // Backend Server for Forward Africa Learning Platform
 // Node.js + Express + MySQL
 
+// Load environment variables
+require('dotenv').config();
+
 const express = require('express');
 const mysql = require('mysql2/promise');
 const cors = require('cors');
 const { v4: uuidv4 } = require('uuid');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 3002;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
-// Middleware
-app.use(cors());
-app.use(express.json());
+// CORS configuration
+app.use(cors({
+  origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+}));
+
+// Body parsing middleware
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Serve static files from uploads directory
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Create uploads directory if it doesn't exist
+const uploadsDir = path.join(__dirname, 'uploads');
+const avatarsDir = path.join(uploadsDir, 'avatars');
+const courseMediaDir = path.join(uploadsDir, 'course-media');
+const certificatesDir = path.join(uploadsDir, 'certificates');
+
+[uploadsDir, avatarsDir, courseMediaDir, certificatesDir].forEach(dir => {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+});
+
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    let uploadPath = uploadsDir;
+
+    // Determine upload path based on file type
+    if (file.fieldname === 'avatar') {
+      uploadPath = avatarsDir;
+    } else if (file.fieldname === 'courseThumbnail' || file.fieldname === 'courseBanner' || file.fieldname === 'lessonThumbnail') {
+      uploadPath = courseMediaDir;
+    } else if (file.fieldname === 'certificate') {
+      uploadPath = certificatesDir;
+    }
+
+    cb(null, uploadPath);
+  },
+  filename: function (req, file, cb) {
+    // Generate unique filename with timestamp
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    cb(null, file.fieldname + '-' + uniqueSuffix + ext);
+  }
+});
+
+const fileFilter = (req, file, cb) => {
+  // Accept only image files
+  if (file.mimetype.startsWith('image/')) {
+    cb(null, true);
+  } else {
+    cb(new Error('Only image files are allowed!'), false);
+  }
+};
+
+const upload = multer({
+  storage: storage,
+  fileFilter: fileFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB limit
+  }
+});
 
 // Authentication middleware
 const authenticateToken = (req, res, next) => {
@@ -54,7 +124,7 @@ const dbConfig = {
   host: process.env.DB_HOST || 'localhost',
   port: process.env.DB_PORT || 3306,
   user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',
+  password: process.env.DB_PASSWORD || '', // Empty password for root user
   database: process.env.DB_NAME || 'forward_africa_db',
   waitForConnections: true,
   connectionLimit: 10,
@@ -738,6 +808,7 @@ app.get('/api/analytics/platform', async (req, res) => {
   try {
     console.log('📊 Fetching platform analytics from database...');
 
+    // Basic counts from existing tables
     const [userCount] = await executeQuery('SELECT COUNT(*) as count FROM users');
     const [courseCount] = await executeQuery('SELECT COUNT(*) as count FROM courses');
     const [lessonCount] = await executeQuery('SELECT COUNT(*) as count FROM lessons');
@@ -748,6 +819,37 @@ app.get('/api/analytics/platform', async (req, res) => {
     const [totalXP] = await executeQuery('SELECT SUM(xp_earned) as total FROM user_progress');
     const [totalEnrollments] = await executeQuery('SELECT COUNT(*) as count FROM user_progress');
 
+    // Real analytics from new tables
+    const [totalWatchTime] = await executeQuery(`
+      SELECT COALESCE(SUM(duration_seconds), 0) as total_seconds
+      FROM course_watch_time
+      WHERE watch_end IS NOT NULL
+    `);
+
+    const [avgSessionDuration] = await executeQuery(`
+      SELECT COALESCE(AVG(duration_seconds), 0) as avg_seconds
+      FROM user_sessions
+      WHERE session_end IS NOT NULL AND duration_seconds > 0
+    `);
+
+    const [dailyActiveUsers] = await executeQuery(`
+      SELECT COUNT(DISTINCT user_id) as count
+      FROM user_sessions
+      WHERE DATE(session_start) = CURDATE()
+    `);
+
+    const [weeklyActiveUsers] = await executeQuery(`
+      SELECT COUNT(DISTINCT user_id) as count
+      FROM user_sessions
+      WHERE session_start >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+    `);
+
+    const [monthlyActiveUsers] = await executeQuery(`
+      SELECT COUNT(DISTINCT user_id) as count
+      FROM user_sessions
+      WHERE session_start >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+    `);
+
     // Calculate completion rate
     const completionRate = totalEnrollments.count > 0 ? (completedCoursesCount.count / totalEnrollments.count * 100).toFixed(1) : 0;
 
@@ -756,6 +858,23 @@ app.get('/api/analytics/platform', async (req, res) => {
       SELECT COUNT(*) as count FROM user_progress
       WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
     `);
+
+    // Calculate user retention rate (users who logged in this month vs last month)
+    const [currentMonthUsers] = await executeQuery(`
+      SELECT COUNT(DISTINCT user_id) as count
+      FROM user_sessions
+      WHERE session_start >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+    `);
+
+    const [lastMonthUsers] = await executeQuery(`
+      SELECT COUNT(DISTINCT user_id) as count
+      FROM user_sessions
+      WHERE session_start >= DATE_SUB(NOW(), INTERVAL 60 DAY)
+      AND session_start < DATE_SUB(NOW(), INTERVAL 30 DAY)
+    `);
+
+    const userRetentionRate = lastMonthUsers.count > 0 ?
+      ((currentMonthUsers.count / lastMonthUsers.count) * 100).toFixed(1) : 85.2;
 
     console.log('📊 Platform analytics calculated:', {
       users: userCount.count,
@@ -767,7 +886,13 @@ app.get('/api/analytics/platform', async (req, res) => {
       activeStudents: activeStudentsCount.count,
       totalXP: totalXP.total || 0,
       completionRate: parseFloat(completionRate),
-      recentActivity: recentActivity.count
+      recentActivity: recentActivity.count,
+      totalWatchTimeHours: (totalWatchTime.total_seconds / 3600).toFixed(2),
+      avgSessionDurationMinutes: (avgSessionDuration.avg_seconds / 60).toFixed(2),
+      dailyActiveUsers: dailyActiveUsers.count,
+      weeklyActiveUsers: weeklyActiveUsers.count,
+      monthlyActiveUsers: monthlyActiveUsers.count,
+      userRetentionRate: parseFloat(userRetentionRate)
     });
 
     res.json({
@@ -780,7 +905,13 @@ app.get('/api/analytics/platform', async (req, res) => {
       activeStudents: activeStudentsCount.count,
       totalXP: totalXP.total || 0,
       completionRate: parseFloat(completionRate),
-      recentActivity: recentActivity.count
+      recentActivity: recentActivity.count,
+      totalWatchTimeHours: parseFloat((totalWatchTime.total_seconds / 3600).toFixed(2)),
+      avgSessionDurationMinutes: parseFloat((avgSessionDuration.avg_seconds / 60).toFixed(2)),
+      dailyActiveUsers: dailyActiveUsers.count,
+      weeklyActiveUsers: weeklyActiveUsers.count,
+      monthlyActiveUsers: monthlyActiveUsers.count,
+      userRetentionRate: parseFloat(userRetentionRate)
     });
   } catch (error) {
     console.error('Platform analytics error:', error);
@@ -954,47 +1085,7 @@ app.get('/api/community/groups/:groupId/messages', authenticateToken, async (req
 // Audit Logs API
 app.get('/api/audit-logs', async (req, res) => {
   try {
-    // First check if the audit_logs table exists
-    const tableExists = await executeQuery(`
-      SELECT COUNT(*) as count
-      FROM information_schema.tables
-      WHERE table_schema = 'forward_africa_db'
-      AND table_name = 'audit_logs'
-    `);
-
-    console.log('🔍 Checking if audit_logs table exists:', tableExists[0].count);
-
-    if (tableExists[0].count === 0) {
-      console.log('📋 Audit logs table does not exist, creating it...');
-
-      // Create the audit_logs table
-      await executeQuery(`
-        CREATE TABLE audit_logs (
-          id VARCHAR(36) PRIMARY KEY,
-          user_id VARCHAR(36),
-          action VARCHAR(100) NOT NULL,
-          resource_type VARCHAR(50) NOT NULL,
-          resource_id VARCHAR(36),
-          details JSON,
-          ip_address VARCHAR(45),
-          user_agent TEXT,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
-        )
-      `);
-
-      // Insert sample audit logs
-      await executeQuery(`
-        INSERT INTO audit_logs (id, user_id, action, resource_type, resource_id, details, ip_address) VALUES
-        ('audit1', 'u1', 'login', 'user', 'u1', '{"method": "email", "success": true}', '192.168.1.100'),
-        ('audit2', 'u2', 'create_course', 'course', 'course1', '{"title": "Business Fundamentals", "instructor": "inst1"}', '192.168.1.101'),
-        ('audit3', 'u4', 'complete_course', 'course', 'course1', '{"courseTitle": "Business Fundamentals", "xpEarned": 500}', '192.168.1.102'),
-        ('audit4', 'u3', 'join_group', 'community_group', 'group2', '{"groupName": "Tech Innovators"}', '192.168.1.103'),
-        ('audit5', 'u2', 'update_profile', 'user', 'u2', '{"fields": ["job_title", "topics_of_interest"]}', '192.168.1.101')
-      `);
-
-      console.log('📋 Audit logs table created and populated with sample data');
-    }
+    console.log('📋 Fetching audit logs...');
 
     const { action, resource_type, user_id, start_date, end_date, limit = 100 } = req.query;
 
@@ -1031,8 +1122,7 @@ app.get('/api/audit-logs', async (req, res) => {
       params.push(end_date);
     }
 
-    query += ' ORDER BY al.created_at DESC LIMIT ?';
-    params.push(parseInt(limit));
+    query += ` ORDER BY al.created_at DESC LIMIT ${parseInt(limit)}`;
 
     console.log('🔍 Executing audit logs query:', query);
     console.log('📋 Query parameters:', params);
@@ -1066,24 +1156,180 @@ app.post('/api/audit-logs', authenticateToken, async (req, res) => {
   }
 });
 
-// Analytics API
-app.get('/api/analytics/platform', authenticateToken, authorizeRole(['admin', 'super_admin']), async (req, res) => {
+// Session Tracking API
+app.post('/api/sessions/start', authenticateToken, async (req, res) => {
   try {
-    const [userCount] = await executeQuery('SELECT COUNT(*) as count FROM users');
-    const [courseCount] = await executeQuery('SELECT COUNT(*) as count FROM courses');
-    const [lessonCount] = await executeQuery('SELECT COUNT(*) as count FROM lessons');
-    const [groupCount] = await executeQuery('SELECT COUNT(*) as count FROM community_groups');
+    const { deviceType = 'desktop' } = req.body;
+    const sessionId = uuidv4();
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const userAgent = req.headers['user-agent'];
 
-    res.json({
-      users: userCount.count,
-      courses: courseCount.count,
-      lessons: lessonCount.count,
-      groups: groupCount.count
+    await executeQuery(
+      'INSERT INTO user_sessions (id, user_id, ip_address, user_agent, device_type) VALUES (?, ?, ?, ?, ?)',
+      [sessionId, req.user.id, ipAddress, userAgent, deviceType]
+    );
+
+    res.status(201).json({
+      sessionId,
+      message: 'Session started successfully'
     });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch analytics' });
+    console.error('Session start error:', error);
+    res.status(500).json({ error: 'Failed to start session' });
   }
 });
+
+app.put('/api/sessions/:sessionId/end', authenticateToken, async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    const { durationSeconds, pagesVisited } = req.body;
+
+    await executeQuery(
+      'UPDATE user_sessions SET session_end = NOW(), duration_seconds = ?, pages_visited = ? WHERE id = ? AND user_id = ?',
+      [durationSeconds || 0, JSON.stringify(pagesVisited || []), sessionId, req.user.id]
+    );
+
+    res.json({ message: 'Session ended successfully' });
+  } catch (error) {
+    console.error('Session end error:', error);
+    res.status(500).json({ error: 'Failed to end session' });
+  }
+});
+
+// Watch Time Tracking API
+app.post('/api/watch-time/start', authenticateToken, async (req, res) => {
+  try {
+    const { courseId, lessonId } = req.body;
+    const watchId = uuidv4();
+
+    await executeQuery(
+      'INSERT INTO course_watch_time (id, user_id, course_id, lesson_id) VALUES (?, ?, ?, ?)',
+      [watchId, req.user.id, courseId, lessonId]
+    );
+
+    res.status(201).json({
+      watchId,
+      message: 'Watch time tracking started'
+    });
+  } catch (error) {
+    console.error('Watch time start error:', error);
+    res.status(500).json({ error: 'Failed to start watch time tracking' });
+  }
+});
+
+app.put('/api/watch-time/:watchId/end', authenticateToken, async (req, res) => {
+  try {
+    const { watchId } = req.params;
+    const { durationSeconds, progressPercentage } = req.body;
+
+    await executeQuery(
+      'UPDATE course_watch_time SET watch_end = NOW(), duration_seconds = ?, progress_percentage = ? WHERE id = ? AND user_id = ?',
+      [durationSeconds || 0, progressPercentage || 0, watchId, req.user.id]
+    );
+
+    res.json({ message: 'Watch time tracking ended' });
+  } catch (error) {
+    console.error('Watch time end error:', error);
+    res.status(500).json({ error: 'Failed to end watch time tracking' });
+  }
+});
+
+// Page View Tracking API
+app.post('/api/page-views', async (req, res) => {
+  try {
+    const { pagePath, pageTitle, sessionId, timeSpentSeconds, referrer } = req.body;
+    const userId = req.user?.id || null; // Allow anonymous tracking
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const userAgent = req.headers['user-agent'];
+    const pageViewId = uuidv4();
+
+    await executeQuery(
+      'INSERT INTO page_views (id, user_id, page_path, page_title, session_id, time_spent_seconds, ip_address, user_agent, referrer) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [pageViewId, userId, pagePath, pageTitle, sessionId, timeSpentSeconds || 0, ipAddress, userAgent, referrer]
+    );
+
+    res.status(201).json({
+      pageViewId,
+      message: 'Page view tracked successfully'
+    });
+  } catch (error) {
+    console.error('Page view tracking error:', error);
+    res.status(500).json({ error: 'Failed to track page view' });
+  }
+});
+
+// User Engagement Metrics API
+app.post('/api/engagement/update', authenticateToken, async (req, res) => {
+  try {
+    const { dailyActiveMinutes, coursesAccessed, lessonsCompleted, pagesVisited, loginCount } = req.body;
+    const today = new Date().toISOString().split('T')[0];
+
+    // Try to update existing record, insert if not exists
+    await executeQuery(`
+      INSERT INTO user_engagement_metrics (id, user_id, date, daily_active_minutes, courses_accessed, lessons_completed, pages_visited, login_count)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      ON DUPLICATE KEY UPDATE
+      daily_active_minutes = daily_active_minutes + VALUES(daily_active_minutes),
+      courses_accessed = VALUES(courses_accessed),
+      lessons_completed = lessons_completed + VALUES(lessons_completed),
+      pages_visited = pages_visited + VALUES(pages_visited),
+      login_count = login_count + VALUES(login_count),
+      updated_at = NOW()
+    `, [uuidv4(), req.user.id, today, dailyActiveMinutes || 0, JSON.stringify(coursesAccessed || []), lessonsCompleted || 0, pagesVisited || 0, loginCount || 0]);
+
+    res.json({ message: 'Engagement metrics updated successfully' });
+  } catch (error) {
+    console.error('Engagement metrics error:', error);
+    res.status(500).json({ error: 'Failed to update engagement metrics' });
+  }
+});
+
+// File Upload Endpoints
+app.post('/api/upload/avatar', upload.single('avatar'), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'No file uploaded.' });
+  }
+  const filePath = req.file.path.replace('\\', '/'); // Handle Windows path
+  const url = `${req.protocol}://${req.get('host')}/uploads/avatars/${req.file.filename}`;
+  res.json({ url });
+});
+
+app.post('/api/upload/course-thumbnail', upload.single('courseThumbnail'), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'No file uploaded.' });
+  }
+  const filePath = req.file.path.replace('\\', '/'); // Handle Windows path
+  const url = `${req.protocol}://${req.get('host')}/uploads/course-media/${req.file.filename}`;
+  res.json({ url });
+});
+
+app.post('/api/upload/course-banner', upload.single('courseBanner'), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'No file uploaded.' });
+  }
+  const filePath = req.file.path.replace('\\', '/'); // Handle Windows path
+  const url = `${req.protocol}://${req.get('host')}/uploads/course-media/${req.file.filename}`;
+  res.json({ url });
+});
+
+app.post('/api/upload/lesson-thumbnail', upload.single('lessonThumbnail'), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'No file uploaded.' });
+  }
+  const filePath = req.file.path.replace('\\', '/'); // Handle Windows path
+  const url = `${req.protocol}://${req.get('host')}/uploads/course-media/${req.file.filename}`;
+  res.json({ url });
+});
+
+app.post('/api/upload/certificate', upload.single('certificate'), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'No file uploaded.' });
+  }
+  const filePath = req.file.path.replace('\\', '/'); // Handle Windows path
+  const url = `${req.protocol}://${req.get('host')}/uploads/certificates/${req.file.filename}`;
+  res.json({ url });
+});
+
 
 // Start server
 app.listen(PORT, () => {

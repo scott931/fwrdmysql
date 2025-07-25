@@ -4,6 +4,7 @@ import Button from '../components/ui/Button';
 import { useNavigate } from '../lib/router';
 import { useAuth } from '../contexts/AuthContext';
 import { useUserProgress, useCertificates } from '../hooks/useDatabase';
+import ImageUpload from '../components/ui/ImageUpload';
 
 const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
@@ -981,36 +982,13 @@ const ProfilePage: React.FC = () => {
 
             <form onSubmit={handleEditProfile} className="space-y-4">
               {/* Profile Image */}
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Profile Image
-                </label>
-                <div className="space-y-3">
-                  <input
-                    type="url"
-                    value={editProfileForm.avatar_url}
-                    onChange={(e) => setEditProfileForm(prev => ({ ...prev, avatar_url: e.target.value }))}
-                    className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500"
-                    placeholder="https://example.com/avatar.jpg"
-                  />
-                  <div className="text-sm text-gray-400">
-                    Or use a default avatar by leaving this field empty
-                  </div>
-                  {editProfileForm.avatar_url && (
-                    <div className="mt-2">
-                      <p className="text-sm text-gray-400 mb-2">Preview:</p>
-                      <img
-                        src={editProfileForm.avatar_url}
-                        alt="Preview"
-                        className="w-16 h-16 rounded-full object-cover border-2 border-gray-600"
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none';
-                        }}
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
+              <ImageUpload
+                onImageUpload={(url) => setEditProfileForm(prev => ({ ...prev, avatar_url: url }))}
+                currentImage={editProfileForm.avatar_url}
+                uploadType="avatar"
+                label="Profile Image"
+                previewSize="md"
+              />
 
               {/* Full Name */}
               <div>

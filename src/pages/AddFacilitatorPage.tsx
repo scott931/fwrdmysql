@@ -3,6 +3,7 @@ import { ArrowLeft, Save, User, Mail, Phone, Globe, Plus, X } from 'lucide-react
 import Button from '../components/ui/Button';
 import { useNavigate, useSearchParams } from '../lib/router';
 import { Instructor } from '../types';
+import ImageUpload from '../components/ui/ImageUpload';
 
 const AddInstructorPage: React.FC = () => {
   const navigate = useNavigate();
@@ -217,30 +218,14 @@ const AddInstructorPage: React.FC = () => {
 
             {/* Profile Image and Experience */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Profile Image URL *
-                </label>
-                <div className="flex space-x-2">
-                  <input
-                    type="url"
-                    value={formData.image}
-                    onChange={(e) => setFormData(prev => ({ ...prev, image: e.target.value }))}
-                    className="flex-1 px-4 py-3 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-red-500"
-                    placeholder="Enter image URL"
-                    required
-                  />
-                  {formData.image && (
-                    <div className="w-12 h-12 rounded-full overflow-hidden">
-                      <img
-                        src={formData.image}
-                        alt="Profile preview"
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
+              <ImageUpload
+                onImageUpload={(url) => setFormData(prev => ({ ...prev, image: url }))}
+                currentImage={formData.image}
+                uploadType="avatar"
+                label="Profile Image"
+                previewSize="sm"
+                required
+              />
 
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">

@@ -670,7 +670,7 @@ const SecuritySettingsPage: React.FC = () => {
                           </span>
                         </td>
                         <td className="px-4 py-4 text-sm text-gray-300 max-w-md truncate">
-                          {log.details}
+                          {typeof log.details === 'object' ? JSON.stringify(log.details) : log.details || 'N/A'}
                         </td>
                       </tr>
                     ))}

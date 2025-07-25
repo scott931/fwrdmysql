@@ -105,8 +105,9 @@ export const authService = {
       throw new Error(error.error || 'Login failed');
     }
 
-    const data: AuthResponse = await response.json();
+        const data: AuthResponse = await response.json();
     authService.setAuthData(data.token, data.user);
+
     return data;
   },
 

@@ -4,6 +4,7 @@ import Button from '../components/ui/Button';
 import { useNavigate, useSearchParams } from '../lib/router';
 import { courses as mockCourses, categories } from '../data/mockData';
 import { Instructor } from '../types';
+import ImageUpload from '../components/ui/ImageUpload';
 
 interface LessonForm {
   title: string;
@@ -415,55 +416,23 @@ const UploadCoursePage: React.FC = () => {
 
             {/* Course Images */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Thumbnail Image URL
-                </label>
-                <div className="flex space-x-2">
-                  <input
-                    type="url"
-                    value={thumbnail}
-                    onChange={(e) => setThumbnail(e.target.value)}
-                    className="flex-1 px-4 py-3 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-red-500"
-                    placeholder="Enter thumbnail URL"
-                    required
-                  />
-                  {thumbnail && (
-                    <div className="w-12 h-12 rounded overflow-hidden">
-                      <img
-                        src={thumbnail}
-                        alt="Thumbnail preview"
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
+              <ImageUpload
+                onImageUpload={setThumbnail}
+                currentImage={thumbnail}
+                uploadType="courseThumbnail"
+                label="Course Thumbnail"
+                previewSize="sm"
+                required
+              />
 
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Banner Image URL
-                </label>
-                <div className="flex space-x-2">
-                  <input
-                    type="url"
-                    value={banner}
-                    onChange={(e) => setBanner(e.target.value)}
-                    className="flex-1 px-4 py-3 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-red-500"
-                    placeholder="Enter banner URL"
-                    required
-                  />
-                  {banner && (
-                    <div className="w-12 h-12 rounded overflow-hidden">
-                      <img
-                        src={banner}
-                        alt="Banner preview"
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
+              <ImageUpload
+                onImageUpload={setBanner}
+                currentImage={banner}
+                uploadType="courseBanner"
+                label="Course Banner"
+                previewSize="sm"
+                required
+              />
             </div>
 
             {/* Course Settings */}
@@ -569,30 +538,14 @@ const UploadCoursePage: React.FC = () => {
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-300 mb-2">
-                            Thumbnail URL
-                          </label>
-                          <div className="flex space-x-2">
-                            <input
-                              type="url"
-                              value={lesson.thumbnail}
-                              onChange={(e) => updateLesson(index, 'thumbnail', e.target.value)}
-                              className="flex-1 px-4 py-3 bg-gray-600 border border-gray-500 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-red-500"
-                              placeholder="Enter thumbnail URL"
-                              required
-                            />
-                            {lesson.thumbnail && (
-                              <div className="w-12 h-12 rounded overflow-hidden">
-                                <img
-                                  src={lesson.thumbnail}
-                                  alt="Lesson thumbnail preview"
-                                  className="w-full h-full object-cover"
-                                />
-                              </div>
-                            )}
-                          </div>
-                        </div>
+                        <ImageUpload
+                          onImageUpload={(url) => updateLesson(index, 'thumbnail', url)}
+                          currentImage={lesson.thumbnail}
+                          uploadType="lessonThumbnail"
+                          label="Lesson Thumbnail"
+                          previewSize="sm"
+                          required
+                        />
 
                         <div>
                           <label className="block text-sm font-medium text-gray-300 mb-2 flex items-center">
