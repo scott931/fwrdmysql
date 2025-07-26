@@ -27,15 +27,20 @@
       "static/chunks/main.js",
       "static/chunks/pages/admin.js"
     ],
-    "/admin/manage-users": [
+    "/admin/communication-center": [
       "static/chunks/webpack.js",
       "static/chunks/main.js",
-      "static/chunks/pages/admin/manage-users.js"
+      "static/chunks/pages/admin/communication-center.js"
     ],
-    "/admin/security-center": [
+    "/admin/security-settings": [
       "static/chunks/webpack.js",
       "static/chunks/main.js",
-      "static/chunks/pages/admin/security-center.js"
+      "static/chunks/pages/admin/security-settings.js"
+    ],
+    "/admin/upload-course": [
+      "static/chunks/webpack.js",
+      "static/chunks/main.js",
+      "static/chunks/pages/admin/upload-course.js"
     ]
   },
   "ampFirstPages": []

@@ -5,16 +5,22 @@
       "static/chunks/src_pages_AdminPage_tsx.js"
     ]
   },
-  "pages\\admin\\manage-users.tsx -> ../../src/pages/ManageUsersPage": {
-    "id": "pages\\admin\\manage-users.tsx -> ../../src/pages/ManageUsersPage",
+  "pages\\admin\\communication-center.tsx -> ../../src/pages/CommunicationCenterPage": {
+    "id": "pages\\admin\\communication-center.tsx -> ../../src/pages/CommunicationCenterPage",
     "files": [
-      "static/chunks/src_pages_ManageUsersPage_tsx.js"
+      "static/chunks/src_pages_CommunicationCenterPage_tsx.js"
     ]
   },
-  "pages\\admin\\security-center.tsx -> ../../src/pages/SecurityCenterPage": {
-    "id": "pages\\admin\\security-center.tsx -> ../../src/pages/SecurityCenterPage",
+  "pages\\admin\\security-settings.tsx -> ../../src/pages/SecuritySettingsPage": {
+    "id": "pages\\admin\\security-settings.tsx -> ../../src/pages/SecuritySettingsPage",
     "files": [
-      "static/chunks/src_pages_SecurityCenterPage_tsx.js"
+      "static/chunks/src_pages_SecuritySettingsPage_tsx.js"
+    ]
+  },
+  "pages\\admin\\upload-course.tsx -> ../../src/pages/UploadCoursePage": {
+    "id": "pages\\admin\\upload-course.tsx -> ../../src/pages/UploadCoursePage",
+    "files": [
+      "static/chunks/src_pages_UploadCoursePage_tsx.js"
     ]
   }
 }

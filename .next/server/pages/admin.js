@@ -341,17 +341,6 @@ module.exports = require("lodash/max");
 
 /***/ }),
 
-/***/ "lodash/maxBy":
-/*!*******************************!*\
-  !*** external "lodash/maxBy" ***!
-  \*******************************/
-/***/ ((module) => {
-
-"use strict";
-module.exports = require("lodash/maxBy");
-
-/***/ }),
-
 /***/ "lodash/memoize":
 /*!*********************************!*\
   !*** external "lodash/memoize" ***!
@@ -371,17 +360,6 @@ module.exports = require("lodash/memoize");
 
 "use strict";
 module.exports = require("lodash/min");
-
-/***/ }),
-
-/***/ "lodash/minBy":
-/*!*******************************!*\
-  !*** external "lodash/minBy" ***!
-  \*******************************/
-/***/ ((module) => {
-
-"use strict";
-module.exports = require("lodash/minBy");
 
 /***/ }),
 

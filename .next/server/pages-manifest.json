@@ -2,8 +2,8 @@
   "/_app": "pages/_app.js",
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
-  "/admin/create-user": "pages/admin/create-user.js",
   "/admin": "pages/admin.js",
-  "/admin/manage-users": "pages/admin/manage-users.js",
-  "/admin/security-center": "pages/admin/security-center.js"
+  "/admin/communication-center": "pages/admin/communication-center.js",
+  "/admin/security-settings": "pages/admin/security-settings.js",
+  "/admin/upload-course": "pages/admin/upload-course.js"
 }

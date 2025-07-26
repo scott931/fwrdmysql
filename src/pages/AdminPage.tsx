@@ -338,6 +338,14 @@ const AdminPage: React.FC = () => {
     revenue: 0 // No revenue tracking yet
   }));
 
+  // Function to clean up course title
+  const cleanCourseTitle = (title: string) => {
+    if (!title) return 'Untitled Course';
+    // Remove any numeric IDs that might be appended
+    const cleanTitle = title.replace(/\s+\d{10,}$/, ''); // Remove trailing long numbers
+    return cleanTitle || 'Untitled Course';
+  };
+
   const topPerformingCourses = (detailedStats?.topCourses || courses
     .map((course: Course) => ({
       ...course,
@@ -347,6 +355,7 @@ const AdminPage: React.FC = () => {
     }))
     .slice(0, 5)).map((course: any) => ({
       ...course,
+      title: cleanCourseTitle(course.title),
       instructor: course.instructor || {
         name: (course as any).instructor_name || 'Unknown Instructor',
         title: (course as any).instructor_title || 'Instructor'
@@ -1225,25 +1234,44 @@ const AdminPage: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               {/* Course Categories Distribution */}
               <div className="bg-gray-800 rounded-lg p-6">
-                <h3 className="text-white text-lg font-semibold mb-4">Course Distribution by Category</h3>
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h3 className="text-white text-xl font-bold mb-1">Course Distribution by Category</h3>
+                    <p className="text-gray-400 text-sm">Number of courses across different categories</p>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <BarChart3 className="h-6 w-6 text-blue-400" />
+                    <span className="text-blue-400 text-sm font-medium">Analytics</span>
+                  </div>
+                </div>
                 <ResponsiveContainer width="100%" height={300}>
-                  <PieChart>
-                    <Pie
-                      data={categoryData}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ name, value }) => `${name}: ${value}`}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="courses"
-                    >
+                  <BarChart data={categoryData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                    <XAxis
+                      dataKey="name"
+                      tick={{ fill: '#9CA3AF', fontSize: 12 }}
+                      axisLine={{ stroke: '#374151' }}
+                      tickLine={{ stroke: '#374151' }}
+                    />
+                    <YAxis
+                      tick={{ fill: '#9CA3AF', fontSize: 12 }}
+                      axisLine={{ stroke: '#374151' }}
+                      tickLine={{ stroke: '#374151' }}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: '#374151',
+                        border: 'none',
+                        borderRadius: '8px',
+                        color: 'white'
+                      }}
+                    />
+                    <Bar dataKey="courses" fill="#8884d8" radius={[4, 4, 0, 0]}>
                       {categoryData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
+                    </Bar>
+                  </BarChart>
                 </ResponsiveContainer>
               </div>
 
@@ -1296,70 +1324,82 @@ const AdminPage: React.FC = () => {
             </div>
 
             {/* Top Performing Courses */}
-            <div className="bg-gray-800 rounded-lg p-6">
+            <div className="bg-gray-800 rounded-lg p-6 ml-12">
               <h3 className="text-white text-lg font-semibold mb-4">Top Performing Courses</h3>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-700">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Course</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Enrollments</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Rating</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Revenue</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Completion</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-700">
-                    {topPerformingCourses && topPerformingCourses.length > 0 ? topPerformingCourses.map((course: any, index: number) => (
-                      <tr key={course.id}>
-                        <td className="px-4 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <img
-                              src={course.thumbnail || '/placeholder-course.jpg'}
-                              alt={course.title || 'Course'}
-                              className="h-10 w-10 rounded-lg object-cover mr-3"
-                              onError={(e) => {
-                                e.currentTarget.src = '/placeholder-course.jpg';
-                              }}
-                            />
-                            <div>
-                              <div className="text-sm font-medium text-white">{course.title}</div>
-                              <div className="text-sm text-gray-400">
-                                {course.instructor?.name || (course as any).instructor_name || 'Unknown Instructor'}
+              <div className="overflow-x-auto -mx-6 sm:mx-0">
+                <div className="min-w-full inline-block align-middle">
+                  <div className="overflow-hidden">
+                    <table className="w-full table-fixed border-collapse" style={{ minHeight: '80px' }}>
+                    <thead className="bg-gray-700">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-1/2">Course</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-1/8">Enrollments</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-1/8">Rating</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-1/8">Revenue</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-1/8">Completion</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-700">
+                      {topPerformingCourses && topPerformingCourses.length > 0 ? topPerformingCourses.map((course: any, index: number) => (
+                        <tr key={course.id} className="min-h-[80px]">
+                          <td className="px-4 py-4 align-top">
+                            <div className="flex items-start space-x-3 min-w-0 pr-2">
+                              <img
+                                src={course.thumbnail || '/placeholder-course.jpg'}
+                                alt={course.title || 'Course'}
+                                className="h-10 w-10 rounded-lg object-cover flex-shrink-0"
+                                onError={(e) => {
+                                  e.currentTarget.src = '/placeholder-course.jpg';
+                                }}
+                              />
+                              <div className="min-w-0 flex-1 grid grid-rows-2 gap-1">
+                                <div className="text-sm font-medium text-white truncate leading-tight" title={course.title}>
+                                  {course.title}
+                                </div>
+                                <div className="text-xs text-gray-400 truncate leading-tight" title={course.instructor?.name || (course as any).instructor_name || 'Unknown Instructor'}>
+                                  {course.instructor?.name || (course as any).instructor_name || 'Unknown Instructor'}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm text-white">
-                          {(course.enrollments || 0).toLocaleString()}
-                        </td>
-                        <td className="px-4 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <Star className="h-4 w-4 text-yellow-500 mr-1" />
-                            <span className="text-sm text-white">{course.rating || 'N/A'}</span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm text-white">
-                          ${(course.revenue || 0).toLocaleString()}
-                        </td>
-                        <td className="px-4 py-4 whitespace-nowrap">
-                          <div className="w-full bg-gray-600 rounded-full h-2">
-                            <div
-                              className="bg-green-500 h-2 rounded-full"
-                              style={{ width: `${Math.random() * 40 + 60}%` }}
-                            ></div>
-                          </div>
-                        </td>
-                      </tr>
-                    )) : (
-                      <tr>
-                        <td colSpan={5} className="px-4 py-8 text-center text-gray-400">
-                          No course data available
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
+                          </td>
+                          <td className="px-4 py-4 text-sm text-white">
+                            <div className="truncate" title={(course.enrollments || 0).toLocaleString()}>
+                              {(course.enrollments || 0).toLocaleString()}
+                            </div>
+                          </td>
+                          <td className="px-4 py-4">
+                            <div className="flex items-center">
+                              <Star className="h-4 w-4 text-yellow-500 mr-1 flex-shrink-0" />
+                              <span className="text-sm text-white truncate" title={course.rating || 'N/A'}>
+                                {course.rating || 'N/A'}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-4 text-sm text-white">
+                            <div className="truncate" title={`$${(course.revenue || 0).toLocaleString()}`}>
+                              ${(course.revenue || 0).toLocaleString()}
+                            </div>
+                          </td>
+                          <td className="px-4 py-4">
+                            <div className="w-full bg-gray-600 rounded-full h-2">
+                              <div
+                                className="bg-green-500 h-2 rounded-full"
+                                style={{ width: `${Math.random() * 40 + 60}%` }}
+                              ></div>
+                            </div>
+                          </td>
+                        </tr>
+                      )) : (
+                        <tr>
+                          <td colSpan={5} className="px-4 py-8 text-center text-gray-400">
+                            No course data available
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
