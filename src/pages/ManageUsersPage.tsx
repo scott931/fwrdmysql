@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Search, Filter, MoreVertical, Shield, Ban, CheckCircle, XCircle, User, Mail, Calendar, Activity, Crown, UserPlus, Eye, Settings, Plus } from 'lucide-react';
+import { ArrowLeft, Search, User, Mail, Activity, Plus, Shield, Ban, CheckCircle, Eye, Settings, Loader2 } from 'lucide-react';
 import Button from '../components/ui/Button';
 import { useNavigate } from '../lib/router';
 import { usePermissions } from '../contexts/PermissionContext';
 import PermissionGuard from '../components/ui/PermissionGuard';
 import ErrorMessage from '../components/ui/ErrorMessage';
+import { useUsers } from '../hooks/useDatabase';
 
 interface UserData {
   id: string;
@@ -17,27 +18,6 @@ interface UserData {
   coursesEnrolled: number;
   coursesCompleted: number;
   avatar?: string;
-  permissions: {
-    view_courses: boolean;
-    enroll_courses: boolean;
-    create_courses: boolean;
-    edit_courses: boolean;
-    delete_courses: boolean;
-    manage_users: boolean;
-    view_analytics: boolean;
-    manage_settings: boolean;
-    access_audit_logs: boolean;
-  };
-}
-
-interface AdminUser {
-  id: string;
-  name: string;
-  email: string;
-  role: 'content_manager' | 'community_manager' | 'user_support' | 'super_admin';
-  password: string;
-  createdAt: Date;
-  createdBy: string;
 }
 
 const ManageUsersPage: React.FC = () => {
@@ -46,43 +26,24 @@ const ManageUsersPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'suspended' | 'pending'>('all');
   const [roleFilter, setRoleFilter] = useState<'all' | 'user' | 'content_manager' | 'community_manager' | 'user_support' | 'super_admin'>('all');
-  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
-  const [showUserModal, setShowUserModal] = useState(false);
-  const [showPermissionsModal, setShowPermissionsModal] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
-  const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
   const [permissionError, setPermissionError] = useState<string | null>(null);
+  const [users, setUsers] = useState<UserData[]>([]);
 
-  // Scroll to top on component mount
-  useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'instant' });
-  }, []);
+  // Database hooks
+  const {
+    users: dbUsers,
+    loading: usersLoading,
+    error: usersError,
+    fetchAllUsers,
+    updateUser
+  } = useUsers();
 
   // Check if user has permission to manage users
   const canManageUsers = hasPermission('users:view');
 
-  // Redirect if user doesn't have permission
-  if (!canManageUsers) {
-    return (
-      <div className="max-w-screen-xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-white mb-4">Access Denied</h2>
-          <p className="text-gray-400">You do not have permission to manage users.</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Load admin users from localStorage
+  // Scroll to top on component mount
   useEffect(() => {
-    const savedAdminUsers = localStorage.getItem('adminUsers');
-    if (savedAdminUsers) {
-      const parsedUsers = JSON.parse(savedAdminUsers).map((user: any) => ({
-        ...user,
-        createdAt: new Date(user.createdAt)
-      }));
-      setAdminUsers(parsedUsers);
-    }
+    window.scrollTo({ top: 0, behavior: 'instant' });
   }, []);
 
   // Clear permission error after 5 seconds
@@ -95,131 +56,31 @@ const ManageUsersPage: React.FC = () => {
     }
   }, [permissionError]);
 
-  // Check current user role
-  const currentUserRole = userRole;
-  const canCreateSuperAdmin = currentUserRole === 'super_admin';
-
-  // Mock user data with permissions
-  const [users, setUsers] = useState<UserData[]>([
-    {
-      id: '1',
-      name: 'John Doe',
-      email: 'john.doe@example.com',
-      status: 'active',
-      role: 'user',
-      joinDate: '2024-01-15',
-      lastActive: '2024-01-20',
-      coursesEnrolled: 5,
-      coursesCompleted: 3,
-      permissions: {
-        view_courses: true,
-        enroll_courses: true,
-        create_courses: false,
-        edit_courses: false,
-        delete_courses: false,
-        manage_users: false,
-        view_analytics: false,
-        manage_settings: false,
-        access_audit_logs: false
-      }
-    },
-    {
-      id: '2',
-      name: 'Jane Smith',
-      email: 'jane.smith@example.com',
-      status: 'active',
-      role: 'content_manager',
-      joinDate: '2024-01-10',
-      lastActive: '2024-01-19',
-      coursesEnrolled: 8,
-      coursesCompleted: 6,
-      permissions: {
-        view_courses: true,
-        enroll_courses: true,
-        create_courses: true,
-        edit_courses: true,
-        delete_courses: true,
-        manage_users: true,
-        view_analytics: true,
-        manage_settings: true,
-        access_audit_logs: true
-      }
-    },
-    {
-      id: '3',
-      name: 'Mike Johnson',
-      email: 'mike.johnson@example.com',
-      status: 'suspended',
-      role: 'user',
-      joinDate: '2024-01-05',
-      lastActive: '2024-01-18',
-      coursesEnrolled: 2,
-      coursesCompleted: 1,
-      permissions: {
-        view_courses: true,
-        enroll_courses: false,
-        create_courses: false,
-        edit_courses: false,
-        delete_courses: false,
-        manage_users: false,
-        view_analytics: false,
-        manage_settings: false,
-        access_audit_logs: false
-      }
-    },
-    {
-      id: '4',
-      name: 'Sarah Wilson',
-      email: 'sarah.wilson@example.com',
-      status: 'active',
-      role: 'content_manager',
-      joinDate: '2024-01-20',
-      lastActive: '2024-01-20',
-      coursesEnrolled: 1,
-      coursesCompleted: 0,
-      permissions: {
-        view_courses: true,
-        enroll_courses: true,
-        create_courses: true,
-        edit_courses: true,
-        delete_courses: false,
-        manage_users: false,
-        view_analytics: false,
-        manage_settings: false,
-        access_audit_logs: false
-      }
-    }
-  ]);
-
-  // Add admin users to the users list
+  // Fetch users from database on component mount
   useEffect(() => {
-    if (adminUsers.length > 0) {
-      // Convert admin users to user data format
-      const adminUserData = adminUsers.map(admin => {
-        // Check if this admin user is already in the users list
-        const existingUser = users.find(user => user.email === admin.email);
-        if (existingUser) return null;
+    fetchAllUsers();
+  }, []);
 
-        return {
-          id: admin.id,
-          name: admin.name,
-          email: admin.email,
-          status: 'active' as const,
-          role: admin.role,
-          joinDate: admin.createdAt.toISOString().split('T')[0],
-          lastActive: new Date().toISOString().split('T')[0],
-          coursesEnrolled: 0,
-          coursesCompleted: 0,
-          permissions: getRolePermissions(admin.role)
-        };
-      }).filter(Boolean) as UserData[];
-
-      // Add new admin users to the users list
-      if (adminUserData.length > 0) {
-        setUsers(prev => [...prev, ...adminUserData]);
-      }
+  // Convert database users to UserData format when dbUsers changes
+  useEffect(() => {
+    if (dbUsers && dbUsers.length > 0) {
+      const convertedUsers: UserData[] = dbUsers.map(dbUser => ({
+        id: dbUser.id,
+        name: dbUser.full_name || 'Unknown User',
+        email: dbUser.email,
+        status: 'active', // Default to active since we don't have status field in DB
+        role: dbUser.role || 'user',
+        joinDate: dbUser.created_at ? new Date(dbUser.created_at).toISOString().split('T')[0] : 'Unknown',
+        lastActive: dbUser.updated_at ? new Date(dbUser.updated_at).toISOString().split('T')[0] : 'Unknown',
+        coursesEnrolled: 0, // Will be calculated from user_progress table later
+        coursesCompleted: 0, // Will be calculated from user_progress table later
+        avatar: dbUser.avatar_url
+      }));
+      setUsers(convertedUsers);
+    } else {
+      setUsers([]);
     }
-  }, [adminUsers]);
+  }, [dbUsers]);
 
   const filteredUsers = users.filter(user => {
     const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -230,22 +91,7 @@ const ManageUsersPage: React.FC = () => {
     return matchesSearch && matchesStatus && matchesRole;
   });
 
-  const logAuditEvent = (action: string, details: string) => {
-    const auditLog = {
-      id: Date.now().toString(),
-      timestamp: new Date().toISOString(),
-      user: localStorage.getItem('adminEmail') || 'Unknown',
-      action,
-      details,
-      ipAddress: '192.168.1.100'
-    };
-
-    const existingLogs = JSON.parse(localStorage.getItem('auditLogs') || '[]');
-    existingLogs.unshift(auditLog);
-    localStorage.setItem('auditLogs', JSON.stringify(existingLogs.slice(0, 1000)));
-  };
-
-  const handleUserAction = (userId: string, action: 'view' | 'suspend' | 'activate' | 'delete' | 'promote' | 'permissions') => {
+  const handleUserAction = (userId: string, action: 'view' | 'suspend' | 'activate' | 'delete' | 'permissions') => {
     const user = users.find(u => u.id === userId);
     if (!user) return;
 
@@ -260,136 +106,31 @@ const ManageUsersPage: React.FC = () => {
       return;
     }
 
-    // Check if trying to modify a higher role user
-    if (['suspend', 'activate', 'delete', 'permissions'].includes(action)) {
-      if (
-        (user.role === 'super_admin' && currentUserRole !== 'super_admin') ||
-        (user.role === 'content_manager' && currentUserRole !== 'super_admin' && currentUserRole !== 'content_manager')
-      ) {
-        setPermissionError(`You cannot modify a ${user.role.replace('_', ' ')} account with your current role (${currentUserRole.replace('_', ' ')}).`);
-        return;
-      }
-    }
-
     switch (action) {
       case 'view':
-        setSelectedUser(user);
-        setShowUserModal(true);
-        logAuditEvent('user_viewed', `Viewed user profile: ${user.name} (${user.email})`);
+        // TODO: Implement user detail view
+        console.log('View user:', user);
         break;
       case 'suspend':
         setUsers(prev => prev.map(u =>
           u.id === userId ? { ...u, status: 'suspended' as const } : u
         ));
-        logAuditEvent('user_suspended', `Suspended user: ${user.name} (${user.email})`);
         break;
       case 'activate':
         setUsers(prev => prev.map(u =>
           u.id === userId ? { ...u, status: 'active' as const } : u
         ));
-        logAuditEvent('user_activated', `Activated user: ${user.name} (${user.email})`);
         break;
       case 'delete':
         if (confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
           setUsers(prev => prev.filter(u => u.id !== userId));
-          logAuditEvent('user_deleted', `Deleted user: ${user.name} (${user.email})`);
         }
         break;
-      case 'promote':
-        setSelectedUser(user);
-        setShowUserModal(true);
-        break;
       case 'permissions':
-        setSelectedUser(user);
-        setShowPermissionsModal(true);
-        logAuditEvent('user_permissions_viewed', `Viewed permissions for: ${user.name} (${user.email})`);
+        // TODO: Implement permissions modal
+        console.log('Edit permissions for:', user);
         break;
     }
-  };
-
-  const handleBulkAction = (action: 'suspend' | 'activate' | 'delete') => {
-    if (selectedUsers.length === 0) return;
-
-    // Check permissions for bulk actions
-    if (!hasPermission('users:edit')) {
-      setPermissionError('You do not have permission to perform bulk user actions. This action requires Admin or Super Admin privileges.');
-      return;
-    }
-
-    if (action === 'delete') {
-      if (!confirm(`Are you sure you want to delete ${selectedUsers.length} users? This action cannot be undone.`)) {
-        return;
-      }
-    }
-
-    // Check if any selected users have higher roles
-    const hasHigherRoleUsers = users
-      .filter(user => selectedUsers.includes(user.id))
-      .some(user =>
-        (user.role === 'super_admin' && currentUserRole !== 'super_admin') ||
-        (user.role === 'content_manager' && currentUserRole !== 'super_admin' && currentUserRole !== 'content_manager')
-      );
-
-    if (hasHigherRoleUsers) {
-      setPermissionError('You cannot modify some selected users because they have higher roles than your current role.');
-      return;
-    }
-
-    selectedUsers.forEach(userId => {
-      handleUserAction(userId, action);
-    });
-    setSelectedUsers([]);
-  };
-
-  const handlePromoteUser = (userId: string, newRole: 'user' | 'content_manager' | 'community_manager' | 'user_support' | 'super_admin') => {
-    const user = users.find(u => u.id === userId);
-    if (!user) return;
-
-    // Check if current user can promote to this role
-    if (newRole === 'super_admin' && currentUserRole !== 'super_admin') {
-      setPermissionError('Only super admins can promote users to super admin role');
-      return;
-    }
-
-    // Check if current user can promote to content_manager role
-    if (newRole === 'content_manager' && !['content_manager', 'super_admin'].includes(currentUserRole)) {
-      setPermissionError('Only content managers and super admins can promote users to content manager role');
-      return;
-    }
-
-    const rolePermissions = getRolePermissions(newRole);
-
-    setUsers(prev => prev.map(u =>
-      u.id === userId ? {
-        ...u,
-        role: newRole,
-        permissions: rolePermissions
-      } : u
-    ));
-    logAuditEvent('user_role_changed', `Changed user role: ${user.name} (${user.email}) from ${user.role} to ${newRole}`);
-    setShowUserModal(false);
-  };
-
-  const handlePermissionChange = (userId: string, permission: string, value: boolean) => {
-    const user = users.find(u => u.id === userId);
-    if (!user) return;
-
-    // Check if current user can modify permissions
-    if (
-      (user.role === 'super_admin' && currentUserRole !== 'super_admin') ||
-      (user.role === 'content_manager' && !['content_manager', 'super_admin'].includes(currentUserRole))
-    ) {
-      setPermissionError(`You cannot modify permissions for a ${user.role.replace('_', ' ')} account with your current role.`);
-      return;
-    }
-
-    setUsers(prev => prev.map(u =>
-      u.id === userId ? {
-        ...u,
-        permissions: { ...u.permissions, [permission]: value }
-      } : u
-    ));
-    logAuditEvent('user_permission_changed', `Changed permission ${permission} to ${value} for: ${user.name} (${user.email})`);
   };
 
   const getStatusBadge = (status: string) => {
@@ -405,7 +146,8 @@ const ManageUsersPage: React.FC = () => {
     const styles = {
       user: 'bg-gray-500/20 text-gray-400',
       content_manager: 'bg-green-500/20 text-green-400',
-      admin: 'bg-blue-500/20 text-blue-400',
+      community_manager: 'bg-blue-500/20 text-blue-400',
+      user_support: 'bg-yellow-500/20 text-yellow-400',
       super_admin: 'bg-purple-500/20 text-purple-400'
     };
     return styles[role as keyof typeof styles] || styles.user;
@@ -413,62 +155,24 @@ const ManageUsersPage: React.FC = () => {
 
   const getRoleIcon = (role: string) => {
     switch (role) {
-              case 'super_admin': return <Crown className="h-4 w-4 text-purple-500" />;
-        case 'content_manager': return <Shield className="h-4 w-4 text-blue-500" />;
-        case 'community_manager': return <UserPlus className="h-4 w-4 text-green-500" />;
+      case 'super_admin': return <Shield className="h-4 w-4 text-purple-500" />;
+      case 'content_manager': return <Shield className="h-4 w-4 text-blue-500" />;
+      case 'community_manager': return <User className="h-4 w-4 text-green-500" />;
+      case 'user_support': return <User className="h-4 w-4 text-yellow-500" />;
       default: return <User className="h-4 w-4 text-gray-400" />;
     }
   };
 
-  function getRolePermissions(role: string): any {
-    const permissions = {
-      user: {
-        view_courses: true,
-        enroll_courses: true,
-        create_courses: false,
-        edit_courses: false,
-        delete_courses: false,
-        manage_users: false,
-        view_analytics: false,
-        manage_settings: false,
-        access_audit_logs: false
-      },
-      content_manager: {
-        view_courses: true,
-        enroll_courses: true,
-        create_courses: true,
-        edit_courses: true,
-        delete_courses: false,
-        manage_users: false,
-        view_analytics: false,
-        manage_settings: false,
-        access_audit_logs: false
-      },
-      admin: {
-        view_courses: true,
-        enroll_courses: true,
-        create_courses: true,
-        edit_courses: true,
-        delete_courses: true,
-        manage_users: true,
-        view_analytics: true,
-        manage_settings: true,
-        access_audit_logs: true
-      },
-      super_admin: {
-        view_courses: true,
-        enroll_courses: true,
-        create_courses: true,
-        edit_courses: true,
-        delete_courses: true,
-        manage_users: true,
-        view_analytics: true,
-        manage_settings: true,
-        access_audit_logs: true
-      }
-    };
-
-    return permissions[role as keyof typeof permissions] || permissions.user;
+  // Redirect if user doesn't have permission
+  if (!canManageUsers) {
+    return (
+      <div className="max-w-screen-xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-white mb-4">Access Denied</h2>
+          <p className="text-gray-400">You do not have permission to manage users.</p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -556,40 +260,6 @@ const ManageUsersPage: React.FC = () => {
             </select>
           </div>
         </div>
-
-        {/* Bulk Actions */}
-        {selectedUsers.length > 0 && (
-          <div className="mt-4 flex items-center gap-4">
-            <span className="text-gray-400">{selectedUsers.length} users selected</span>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleBulkAction('activate')}
-              >
-                <CheckCircle className="h-4 w-4 mr-2" />
-                Activate
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleBulkAction('suspend')}
-              >
-                <Ban className="h-4 w-4 mr-2" />
-                Suspend
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleBulkAction('delete')}
-                className="text-red-500 border-red-500 hover:bg-red-500/10"
-              >
-                <XCircle className="h-4 w-4 mr-2" />
-                Delete
-              </Button>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Users Table */}
@@ -598,20 +268,6 @@ const ManageUsersPage: React.FC = () => {
           <table className="w-full">
             <thead className="bg-gray-700">
               <tr>
-                <th className="px-6 py-3 text-left">
-                  <input
-                    type="checkbox"
-                    checked={selectedUsers.length === filteredUsers.length && filteredUsers.length > 0}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setSelectedUsers(filteredUsers.map(u => u.id));
-                      } else {
-                        setSelectedUsers([]);
-                      }
-                    }}
-                    className="rounded border-gray-600 bg-gray-700 text-red-600 focus:ring-red-500"
-                  />
-                </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                   User
                 </th>
@@ -633,128 +289,149 @@ const ManageUsersPage: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-700">
-              {filteredUsers.map((user) => (
-                <tr key={user.id} className="hover:bg-gray-700/50">
-                  <td className="px-6 py-4">
-                    <input
-                      type="checkbox"
-                      checked={selectedUsers.includes(user.id)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedUsers(prev => [...prev, user.id]);
-                        } else {
-                          setSelectedUsers(prev => prev.filter(id => id !== user.id));
-                        }
-                      }}
-                      className="rounded border-gray-600 bg-gray-700 text-red-600 focus:ring-red-500"
-                    />
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="h-10 w-10 rounded-full bg-gray-600 flex items-center justify-center mr-4">
-                        {user.avatar ? (
-                          <img src={user.avatar} alt={user.name} className="h-10 w-10 rounded-full object-cover" />
-                        ) : (
-                          <User className="h-5 w-5 text-gray-300" />
-                        )}
-                      </div>
-                      <div>
-                        <div className="text-sm font-medium text-white">{user.name}</div>
-                        <div className="text-sm text-gray-400 flex items-center">
-                          <Mail className="h-3 w-3 mr-1" />
-                          {user.email}
-                        </div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      {getRoleIcon(user.role)}
-                      <span className={`ml-2 px-2 py-1 text-xs font-medium rounded-full ${getRoleBadge(user.role)}`}>
-                        {user.role.replace('_', ' ').toUpperCase()}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusBadge(user.status)}`}>
-                      {user.status.charAt(0).toUpperCase() + user.status.slice(1)}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                    <div className="flex items-center space-x-4">
-                      <span>{user.coursesCompleted}/{user.coursesEnrolled}</span>
-                      <div className="w-16 bg-gray-700 rounded-full h-2">
-                        <div
-                          className="bg-red-600 h-2 rounded-full"
-                          style={{
-                            width: `${user.coursesEnrolled > 0 ? (user.coursesCompleted / user.coursesEnrolled) * 100 : 0}%`
-                          }}
-                        ></div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                    <div className="flex items-center">
-                      <Activity className="h-4 w-4 mr-2 text-gray-400" />
-                      {new Date(user.lastActive).toLocaleDateString()}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div className="flex items-center space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleUserAction(user.id, 'view')}
-                      >
-                        <Eye className="h-3 w-3 mr-1" />
-                        View
-                      </Button>
-
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleUserAction(user.id, 'permissions')}
-                      >
-                        <Settings className="h-3 w-3 mr-1" />
-                        Permissions
-                      </Button>
-
-                      {user.status === 'active' ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleUserAction(user.id, 'suspend')}
-                          className="text-red-500 border-red-500 hover:bg-red-500/10"
-                        >
-                          <Ban className="h-3 w-3 mr-1" />
-                          Suspend
-                        </Button>
-                      ) : (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleUserAction(user.id, 'activate')}
-                          className="text-green-500 border-green-500 hover:bg-green-500/10"
-                        >
-                          <CheckCircle className="h-3 w-3 mr-1" />
-                          Activate
-                        </Button>
-                      )}
+              {usersLoading ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center">
+                    <div className="flex items-center justify-center space-x-3">
+                      <Loader2 className="h-6 w-6 animate-spin text-red-500" />
+                      <span className="text-gray-400">Loading users...</span>
                     </div>
                   </td>
                 </tr>
-              ))}
+              ) : usersError ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center">
+                    <div className="text-center">
+                      <div className="text-red-500 mb-2">Failed to load users</div>
+                      <div className="text-gray-400 text-sm mb-4">{usersError}</div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => fetchAllUsers()}
+                      >
+                        <Activity className="h-4 w-4 mr-2" />
+                        Retry
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ) : filteredUsers.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center">
+                    <div className="text-center">
+                      <User className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                      <div className="text-gray-400 mb-2">No users found</div>
+                      <div className="text-gray-500 text-sm">
+                        {searchTerm || statusFilter !== 'all' || roleFilter !== 'all'
+                          ? 'Try adjusting your filters'
+                          : 'No users have been registered yet'
+                        }
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                filteredUsers.map((user) => (
+                  <tr key={user.id} className="hover:bg-gray-700/50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className="h-10 w-10 rounded-full bg-gray-600 flex items-center justify-center mr-4">
+                          {user.avatar ? (
+                            <img src={user.avatar} alt={user.name} className="h-10 w-10 rounded-full object-cover" />
+                          ) : (
+                            <User className="h-5 w-5 text-gray-300" />
+                          )}
+                        </div>
+                        <div>
+                          <div className="text-sm font-medium text-white">{user.name}</div>
+                          <div className="text-sm text-gray-400 flex items-center">
+                            <Mail className="h-3 w-3 mr-1" />
+                            {user.email}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        {getRoleIcon(user.role)}
+                        <span className={`ml-2 px-2 py-1 text-xs font-medium rounded-full ${getRoleBadge(user.role)}`}>
+                          {user.role.replace('_', ' ').toUpperCase()}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusBadge(user.status)}`}>
+                        {user.status.charAt(0).toUpperCase() + user.status.slice(1)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                      <div className="flex items-center space-x-4">
+                        <span>{user.coursesCompleted}/{user.coursesEnrolled}</span>
+                        <div className="w-16 bg-gray-700 rounded-full h-2">
+                          <div
+                            className="bg-red-600 h-2 rounded-full"
+                            style={{
+                              width: `${user.coursesEnrolled > 0 ? (user.coursesCompleted / user.coursesEnrolled) * 100 : 0}%`
+                            }}
+                          ></div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                      <div className="flex items-center">
+                        <Activity className="h-4 w-4 mr-2 text-gray-400" />
+                        {new Date(user.lastActive).toLocaleDateString()}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleUserAction(user.id, 'view')}
+                        >
+                          <Eye className="h-3 w-3 mr-1" />
+                          View
+                        </Button>
+
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleUserAction(user.id, 'permissions')}
+                        >
+                          <Settings className="h-3 w-3 mr-1" />
+                          Permissions
+                        </Button>
+
+                        {user.status === 'active' ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleUserAction(user.id, 'suspend')}
+                            className="text-red-500 border-red-500 hover:bg-red-500/10"
+                          >
+                            <Ban className="h-3 w-3 mr-1" />
+                            Suspend
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleUserAction(user.id, 'activate')}
+                            className="text-green-500 border-green-500 hover:bg-green-500/10"
+                          >
+                            <CheckCircle className="h-3 w-3 mr-1" />
+                            Activate
+                          </Button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
-
-        {filteredUsers.length === 0 && (
-          <div className="text-center py-12">
-            <User className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-white text-lg font-medium mb-2">No users found</h3>
-            <p className="text-gray-400">Try adjusting your search or filter criteria.</p>
-          </div>
-        )}
       </div>
 
       {/* Stats Summary */}
@@ -804,7 +481,7 @@ const ManageUsersPage: React.FC = () => {
         <div className="bg-gray-800 rounded-lg p-6">
           <div className="flex items-center">
             <div className="bg-yellow-500/10 p-3 rounded-lg mr-4">
-              <Calendar className="h-6 w-6 text-yellow-500" />
+              <User className="h-6 w-6 text-yellow-500" />
             </div>
             <div>
               <div className="text-2xl font-bold text-white">
@@ -820,228 +497,8 @@ const ManageUsersPage: React.FC = () => {
           </div>
         </div>
       </div>
-
-      {/* User Detail Modal */}
-      {showUserModal && selectedUser && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-800 rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-semibold text-white">User Profile & Role Management</h3>
-              <Button
-                variant="ghost"
-                onClick={() => setShowUserModal(false)}
-                className="text-gray-400 hover:text-white"
-              >
-                ×
-              </Button>
-            </div>
-
-            {/* User Info */}
-            <div className="flex items-center mb-6">
-              <div className="h-16 w-16 rounded-full bg-gray-600 flex items-center justify-center mr-4">
-                {selectedUser.avatar ? (
-                  <img src={selectedUser.avatar} alt={selectedUser.name} className="h-16 w-16 rounded-full object-cover" />
-                ) : (
-                  <User className="h-8 w-8 text-gray-300" />
-                )}
-              </div>
-              <div>
-                <div className="text-white font-bold text-lg">{selectedUser.name}</div>
-                <div className="text-gray-400">{selectedUser.email}</div>
-                <div className="flex items-center mt-2">
-                  {getRoleIcon(selectedUser.role)}
-                  <span className={`ml-2 px-2 py-1 text-xs font-medium rounded-full ${getRoleBadge(selectedUser.role)}`}>
-                    {selectedUser.role.replace('_', ' ').toUpperCase()}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* User Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-              <div className="bg-gray-700 rounded-lg p-4 text-center">
-                <div className="text-2xl font-bold text-white">{selectedUser.coursesCompleted}</div>
-                <div className="text-sm text-gray-400">Completed</div>
-              </div>
-              <div className="bg-gray-700 rounded-lg p-4 text-center">
-                <div className="text-2xl font-bold text-white">{selectedUser.coursesEnrolled}</div>
-                <div className="text-sm text-gray-400">Enrolled</div>
-              </div>
-              <div className="bg-gray-700 rounded-lg p-4 text-center">
-                <div className="text-2xl font-bold text-white">
-                  {new Date(selectedUser.joinDate).toLocaleDateString()}
-                </div>
-                <div className="text-sm text-gray-400">Joined</div>
-              </div>
-              <div className="bg-gray-700 rounded-lg p-4 text-center">
-                <div className="text-2xl font-bold text-white">
-                  {new Date(selectedUser.lastActive).toLocaleDateString()}
-                </div>
-                <div className="text-sm text-gray-400">Last Active</div>
-              </div>
-            </div>
-
-            {/* Role Management */}
-            <div className="mb-6">
-              <h4 className="text-white font-medium mb-3">Role Management</h4>
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { role: 'user', label: 'User', icon: <User className="h-4 w-4" /> },
-                  { role: 'content_manager', label: 'Content Manager', icon: <UserPlus className="h-4 w-4" /> },
-                  { role: 'content_manager', label: 'Content Manager', icon: <Shield className="h-4 w-4" />, disabled: !['content_manager', 'super_admin'].includes(currentUserRole) },
-                  { role: 'super_admin', label: 'Super Admin', icon: <Crown className="h-4 w-4" />, disabled: !canCreateSuperAdmin }
-                ].map(({ role, label, icon, disabled }) => (
-                  <Button
-                    key={role}
-                    variant={selectedUser.role === role ? 'primary' : 'outline'}
-                    size="sm"
-                    onClick={() => !disabled && handlePromoteUser(selectedUser.id, role as any)}
-                    className="flex items-center justify-center"
-                    disabled={selectedUser.role === role || disabled}
-                  >
-                    {icon}
-                    <span className="ml-2 text-xs">{label}</span>
-                    {disabled && <span className="ml-1 text-xs">(Restricted)</span>}
-                  </Button>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex space-x-3">
-              <Button
-                variant="outline"
-                onClick={() => setShowUserModal(false)}
-                className="flex-1"
-              >
-                Close
-              </Button>
-              <Button
-                variant="primary"
-                onClick={() => {
-                  setShowUserModal(false);
-                  setShowPermissionsModal(true);
-                }}
-                className="flex-1"
-              >
-                Edit Permissions
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Permissions Modal */}
-      {showPermissionsModal && selectedUser && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-800 rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-semibold text-white">User Permissions</h3>
-              <Button
-                variant="ghost"
-                onClick={() => setShowPermissionsModal(false)}
-                className="text-gray-400 hover:text-white"
-              >
-                ×
-              </Button>
-            </div>
-
-            <div className="mb-6">
-              <div className="flex items-center mb-4">
-                <div className="h-12 w-12 rounded-full bg-gray-600 flex items-center justify-center mr-4">
-                  <User className="h-6 w-6 text-gray-300" />
-                </div>
-                <div>
-                  <div className="text-white font-bold">{selectedUser.name}</div>
-                  <div className="text-gray-400">{selectedUser.email}</div>
-                </div>
-              </div>
-            </div>
-
-            {/* Permission Error */}
-            {permissionError && (
-              <div className="mb-6">
-                <ErrorMessage
-                  title="Permission Error"
-                  message={permissionError}
-                  onClose={() => setPermissionError(null)}
-                />
-              </div>
-            )}
-
-            <div className="space-y-4">
-              <h4 className="text-white font-medium">Individual Permissions</h4>
-
-              {selectedUser.permissions && Object.entries(selectedUser.permissions).map(([permission, value]) => {
-                // Check if current user can modify this permission for this user
-                const canModify = !(
-                  (selectedUser.role === 'super_admin' && currentUserRole !== 'super_admin') ||
-                  (selectedUser.role === 'content_manager' && !['content_manager', 'super_admin'].includes(currentUserRole))
-                );
-
-                return (
-                  <div key={permission} className="flex items-center justify-between p-3 bg-gray-700 rounded-lg">
-                    <div>
-                      <div className="text-white font-medium">
-                        {permission.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                      </div>
-                      <div className="text-gray-400 text-sm">
-                        {getPermissionDescription(permission)}
-                      </div>
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={value}
-                        onChange={(e) => handlePermissionChange(selectedUser.id, permission, e.target.checked)}
-                        className="sr-only peer"
-                        disabled={!canModify || (selectedUser.role === 'user' && !['view_courses', 'enroll_courses'].includes(permission))}
-                      />
-                      <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-red-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-600"></div>
-                    </label>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="flex space-x-3 mt-6">
-              <Button
-                variant="outline"
-                onClick={() => setShowPermissionsModal(false)}
-                className="flex-1"
-              >
-                Close
-              </Button>
-              <Button
-                variant="primary"
-                onClick={() => {
-                  setShowPermissionsModal(false);
-                  logAuditEvent('user_permissions_updated', `Updated permissions for: ${selectedUser.name} (${selectedUser.email})`);
-                }}
-                className="flex-1"
-              >
-                Save Changes
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
-};
-
-const getPermissionDescription = (permission: string): string => {
-  const descriptions: { [key: string]: string } = {
-    view_courses: 'Can view and browse available courses',
-    enroll_courses: 'Can enroll in courses and access content',
-    create_courses: 'Can create new courses and upload content',
-    edit_courses: 'Can edit existing course content and details',
-    delete_courses: 'Can delete courses from the platform',
-    manage_users: 'Can view, edit, and manage user accounts',
-    view_analytics: 'Can access analytics and reporting data',
-    manage_settings: 'Can modify platform settings and configuration',
-    access_audit_logs: 'Can view system audit logs and activity'
-  };
-  return descriptions[permission] || 'Permission description not available';
 };
 
 export default ManageUsersPage;

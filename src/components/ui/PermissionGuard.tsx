@@ -1,11 +1,10 @@
 import React from 'react';
-import { useAuth } from '../../contexts/AuthContext';
-import { Permission, hasPermission, hasAnyPermission, hasAllPermissions } from '../../types';
+import { usePermissions } from '../../contexts/PermissionContext';
 
 interface PermissionGuardProps {
   children: React.ReactNode;
-  permission?: Permission;
-  permissions?: Permission[];
+  permission?: string;
+  permissions?: string[];
   requireAll?: boolean;
   fallback?: React.ReactNode;
 }
@@ -21,22 +20,22 @@ const PermissionGuard: React.FC<PermissionGuardProps> = ({
   requireAll = false,
   fallback = null
 }) => {
-  const { user } = useAuth();
+  const { hasPermission, hasAnyPermission, hasAllPermissions, userRole } = usePermissions();
 
-  if (!user) {
-    return <>{fallback}</>;
+  // Super admin has access to everything
+  if (userRole === 'super_admin') {
+    return <>{children}</>;
   }
 
-  const userPermissions = (user.permissions || []) as Permission[];
   let hasAccess = false;
 
   if (permission) {
-    hasAccess = hasPermission(userPermissions, permission);
+    hasAccess = hasPermission(permission as any);
   } else if (permissions) {
     if (requireAll) {
-      hasAccess = hasAllPermissions(userPermissions, permissions);
+      hasAccess = hasAllPermissions(permissions as any[]);
     } else {
-      hasAccess = hasAnyPermission(userPermissions, permissions);
+      hasAccess = hasAnyPermission(permissions as any[]);
     }
   } else {
     // If no permissions specified, allow access

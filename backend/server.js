@@ -1140,7 +1140,19 @@ app.post('/api/instructors', authenticateToken, authorizeRole(['super_admin', 'c
     try {
       await executeQuery(
         'INSERT INTO audit_logs (id, user_id, action, details, ip_address, user_agent) VALUES (?, ?, ?, ?, ?, ?)',
-        [uuidv4(), req.user?.id || 'system', 'instructor_created', `Created instructor: ${name} (${email})`, req.ip, req.get('User-Agent')]
+        [
+          uuidv4(),
+          req.user?.id || 'system',
+          'instructor_created',
+          JSON.stringify({
+            message: `Created instructor: ${name} (${email})`,
+            instructor_id: id,
+            instructor_name: name,
+            instructor_email: email
+          }),
+          req.ip,
+          req.get('User-Agent')
+        ]
       );
     } catch (auditError) {
       console.warn('Audit logging failed, but instructor was created:', auditError.message);
@@ -1219,10 +1231,26 @@ app.put('/api/instructors/:id', authenticateToken, authorizeRole(['super_admin',
     );
 
     // Log audit event
-    await executeQuery(
-      'INSERT INTO audit_logs (id, user_id, action, details, ip_address, user_agent) VALUES (?, ?, ?, ?, ?, ?)',
-      [uuidv4(), req.user?.id || 'system', 'instructor_updated', `Updated instructor: ${name} (${email})`, req.ip, req.get('User-Agent')]
-    );
+    try {
+      await executeQuery(
+        'INSERT INTO audit_logs (id, user_id, action, details, ip_address, user_agent) VALUES (?, ?, ?, ?, ?, ?)',
+        [
+          uuidv4(),
+          req.user?.id || 'system',
+          'instructor_updated',
+          JSON.stringify({
+            message: `Updated instructor: ${name} (${email})`,
+            instructor_id: req.params.id,
+            instructor_name: name,
+            instructor_email: email
+          }),
+          req.ip,
+          req.get('User-Agent')
+        ]
+      );
+    } catch (auditError) {
+      console.warn('Audit logging failed, but instructor was updated:', auditError.message);
+    }
 
     res.json({
       message: 'Instructor updated successfully',
@@ -1265,10 +1293,26 @@ app.delete('/api/instructors/:id', authenticateToken, authorizeRole(['super_admi
     await executeQuery('DELETE FROM instructors WHERE id = ?', [req.params.id]);
 
     // Log audit event
-    await executeQuery(
-      'INSERT INTO audit_logs (id, user_id, action, details, ip_address, user_agent) VALUES (?, ?, ?, ?, ?, ?)',
-      [uuidv4(), req.user?.id || 'system', 'instructor_deleted', `Deleted instructor: ${instructor.name} (${instructor.email})`, req.ip, req.get('User-Agent')]
-    );
+    try {
+      await executeQuery(
+        'INSERT INTO audit_logs (id, user_id, action, details, ip_address, user_agent) VALUES (?, ?, ?, ?, ?, ?)',
+        [
+          uuidv4(),
+          req.user?.id || 'system',
+          'instructor_deleted',
+          JSON.stringify({
+            message: `Deleted instructor: ${instructor.name} (${instructor.email})`,
+            instructor_id: req.params.id,
+            instructor_name: instructor.name,
+            instructor_email: instructor.email
+          }),
+          req.ip,
+          req.get('User-Agent')
+        ]
+      );
+    } catch (auditError) {
+      console.warn('Audit logging failed, but instructor was deleted:', auditError.message);
+    }
 
     res.json({ message: 'Instructor deleted successfully' });
   } catch (error) {

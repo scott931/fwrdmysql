@@ -1,7 +1,7 @@
 import React from 'react'
 import dynamic from 'next/dynamic'
 
-const GlobalSettingsPage = dynamic(() => import('../../src/pages/GlobalSettingsPage'), {
+const GlobalSettingsPage = dynamic(() => import('../../src/pages/SecuritySettingsPage'), {
   ssr: false
 })
 

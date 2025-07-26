@@ -105,7 +105,18 @@ const AdminPage: React.FC = () => {
     adminEmail,
     profile,
     isClient,
-    hasPermission: typeof hasPermission
+    hasPermission: typeof hasPermission,
+    permissions: profile?.permissions || [],
+    role: profile?.role
+  });
+
+  // Debug permission checks
+  console.log('🔍 Permission Checks:', {
+    canCreateCourses: hasPermission('courses:create'),
+    canCreateInstructors: hasPermission('instructors:create'),
+    canCreateUsers: hasPermission('users:create'),
+    canViewUsers: hasPermission('users:view'),
+    canConfigureSystem: hasPermission('system:configuration')
   });
   const canAccessAudit = hasPermission('audit:view_logs');
   const canManageUsers = hasPermission('users:view');
@@ -572,108 +583,70 @@ const AdminPage: React.FC = () => {
           {/* Quick Actions */}
           <div className="bg-gray-800 rounded-lg p-6">
             <h2 className="text-xl font-semibold text-white mb-6">Quick Actions</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+
+            {/* Debug Info - Remove this later */}
+            <div className="mb-4 p-3 bg-yellow-900/20 border border-yellow-600/30 rounded text-yellow-300 text-sm">
+              <strong>Debug Info:</strong><br/>
+              User Role: {userRole || 'Not set'}<br/>
+              Profile Role: {profile?.role || 'Not set'}<br/>
+              Is Authenticated: {!!profile}<br/>
+              Permissions: {profile?.permissions?.length || 0} items
+            </div>
+            <div className="flex flex-wrap gap-4">
+              {/* Add Course - Red button (primary) */}
               <PermissionGuard permission="courses:create">
                 <Button
                   variant="primary"
                   onClick={() => navigate('/admin/upload-course')}
-                  className="flex items-center justify-center"
+                  className="flex items-center justify-center bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg"
                 >
                   <Plus className="h-4 w-4 mr-2" />
                   Add Course
                 </Button>
               </PermissionGuard>
 
-              <Button
-                variant="outline"
-                onClick={() => {
-                  console.log('Add Instructor button clicked');
-                  console.log('Current user role:', userRole);
-                  console.log('Current user permissions:', profile?.permissions);
-                  console.log('Attempting to navigate to /admin/add-instructor');
+              {/* Add Instructor - Dark grey button */}
+              <PermissionGuard permission="instructors:create">
+                <Button
+                  variant="outline"
+                  onClick={() => navigate('/admin/add-instructor')}
+                  className="flex items-center justify-center bg-gray-700 hover:bg-gray-600 text-white px-6 py-3 rounded-lg border-gray-600"
+                >
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  Add Instructor
+                </Button>
+              </PermissionGuard>
 
-                  // For testing purposes, allow navigation regardless of permissions
-                  console.log('Allowing navigation for testing...');
-
-                  try {
-                    navigate('/admin/add-instructor');
-                  } catch (error) {
-                    console.error('Navigation error:', error);
-                    // Fallback: try direct window.location
-                    window.location.href = '/admin/add-instructor';
-                  }
-                }}
-                className="flex items-center justify-center"
-              >
-                <UserPlus className="h-4 w-4 mr-2" />
-                Add Instructor
-              </Button>
-
-              {/* Test navigation button */}
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  console.log('Testing navigation to home page');
-                  navigate('/');
-                }}
-                className="flex items-center justify-center"
-              >
-                Test Navigation
-              </Button>
-
-              {/* Test button without PermissionGuard */}
-              <Button
-                variant="outline"
-                onClick={() => {
-                  console.log('Test Add Instructor button clicked');
-                  console.log('Using window.location.href for direct navigation');
-                  window.location.href = '/admin/add-instructor';
-                }}
-                className="flex items-center justify-center bg-yellow-600 hover:bg-yellow-700"
-              >
-                Test Add Instructor (Direct)
-              </Button>
-
-              {/* Simple test button */}
-              <Button
-                variant="outline"
-                onClick={() => {
-                  console.log('Simple test button clicked');
-                  alert('Button is working! Now trying to navigate...');
-                  window.location.href = '/admin/add-instructor';
-                }}
-                className="flex items-center justify-center bg-green-600 hover:bg-green-700"
-              >
-                Simple Test
-              </Button>
-
+              {/* Create Admin - Dark grey button */}
               <PermissionGuard permission="users:create">
                 <Button
                   variant="outline"
                   onClick={() => navigate('/admin/create-user')}
-                  className="flex items-center justify-center"
+                  className="flex items-center justify-center bg-gray-700 hover:bg-gray-600 text-white px-6 py-3 rounded-lg border-gray-600"
                 >
                   <Shield className="h-4 w-4 mr-2" />
                   Create Admin
                 </Button>
               </PermissionGuard>
 
+              {/* Manage Users - Dark grey button */}
               <PermissionGuard permission="users:view">
                 <Button
                   variant="outline"
                   onClick={() => navigate('/admin/manage-users')}
-                  className="flex items-center justify-center"
+                  className="flex items-center justify-center bg-gray-700 hover:bg-gray-600 text-white px-6 py-3 rounded-lg border-gray-600"
                 >
                   <Users className="h-4 w-4 mr-2" />
                   Manage Users
                 </Button>
               </PermissionGuard>
 
+              {/* Settings - Dark grey button */}
               <PermissionGuard permission="system:configuration">
                 <Button
                   variant="outline"
                   onClick={() => navigate('/admin/security-settings')}
-                  className="flex items-center justify-center"
+                  className="flex items-center justify-center bg-gray-700 hover:bg-gray-600 text-white px-6 py-3 rounded-lg border-gray-600"
                 >
                   <Settings className="h-4 w-4 mr-2" />
                   Settings
@@ -733,17 +706,33 @@ const AdminPage: React.FC = () => {
           <div className="bg-gray-800 rounded-lg p-6">
             <h2 className="text-xl font-semibold text-white mb-6">Recent Activity</h2>
             <div className="space-y-4">
-              {auditLogs.slice(0, 5).map((log: any) => (
-                <div key={log.id} className="flex items-center justify-between py-3 border-b border-gray-700">
-                  <div>
-                    <p className="text-white">{typeof log.details === 'object' ? JSON.stringify(log.details) : log.details || 'N/A'}</p>
-                    <p className="text-gray-400 text-sm">{new Date(log.timestamp).toLocaleString()}</p>
+              {auditLogs.slice(0, 5).map((log: any) => {
+                // Parse details if it's a JSON string
+                let detailsText = 'N/A';
+                try {
+                  if (log.details) {
+                    const details = typeof log.details === 'string' ? JSON.parse(log.details) : log.details;
+                    detailsText = details.message || JSON.stringify(details);
+                  }
+                } catch (error) {
+                  detailsText = log.details || 'N/A';
+                }
+
+                // Use the correct date field
+                const logDate = log.created_at || log.timestamp;
+
+                return (
+                  <div key={log.id} className="flex items-center justify-between py-3 border-b border-gray-700">
+                    <div>
+                      <p className="text-white">{detailsText}</p>
+                      <p className="text-gray-400 text-sm">{logDate ? new Date(logDate).toLocaleString() : 'Unknown date'}</p>
+                    </div>
+                    <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-500/20 text-blue-400">
+                      {log.action.replace('_', ' ').toUpperCase()}
+                    </span>
                   </div>
-                  <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-500/20 text-blue-400">
-                    {log.action.replace('_', ' ').toUpperCase()}
-                  </span>
-                </div>
-              ))}
+                );
+              })}
 
               {auditLogs.length === 0 && (
                 <div className="text-center py-6">
@@ -1427,13 +1416,20 @@ const AdminPage: React.FC = () => {
                             </span>
                           </td>
                           <td className="px-6 py-4 text-sm text-gray-300 max-w-md truncate">
-                            {log.details ?
-                              (typeof log.details === 'object' ? JSON.stringify(log.details) : log.details) :
-                              (typeof log.resource_type === 'object' ? JSON.stringify(log.resource_type) : log.resource_type || 'N/A')
-                            }
+                            {(() => {
+                              try {
+                                if (log.details) {
+                                  const details = typeof log.details === 'string' ? JSON.parse(log.details) : log.details;
+                                  return details.message || JSON.stringify(details);
+                                }
+                                return log.resource_type || 'N/A';
+                              } catch (error) {
+                                return log.details || 'N/A';
+                              }
+                            })()}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                            {log.ipAddress}
+                            {log.ip_address || log.ipAddress || 'N/A'}
                           </td>
                         </tr>
                       ))}
