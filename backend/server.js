@@ -2525,3 +2525,358 @@ server.listen(PORT, () => {
   console.log(`🏥 Health check at http://localhost:${PORT}/api/health`);
   console.log(`🔗 WebSocket server ready on ws://localhost:${PORT}`);
 });
+
+// Enhanced Search API
+app.get('/api/search', async (req, res) => {
+  try {
+    const {
+      q: query,
+      category,
+      instructor,
+      difficulty,
+      duration,
+      rating,
+      language,
+      tags,
+      hasTranscript,
+      hasSubtitles,
+      isFree,
+      isFeatured,
+      sortBy = 'relevance',
+      sortOrder = 'desc',
+      limit = 20,
+      offset = 0
+    } = req.query;
+
+    if (!query || !query.trim()) {
+      return res.json({ results: [], total: 0, analytics: {} });
+    }
+
+    // Build search query with full-text search capabilities
+    let searchQuery = `
+      SELECT
+        'course' as type,
+        c.id,
+        c.title,
+        c.description,
+        c.thumbnail,
+        c.banner,
+        c.featured,
+        c.total_xp,
+        c.coming_soon,
+        c.created_at,
+        i.name as instructor_name,
+        i.title as instructor_title,
+        i.image as instructor_image,
+        cat.name as category_name,
+        (
+          CASE
+            WHEN c.title LIKE ? THEN 10
+            WHEN c.description LIKE ? THEN 5
+            ELSE 0
+          END +
+          CASE
+            WHEN c.title LIKE ? THEN 8
+            WHEN c.description LIKE ? THEN 4
+            ELSE 0
+          END +
+          CASE
+            WHEN c.title LIKE ? THEN 6
+            WHEN c.description LIKE ? THEN 3
+            ELSE 0
+          END
+        ) as relevance_score
+      FROM courses c
+      JOIN instructors i ON c.instructor_id = i.id
+      JOIN categories cat ON c.category_id = cat.id
+      WHERE (
+        c.title LIKE ? OR
+        c.description LIKE ? OR
+        i.name LIKE ? OR
+        i.title LIKE ? OR
+        cat.name LIKE ?
+      )
+    `;
+
+    const searchParams = [];
+    const queryTerms = query.trim().split(/\s+/);
+
+    // Add parameters for each query term
+    queryTerms.forEach(term => {
+      const likeTerm = `%${term}%`;
+      searchParams.push(likeTerm, likeTerm, likeTerm, likeTerm, likeTerm, likeTerm, likeTerm, likeTerm, likeTerm, likeTerm);
+    });
+
+    // Add filter conditions
+    const filterConditions = [];
+
+    if (category) {
+      filterConditions.push('cat.id = ?');
+      searchParams.push(category);
+    }
+
+    if (instructor) {
+      filterConditions.push('i.id = ?');
+      searchParams.push(instructor);
+    }
+
+    if (difficulty) {
+      filterConditions.push('c.difficulty = ?');
+      searchParams.push(difficulty);
+    }
+
+    if (duration) {
+      filterConditions.push('c.duration = ?');
+      searchParams.push(duration);
+    }
+
+    if (rating) {
+      filterConditions.push('c.rating >= ?');
+      searchParams.push(rating);
+    }
+
+    if (language) {
+      filterConditions.push('c.language = ?');
+      searchParams.push(language);
+    }
+
+    if (isFree !== undefined) {
+      filterConditions.push('c.is_free = ?');
+      searchParams.push(isFree === 'true' ? 1 : 0);
+    }
+
+    if (isFeatured !== undefined) {
+      filterConditions.push('c.featured = ?');
+      searchParams.push(isFeatured === 'true' ? 1 : 0);
+    }
+
+    if (filterConditions.length > 0) {
+      searchQuery += ' AND ' + filterConditions.join(' AND ');
+    }
+
+    // Add sorting
+    let orderBy = 'relevance_score DESC';
+    if (sortBy === 'popularity') {
+      orderBy = 'c.popularity DESC';
+    } else if (sortBy === 'rating') {
+      orderBy = 'c.rating DESC';
+    } else if (sortBy === 'date') {
+      orderBy = 'c.created_at DESC';
+    } else if (sortBy === 'title') {
+      orderBy = 'c.title ASC';
+    }
+
+    if (sortOrder === 'asc' && sortBy !== 'title') {
+      orderBy = orderBy.replace(' DESC', ' ASC');
+    }
+
+    searchQuery += ` ORDER BY ${orderBy}`;
+    searchQuery += ' LIMIT ? OFFSET ?';
+    searchParams.push(parseInt(limit), parseInt(offset));
+
+    // Execute search query
+    const results = await executeQuery(searchQuery, searchParams);
+
+    // Get lessons for each course
+    for (let result of results) {
+      const lessons = await executeQuery(
+        'SELECT * FROM lessons WHERE course_id = ? ORDER BY order_index ASC',
+        [result.id]
+      );
+      result.lessons = lessons;
+
+      // Add mock transcript data (in real app, this would come from a transcripts table)
+      result.hasTranscript = Math.random() > 0.3;
+      result.hasSubtitles = Math.random() > 0.2;
+    }
+
+    // Get total count for pagination
+    const countQuery = `
+      SELECT COUNT(*) as total
+      FROM courses c
+      JOIN instructors i ON c.instructor_id = i.id
+      JOIN categories cat ON c.category_id = cat.id
+      WHERE (
+        c.title LIKE ? OR
+        c.description LIKE ? OR
+        i.name LIKE ? OR
+        i.title LIKE ? OR
+        cat.name LIKE ?
+      )
+    `;
+
+    const countParams = queryTerms.map(term => `%${term}%`).flat();
+    if (filterConditions.length > 0) {
+      countQuery += ' AND ' + filterConditions.join(' AND ');
+      countParams.push(...searchParams.slice(queryTerms.length * 10, -2));
+    }
+
+    const [countResult] = await executeQuery(countQuery, countParams);
+    const total = countResult.total;
+
+    // Get search analytics
+    const analytics = await getSearchAnalytics(query);
+
+    res.json({
+      results,
+      total,
+      analytics,
+      query: query.trim(),
+      filters: {
+        category,
+        instructor,
+        difficulty,
+        duration,
+        rating,
+        language,
+        tags,
+        hasTranscript,
+        hasSubtitles,
+        isFree,
+        isFeatured
+      },
+      pagination: {
+        limit: parseInt(limit),
+        offset: parseInt(offset),
+        total,
+        pages: Math.ceil(total / parseInt(limit))
+      }
+    });
+
+  } catch (error) {
+    console.error('Search error:', error);
+    res.status(500).json({ error: 'Failed to perform search' });
+  }
+});
+
+// Search suggestions API
+app.get('/api/search/suggestions', async (req, res) => {
+  try {
+    const { q: query, limit = 8 } = req.query;
+
+    if (!query || !query.trim()) {
+      return res.json({ suggestions: [] });
+    }
+
+    const searchTerm = `%${query.trim()}%`;
+    const suggestions = [];
+
+    // Get course title suggestions
+    const courseSuggestions = await executeQuery(
+      'SELECT title as text, "course" as type FROM courses WHERE title LIKE ? LIMIT ?',
+      [searchTerm, Math.floor(limit / 2)]
+    );
+    suggestions.push(...courseSuggestions);
+
+    // Get instructor name suggestions
+    const instructorSuggestions = await executeQuery(
+      'SELECT name as text, "instructor" as type FROM instructors WHERE name LIKE ? LIMIT ?',
+      [searchTerm, Math.floor(limit / 4)]
+    );
+    suggestions.push(...instructorSuggestions);
+
+    // Get category name suggestions
+    const categorySuggestions = await executeQuery(
+      'SELECT name as text, "category" as type FROM categories WHERE name LIKE ? LIMIT ?',
+      [searchTerm, Math.floor(limit / 4)]
+    );
+    suggestions.push(...categorySuggestions);
+
+    // Limit total suggestions
+    const limitedSuggestions = suggestions.slice(0, parseInt(limit));
+
+    res.json({ suggestions: limitedSuggestions });
+
+  } catch (error) {
+    console.error('Search suggestions error:', error);
+    res.status(500).json({ error: 'Failed to get search suggestions' });
+  }
+});
+
+// Popular searches API
+app.get('/api/search/popular', async (req, res) => {
+  try {
+    const { limit = 10 } = req.query;
+
+    // In a real app, this would come from a search_analytics table
+    const popularSearches = [
+      { query: 'business fundamentals', count: 1247 },
+      { query: 'entrepreneurship', count: 892 },
+      { query: 'marketing strategy', count: 756 },
+      { query: 'financial management', count: 634 },
+      { query: 'leadership skills', count: 521 },
+      { query: 'digital marketing', count: 487 },
+      { query: 'startup funding', count: 423 },
+      { query: 'business strategy', count: 398 },
+      { query: 'team management', count: 356 },
+      { query: 'innovation', count: 312 }
+    ].slice(0, parseInt(limit));
+
+    res.json({ popularSearches });
+
+  } catch (error) {
+    console.error('Popular searches error:', error);
+    res.status(500).json({ error: 'Failed to get popular searches' });
+  }
+});
+
+// Search analytics API
+app.get('/api/search/analytics', async (req, res) => {
+  try {
+    const { query } = req.query;
+
+    if (!query) {
+      return res.json({ analytics: {} });
+    }
+
+    const analytics = await getSearchAnalytics(query);
+    res.json({ analytics });
+
+  } catch (error) {
+    console.error('Search analytics error:', error);
+    res.status(500).json({ error: 'Failed to get search analytics' });
+  }
+});
+
+// Helper function to get search analytics
+async function getSearchAnalytics(query) {
+  try {
+    // In a real app, this would query a search_analytics table
+    // For now, return mock analytics data
+    return {
+      totalSearches: 15420,
+      queryCount: Math.floor(Math.random() * 100) + 10,
+      popularQueries: [
+        { query: 'business fundamentals', count: 1247 },
+        { query: 'entrepreneurship', count: 892 },
+        { query: 'marketing', count: 756 },
+        { query: 'finance', count: 634 },
+        { query: 'leadership', count: 521 }
+      ],
+      searchTrends: [
+        { date: '2024-01-01', searches: 120 },
+        { date: '2024-01-02', searches: 145 },
+        { date: '2024-01-03', searches: 132 },
+        { date: '2024-01-04', searches: 167 },
+        { date: '2024-01-05', searches: 189 }
+      ],
+      topCategories: [
+        { name: 'Business', count: 2340 },
+        { name: 'Technology', count: 1890 },
+        { name: 'Finance', count: 1560 },
+        { name: 'Marketing', count: 1230 },
+        { name: 'Leadership', count: 980 }
+      ],
+      topInstructors: [
+        { name: 'Ray Dalio', count: 890 },
+        { name: 'Sara Blakely', count: 670 },
+        { name: 'Elon Musk', count: 540 },
+        { name: 'Oprah Winfrey', count: 420 },
+        { name: 'Warren Buffett', count: 380 }
+      ]
+    };
+  } catch (error) {
+    console.error('Error getting search analytics:', error);
+    return {};
+  }
+}
