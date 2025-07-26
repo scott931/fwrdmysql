@@ -275,7 +275,7 @@ const DatabaseManagementPage: React.FC = () => {
                       <span className="text-green-400 font-medium">45ms</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-400 text-sm">Slow Queries (>1s)</span>
+                      <span className="text-gray-400 text-sm">Slow Queries (&gt;1s)</span>
                       <span className="text-yellow-400 font-medium">12</span>
                     </div>
                     <div className="flex justify-between">

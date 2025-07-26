@@ -22,15 +22,21 @@
  */
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Maximize2, Pause, Play, Volume2, VolumeX, ExternalLink } from 'lucide-react';
+import { Maximize2, Pause, Play, Volume2, VolumeX, ExternalLink, Settings, RotateCcw } from 'lucide-react';
 import { Lesson } from '../../types';
+import { useVideoTracking } from '../../hooks/useVideoTracking';
+import RealTimeProgress from './RealTimeProgress';
 
 interface VideoPlayerProps {
   /** Lesson containing video information */
   lesson: Lesson;
+  /** Course ID for tracking */
+  courseId?: string;
+  /** Show real-time progress panel */
+  showProgressPanel?: boolean;
 }
 
-const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson }) => {
+const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson, courseId, showProgressPanel = false }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -40,8 +46,28 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson }) => {
   const [hasError, setHasError] = useState(false);
   const [isYouTube, setIsYouTube] = useState(false);
   const [youTubeId, setYouTubeId] = useState('');
+  const [showSettings, setShowSettings] = useState(false);
+  const [bufferTime, setBufferTime] = useState(10);
   const videoRef = useRef<HTMLVideoElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  // Video tracking hook
+  const {
+    isTracking,
+    currentProgress,
+    realTimeData,
+    isConnected,
+    updateProgress,
+    recordInteraction,
+    getSmartResumeTime,
+    setBufferTime: setTrackingBufferTime,
+    syncProgress,
+    syncPlayState
+  } = useVideoTracking({
+    courseId: courseId || 'unknown',
+    lessonId: lesson.id,
+    duration: 0 // Will be updated when video loads
+  });
 
   // Function to extract YouTube video ID from various YouTube URL formats
   const extractYouTubeId = (url: string): string | null => {
@@ -161,6 +187,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson }) => {
         const progress = (video.currentTime / video.duration) * 100;
         setProgress(progress);
         setCurrentTime(video.currentTime);
+
+        // Update video tracking
+        updateProgress(video.currentTime, isPlaying, isMuted, video.playbackRate);
       }
     };
 
@@ -170,6 +199,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson }) => {
         setDuration(video.duration);
         setIsLoading(false);
         setHasError(false);
+
+        // Apply smart resume if available
+        const resumeTime = getSmartResumeTime();
+        if (resumeTime > 0) {
+          video.currentTime = resumeTime;
+          console.log('🎯 Applied smart resume at:', resumeTime, 'seconds');
+        }
       }
     };
 
@@ -240,9 +276,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson }) => {
       if (isPlaying) {
         videoRef.current.pause();
         setIsPlaying(false);
+        recordInteraction('pause');
       } else {
         await videoRef.current.play();
         setIsPlaying(true);
+        recordInteraction('play');
       }
     } catch (error) {
       console.error('Error playing video:', error);
@@ -256,6 +294,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson }) => {
     if (videoRef.current) {
       videoRef.current.muted = !isMuted;
       setIsMuted(!isMuted);
+      recordInteraction('volume_change', { volume: isMuted ? 1 : 0 });
     }
   };
 
@@ -277,6 +316,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson }) => {
 
     if (isFinite(newTime)) {
       videoRef.current.currentTime = newTime;
+      recordInteraction('seek', { seekTo: newTime });
     }
   };
 
@@ -289,10 +329,12 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson }) => {
 
     if (document.fullscreenElement) {
       document.exitFullscreen();
+      recordInteraction('fullscreen', { isFullscreen: false });
     } else {
       element.requestFullscreen().catch(err => {
         console.error('Error attempting to enable fullscreen:', err);
       });
+      recordInteraction('fullscreen', { isFullscreen: true });
     }
   };
 
@@ -330,6 +372,87 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson }) => {
 
   return (
     <div className="relative aspect-video bg-black rounded-md overflow-hidden group">
+      {/* Real-time Progress Panel */}
+      {showProgressPanel && realTimeData && (
+        <div className="absolute top-4 right-4 z-20">
+          <RealTimeProgress
+            data={realTimeData}
+            isConnected={isConnected}
+            className="w-64"
+          />
+        </div>
+      )}
+
+      {/* Settings Panel */}
+      {showSettings && (
+        <div className="absolute top-4 left-4 z-20 bg-gray-800 rounded-lg p-4 w-64">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-white font-semibold text-sm">Video Settings</h3>
+            <button
+              onClick={() => setShowSettings(false)}
+              className="text-gray-400 hover:text-white"
+            >
+              ×
+            </button>
+          </div>
+
+          <div className="space-y-3">
+            {/* Smart Resume Buffer */}
+            <div>
+              <label className="text-xs text-gray-400 mb-1 block">
+                Smart Resume Buffer (seconds)
+              </label>
+              <input
+                type="range"
+                min="0"
+                max="30"
+                value={bufferTime}
+                onChange={(e) => {
+                  const value = parseInt(e.target.value);
+                  setBufferTime(value);
+                  setTrackingBufferTime(value);
+                }}
+                className="w-full"
+              />
+              <div className="flex justify-between text-xs text-gray-400 mt-1">
+                <span>0s</span>
+                <span>{bufferTime}s</span>
+                <span>30s</span>
+              </div>
+            </div>
+
+            {/* Tracking Status */}
+            <div className="bg-gray-700 rounded p-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-gray-400">Tracking Status</span>
+                <span className={`font-medium ${isTracking ? 'text-green-400' : 'text-red-400'}`}>
+                  {isTracking ? 'Active' : 'Inactive'}
+                </span>
+              </div>
+            </div>
+
+            {/* Connection Status */}
+            <div className="bg-gray-700 rounded p-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-gray-400">Sync Status</span>
+                <span className={`font-medium ${isConnected ? 'text-green-400' : 'text-red-400'}`}>
+                  {isConnected ? 'Connected' : 'Disconnected'}
+                </span>
+              </div>
+            </div>
+
+            {/* Smart Resume Info */}
+            {!isYouTube && (
+              <div className="bg-gray-700 rounded p-2">
+                <div className="text-xs text-gray-400 mb-1">Smart Resume</div>
+                <div className="text-white text-xs">
+                  Will resume at: {formatTime(getSmartResumeTime())}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
       {/* YouTube Video */}
       {isYouTube && youTubeId ? (
         <div className="youtube-container w-full h-full relative">
@@ -586,9 +709,18 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson }) => {
                     </span>
                   </div>
 
-                  <button onClick={toggleFullscreen} className="text-white hover:text-red-500 transition-colors">
-                    <Maximize2 className="h-5 w-5" />
-                  </button>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => setShowSettings(!showSettings)}
+                      className="text-white hover:text-red-500 transition-colors"
+                      title="Video Settings"
+                    >
+                      <Settings className="h-5 w-5" />
+                    </button>
+                    <button onClick={toggleFullscreen} className="text-white hover:text-red-500 transition-colors">
+                      <Maximize2 className="h-5 w-5" />
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -596,8 +728,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson }) => {
         </>
       )}
 
-      {/* Debug Info (only in development) */}
-      {process.env.NODE_ENV === 'development' && (
+{/* {process.env.NODE_ENV === 'development' && (
         <div className="absolute top-2 right-2 bg-black/80 text-white text-xs p-2 rounded opacity-75 max-w-xs">
           <div>URL: {lesson.videoUrl}</div>
           <div>YouTube: {isYouTube ? 'Yes' : 'No'}</div>
@@ -605,7 +736,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson }) => {
           <div>Loading: {isLoading ? 'Yes' : 'No'}</div>
           <div>Error: {hasError ? 'Yes' : 'No'}</div>
         </div>
-      )}
+      )} */}
     </div>
   );
 };

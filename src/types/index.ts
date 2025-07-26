@@ -530,3 +530,178 @@ export interface Notification {
   is_read: boolean;
   created_at: string;
 }
+
+/**
+ * Video Progress Tracking
+ * Enhanced tracking for video playback with granular intervals
+ */
+export interface VideoProgress {
+  /** Unique identifier for this progress session */
+  id: string;
+  /** User identifier */
+  userId: string;
+  /** Course identifier */
+  courseId: string;
+  /** Lesson identifier */
+  lessonId: string;
+  /** Current playback time in seconds */
+  currentTime: number;
+  /** Total duration in seconds */
+  duration: number;
+  /** Progress percentage (0-100) */
+  progress: number;
+  /** Whether the video is currently playing */
+  isPlaying: boolean;
+  /** Whether the video is muted */
+  isMuted: boolean;
+  /** Current playback rate */
+  playbackRate: number;
+  /** Timestamp of last update */
+  lastUpdated: string;
+  /** Device identifier for cross-device sync */
+  deviceId: string;
+  /** Session identifier for this viewing session */
+  sessionId: string;
+  /** Whether this is the primary device */
+  isPrimaryDevice: boolean;
+}
+
+/**
+ * Granular Video Tracking Data
+ * 30-second interval tracking for detailed analytics
+ */
+export interface GranularTrackingData {
+  /** Interval start time in seconds */
+  startTime: number;
+  /** Interval end time in seconds */
+  endTime: number;
+  /** Time spent in this interval */
+  timeSpent: number;
+  /** Whether user was actively watching */
+  isActive: boolean;
+  /** User interactions during this interval */
+  interactions: VideoInteraction[];
+  /** Timestamp of interval */
+  timestamp: string;
+}
+
+/**
+ * Video Interaction
+ * Tracks user interactions with the video player
+ */
+export interface VideoInteraction {
+  /** Type of interaction */
+  type: 'play' | 'pause' | 'seek' | 'volume_change' | 'fullscreen' | 'speed_change';
+  /** Time when interaction occurred */
+  timestamp: string;
+  /** Additional data for the interaction */
+  data?: {
+    seekTo?: number;
+    volume?: number;
+    playbackRate?: number;
+    isFullscreen?: boolean;
+  };
+}
+
+/**
+ * Smart Resume Data
+ * Stores resume points with buffer information
+ */
+export interface SmartResumeData {
+  /** Resume time in seconds */
+  resumeTime: number;
+  /** Buffer time in seconds (default 10 seconds) */
+  bufferTime: number;
+  /** Effective resume time (resumeTime - bufferTime) */
+  effectiveResumeTime: number;
+  /** Timestamp when resume data was created */
+  timestamp: string;
+  /** Device identifier */
+  deviceId: string;
+  /** Whether this is the most recent resume point */
+  isLatest: boolean;
+}
+
+/**
+ * Cross-Device Sync Message
+ * WebSocket message for synchronizing video progress across devices
+ */
+export interface CrossDeviceSyncMessage {
+  /** Message type */
+  type: 'progress_update' | 'play_state' | 'resume_point' | 'device_connected' | 'device_disconnected';
+  /** User identifier */
+  userId: string;
+  /** Device identifier */
+  deviceId: string;
+  /** Session identifier */
+  sessionId: string;
+  /** Message payload */
+  payload: {
+    courseId?: string;
+    lessonId?: string;
+    currentTime?: number;
+    isPlaying?: boolean;
+    resumeTime?: number;
+    timestamp: string;
+  };
+}
+
+/**
+ * Real-time Progress Visualization Data
+ * Data structure for real-time progress display
+ */
+export interface RealTimeProgressData {
+  /** Current progress percentage */
+  progress: number;
+  /** Time watched in current session */
+  sessionTimeWatched: number;
+  /** Total time watched across all sessions */
+  totalTimeWatched: number;
+  /** Estimated time remaining */
+  timeRemaining: number;
+  /** Current playback speed */
+  playbackSpeed: number;
+  /** Whether user is actively watching */
+  isActive: boolean;
+  /** Last activity timestamp */
+  lastActivity: string;
+  /** Device information */
+  deviceInfo: {
+    deviceId: string;
+    deviceType: 'desktop' | 'mobile' | 'tablet';
+    browser: string;
+    isPrimary: boolean;
+  };
+}
+
+/**
+ * Video Analytics Summary
+ * Aggregated analytics data for video viewing
+ */
+export interface VideoAnalyticsSummary {
+  /** Total views of this video */
+  totalViews: number;
+  /** Average completion rate */
+  averageCompletionRate: number;
+  /** Average watch time in seconds */
+  averageWatchTime: number;
+  /** Most common drop-off points */
+  dropOffPoints: number[];
+  /** Engagement heatmap data */
+  engagementHeatmap: {
+    time: number;
+    engagement: number;
+  }[];
+  /** Device usage statistics */
+  deviceUsage: {
+    desktop: number;
+    mobile: number;
+    tablet: number;
+  };
+  /** Cross-device usage statistics */
+  crossDeviceUsage: {
+    singleDevice: number;
+    multipleDevices: number;
+    averageDevicesPerUser: number;
+  };
+}

@@ -169,7 +169,11 @@ const LessonPage: React.FC = () => {
           <div className="lg:w-2/3 mb-8 lg:mb-0">
             {/* Video Player */}
             <div className="bg-black rounded-lg overflow-hidden mb-6">
-              <VideoPlayer lesson={currentLesson} />
+              <VideoPlayer
+            lesson={currentLesson}
+            courseId={courseId as string}
+            showProgressPanel={true}
+          />
             </div>
 
             {/* Lesson Navigation */}

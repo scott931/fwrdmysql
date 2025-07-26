@@ -13,10 +13,20 @@ const jwt = require('jsonwebtoken');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const WebSocket = require('ws');
 
 const app = express();
 const PORT = process.env.PORT || 3002;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+
+// Create HTTP server
+const server = require('http').createServer(app);
+
+// Create WebSocket server
+const wss = new WebSocket.Server({ server });
+
+// Store connected clients
+const connectedClients = new Map();
 
 // CORS configuration
 app.use(cors({
@@ -2450,9 +2460,68 @@ app.post('/api/system/backup', authenticateToken, authorizeRole(['super_admin'])
   }
 });
 
+// WebSocket connection handling
+wss.on('connection', (ws, req) => {
+  console.log('🔗 New WebSocket connection');
+
+  // Extract user ID from query parameters or headers
+  const url = new URL(req.url, `http://${req.headers.host}`);
+  const userId = url.searchParams.get('userId');
+
+  if (!userId) {
+    console.log('❌ No user ID provided, closing connection');
+    ws.close();
+    return;
+  }
+
+  // Store client connection
+  const clientId = `${userId}_${Date.now()}`;
+  connectedClients.set(clientId, {
+    ws,
+    userId,
+    deviceId: url.searchParams.get('deviceId') || 'unknown',
+    sessionId: url.searchParams.get('sessionId') || 'unknown'
+  });
+
+  console.log(`✅ Client connected: ${clientId} (User: ${userId})`);
+
+  // Handle incoming messages
+  ws.on('message', (message) => {
+    try {
+      const data = JSON.parse(message);
+      console.log('📨 Received message:', data);
+
+      // Broadcast message to other clients of the same user
+      connectedClients.forEach((client, id) => {
+        if (id !== clientId && client.userId === userId) {
+          if (client.ws.readyState === WebSocket.OPEN) {
+            client.ws.send(JSON.stringify(data));
+          }
+        }
+      });
+
+    } catch (error) {
+      console.error('❌ Error parsing WebSocket message:', error);
+    }
+  });
+
+  // Handle client disconnect
+  ws.on('close', () => {
+    console.log(`🔌 Client disconnected: ${clientId}`);
+    connectedClients.delete(clientId);
+  });
+
+  // Handle errors
+  ws.on('error', (error) => {
+    console.error(`❌ WebSocket error for ${clientId}:`, error);
+    connectedClients.delete(clientId);
+  });
+});
+
 // Start server
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📊 API available at http://localhost:${PORT}/api`);
   console.log(`🏥 Health check at http://localhost:${PORT}/api/health`);
+  console.log(`🔗 WebSocket server ready on ws://localhost:${PORT}`);
 });

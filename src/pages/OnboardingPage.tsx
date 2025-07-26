@@ -79,7 +79,7 @@ const OnboardingPage: React.FC = () => {
       });
 
       // Refresh the user profile by calling updateProfile
-      await updateProfile(user.id, {
+      await updateProfile({
         ...formData,
         onboarding_completed: true,
         full_name: user.full_name || user.email?.split('@')[0] || '',
