@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Search, User, Mail, Activity, Plus, Shield, Ban, CheckCircle, Eye, Settings, Loader2 } from 'lucide-react';
+import { ArrowLeft, Search, User, Mail, Activity, Plus, Shield, Ban, CheckCircle, Eye, Settings, Loader2, X, Calendar, BookOpen, Award } from 'lucide-react';
 import Button from '../components/ui/Button';
 import { useNavigate } from '../lib/router';
 import { usePermissions } from '../contexts/PermissionContext';
@@ -20,6 +20,14 @@ interface UserData {
   avatar?: string;
 }
 
+interface Permission {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  enabled: boolean;
+}
+
 const ManageUsersPage: React.FC = () => {
   const navigate = useNavigate();
   const { userRole, hasPermission } = usePermissions();
@@ -28,6 +36,12 @@ const ManageUsersPage: React.FC = () => {
   const [roleFilter, setRoleFilter] = useState<'all' | 'user' | 'content_manager' | 'community_manager' | 'user_support' | 'super_admin'>('all');
   const [permissionError, setPermissionError] = useState<string | null>(null);
   const [users, setUsers] = useState<UserData[]>([]);
+
+  // Modal states
+  const [showUserModal, setShowUserModal] = useState(false);
+  const [showPermissionsModal, setShowPermissionsModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
+  const [userPermissions, setUserPermissions] = useState<Permission[]>([]);
 
   // Database hooks
   const {
@@ -91,6 +105,40 @@ const ManageUsersPage: React.FC = () => {
     return matchesSearch && matchesStatus && matchesRole;
   });
 
+  // Initialize permissions for a user
+  const initializeUserPermissions = (user: UserData) => {
+    const allPermissions: Permission[] = [
+      // User Management
+      { id: 'users:view', name: 'View Users', description: 'Can view user list and details', category: 'User Management', enabled: user.role === 'super_admin' || user.role === 'content_manager' },
+      { id: 'users:create', name: 'Create Users', description: 'Can create new admin users', category: 'User Management', enabled: user.role === 'super_admin' },
+      { id: 'users:edit', name: 'Edit Users', description: 'Can edit user information', category: 'User Management', enabled: user.role === 'super_admin' || user.role === 'content_manager' },
+      { id: 'users:delete', name: 'Delete Users', description: 'Can delete user accounts', category: 'User Management', enabled: user.role === 'super_admin' },
+      { id: 'users:suspend', name: 'Suspend Users', description: 'Can suspend user accounts', category: 'User Management', enabled: user.role === 'super_admin' || user.role === 'content_manager' },
+
+      // Content Management
+      { id: 'content:view', name: 'View Content', description: 'Can view all course content', category: 'Content Management', enabled: true },
+      { id: 'content:create', name: 'Create Content', description: 'Can create new courses and lessons', category: 'Content Management', enabled: user.role === 'super_admin' || user.role === 'content_manager' },
+      { id: 'content:edit', name: 'Edit Content', description: 'Can edit existing content', category: 'Content Management', enabled: user.role === 'super_admin' || user.role === 'content_manager' },
+      { id: 'content:delete', name: 'Delete Content', description: 'Can delete content', category: 'Content Management', enabled: user.role === 'super_admin' },
+      { id: 'content:publish', name: 'Publish Content', description: 'Can publish content to live', category: 'Content Management', enabled: user.role === 'super_admin' || user.role === 'content_manager' },
+
+      // Community Management
+      { id: 'community:view', name: 'View Community', description: 'Can view community features', category: 'Community Management', enabled: true },
+      { id: 'community:moderate', name: 'Moderate Community', description: 'Can moderate community discussions', category: 'Community Management', enabled: user.role === 'super_admin' || user.role === 'community_manager' },
+      { id: 'community:ban', name: 'Ban Users', description: 'Can ban users from community', category: 'Community Management', enabled: user.role === 'super_admin' || user.role === 'community_manager' },
+
+      // Analytics & Reports
+      { id: 'analytics:view', name: 'View Analytics', description: 'Can view platform analytics', category: 'Analytics', enabled: user.role === 'super_admin' || user.role === 'content_manager' },
+      { id: 'reports:generate', name: 'Generate Reports', description: 'Can generate system reports', category: 'Analytics', enabled: user.role === 'super_admin' },
+
+      // System Settings
+      { id: 'settings:view', name: 'View Settings', description: 'Can view system settings', category: 'System Settings', enabled: user.role === 'super_admin' },
+      { id: 'settings:edit', name: 'Edit Settings', description: 'Can modify system settings', category: 'System Settings', enabled: user.role === 'super_admin' },
+    ];
+
+    setUserPermissions(allPermissions);
+  };
+
   const handleUserAction = (userId: string, action: 'view' | 'suspend' | 'activate' | 'delete' | 'permissions') => {
     const user = users.find(u => u.id === userId);
     if (!user) return;
@@ -108,28 +156,82 @@ const ManageUsersPage: React.FC = () => {
 
     switch (action) {
       case 'view':
-        // TODO: Implement user detail view
-        console.log('View user:', user);
+        setSelectedUser(user);
+        setShowUserModal(true);
         break;
       case 'suspend':
         setUsers(prev => prev.map(u =>
           u.id === userId ? { ...u, status: 'suspended' as const } : u
         ));
+        // Update in database
+        updateUser(userId, { status: 'suspended' });
         break;
       case 'activate':
         setUsers(prev => prev.map(u =>
           u.id === userId ? { ...u, status: 'active' as const } : u
         ));
+        // Update in database
+        updateUser(userId, { status: 'active' });
         break;
       case 'delete':
         if (confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
           setUsers(prev => prev.filter(u => u.id !== userId));
+          // TODO: Implement delete in database
         }
         break;
       case 'permissions':
-        // TODO: Implement permissions modal
-        console.log('Edit permissions for:', user);
+        setSelectedUser(user);
+        initializeUserPermissions(user);
+        setShowPermissionsModal(true);
         break;
+    }
+  };
+
+  const handlePermissionChange = (permissionId: string, enabled: boolean) => {
+    setUserPermissions(prev => prev.map(p =>
+      p.id === permissionId ? { ...p, enabled } : p
+    ));
+  };
+
+  const handleSavePermissions = async () => {
+    if (!selectedUser) return;
+
+    try {
+      // Update user role based on permissions
+      const hasAdminPermissions = userPermissions.some(p =>
+        ['users:create', 'users:delete', 'settings:edit'].includes(p.id) && p.enabled
+      );
+
+      const hasContentManagerPermissions = userPermissions.some(p =>
+        ['content:create', 'content:edit', 'content:publish'].includes(p.id) && p.enabled
+      );
+
+      const hasCommunityManagerPermissions = userPermissions.some(p =>
+        ['community:moderate', 'community:ban'].includes(p.id) && p.enabled
+      );
+
+      let newRole = 'user';
+      if (hasAdminPermissions) {
+        newRole = 'super_admin';
+      } else if (hasContentManagerPermissions) {
+        newRole = 'content_manager';
+      } else if (hasCommunityManagerPermissions) {
+        newRole = 'community_manager';
+      }
+
+      // Update user in database
+      await updateUser(selectedUser.id, { role: newRole });
+
+      // Update local state
+      setUsers(prev => prev.map(u =>
+        u.id === selectedUser.id ? { ...u, role: newRole as any } : u
+      ));
+
+      setShowPermissionsModal(false);
+      setSelectedUser(null);
+    } catch (error) {
+      console.error('Failed to update user permissions:', error);
+      setPermissionError('Failed to update user permissions. Please try again.');
     }
   };
 
@@ -497,6 +599,197 @@ const ManageUsersPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* User Details Modal */}
+      {showUserModal && selectedUser && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-white">User Details</h2>
+                <Button
+                  variant="ghost"
+                  onClick={() => setShowUserModal(false)}
+                  className="text-gray-400 hover:text-white"
+                >
+                  <X className="h-6 w-6" />
+                </Button>
+              </div>
+
+              <div className="space-y-6">
+                {/* User Info */}
+                <div className="flex items-center space-x-4">
+                  <div className="h-16 w-16 rounded-full bg-gray-600 flex items-center justify-center">
+                    {selectedUser.avatar ? (
+                      <img src={selectedUser.avatar} alt={selectedUser.name} className="h-16 w-16 rounded-full object-cover" />
+                    ) : (
+                      <User className="h-8 w-8 text-gray-300" />
+                    )}
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-semibold text-white">{selectedUser.name}</h3>
+                    <p className="text-gray-400">{selectedUser.email}</p>
+                    <div className="flex items-center space-x-2 mt-2">
+                      {getRoleIcon(selectedUser.role)}
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getRoleBadge(selectedUser.role)}`}>
+                        {selectedUser.role.replace('_', ' ').toUpperCase()}
+                      </span>
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusBadge(selectedUser.status)}`}>
+                        {selectedUser.status.charAt(0).toUpperCase() + selectedUser.status.slice(1)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* User Stats */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-gray-700 rounded-lg p-4">
+                    <div className="flex items-center space-x-2">
+                      <Calendar className="h-5 w-5 text-gray-400" />
+                      <span className="text-gray-400">Joined</span>
+                    </div>
+                    <p className="text-white font-medium">{new Date(selectedUser.joinDate).toLocaleDateString()}</p>
+                  </div>
+                  <div className="bg-gray-700 rounded-lg p-4">
+                    <div className="flex items-center space-x-2">
+                      <Activity className="h-5 w-5 text-gray-400" />
+                      <span className="text-gray-400">Last Active</span>
+                    </div>
+                    <p className="text-white font-medium">{new Date(selectedUser.lastActive).toLocaleDateString()}</p>
+                  </div>
+                  <div className="bg-gray-700 rounded-lg p-4">
+                    <div className="flex items-center space-x-2">
+                      <BookOpen className="h-5 w-5 text-gray-400" />
+                      <span className="text-gray-400">Courses Enrolled</span>
+                    </div>
+                    <p className="text-white font-medium">{selectedUser.coursesEnrolled}</p>
+                  </div>
+                  <div className="bg-gray-700 rounded-lg p-4">
+                    <div className="flex items-center space-x-2">
+                      <Award className="h-5 w-5 text-gray-400" />
+                      <span className="text-gray-400">Courses Completed</span>
+                    </div>
+                    <p className="text-white font-medium">{selectedUser.coursesCompleted}</p>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex space-x-3 pt-4 border-t border-gray-700">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setShowUserModal(false);
+                      handleUserAction(selectedUser.id, 'permissions');
+                    }}
+                    className="flex-1"
+                  >
+                    <Settings className="h-4 w-4 mr-2" />
+                    Manage Permissions
+                  </Button>
+                  {selectedUser.status === 'active' ? (
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setShowUserModal(false);
+                        handleUserAction(selectedUser.id, 'suspend');
+                      }}
+                      className="text-red-500 border-red-500 hover:bg-red-500/10"
+                    >
+                      <Ban className="h-4 w-4 mr-2" />
+                      Suspend User
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setShowUserModal(false);
+                        handleUserAction(selectedUser.id, 'activate');
+                      }}
+                      className="text-green-500 border-green-500 hover:bg-green-500/10"
+                    >
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      Activate User
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Permissions Modal */}
+      {showPermissionsModal && selectedUser && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold text-white">Manage Permissions</h2>
+                  <p className="text-gray-400">Configure permissions for {selectedUser.name}</p>
+                </div>
+                <Button
+                  variant="ghost"
+                  onClick={() => setShowPermissionsModal(false)}
+                  className="text-gray-400 hover:text-white"
+                >
+                  <X className="h-6 w-6" />
+                </Button>
+              </div>
+
+              <div className="space-y-6">
+                {/* Permission Categories */}
+                {['User Management', 'Content Management', 'Community Management', 'Analytics', 'System Settings'].map(category => (
+                  <div key={category} className="bg-gray-700 rounded-lg p-4">
+                    <h3 className="text-lg font-semibold text-white mb-4">{category}</h3>
+                    <div className="space-y-3">
+                      {userPermissions
+                        .filter(p => p.category === category)
+                        .map(permission => (
+                          <div key={permission.id} className="flex items-center justify-between p-3 bg-gray-600 rounded-lg">
+                            <div className="flex-1">
+                              <div className="flex items-center space-x-2">
+                                <input
+                                  type="checkbox"
+                                  id={permission.id}
+                                  checked={permission.enabled}
+                                  onChange={(e) => handlePermissionChange(permission.id, e.target.checked)}
+                                  className="rounded border-gray-500 text-red-500 focus:ring-red-500 bg-gray-700"
+                                />
+                                <label htmlFor={permission.id} className="text-white font-medium">
+                                  {permission.name}
+                                </label>
+                              </div>
+                              <p className="text-gray-400 text-sm mt-1">{permission.description}</p>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                ))}
+
+                {/* Actions */}
+                <div className="flex space-x-3 pt-4 border-t border-gray-700">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowPermissionsModal(false)}
+                    className="flex-1"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="primary"
+                    onClick={handleSavePermissions}
+                    className="flex-1"
+                  >
+                    Save Permissions
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

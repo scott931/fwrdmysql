@@ -19,6 +19,11 @@ self.__BUILD_MANIFEST = {
       "static/chunks/main.js",
       "static/chunks/pages/_error.js"
     ],
+    "/admin/create-user": [
+      "static/chunks/webpack.js",
+      "static/chunks/main.js",
+      "static/chunks/pages/admin/create-user.js"
+    ],
     "/admin/manage-users": [
       "static/chunks/webpack.js",
       "static/chunks/main.js",
