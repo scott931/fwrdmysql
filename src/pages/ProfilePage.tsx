@@ -68,6 +68,7 @@ const ProfilePage: React.FC = () => {
   const [profileErrors, setProfileErrors] = useState<string[]>([]);
   const [profileSuccess, setProfileSuccess] = useState(false);
   const [profileLoading, setProfileLoading] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // Database hooks
   const {
@@ -97,8 +98,9 @@ const ProfilePage: React.FC = () => {
 
   // Initialize edit form with current user data
   useEffect(() => {
+    console.log('🔄 ProfilePage: User data changed:', user);
     if (user) {
-      setEditProfileForm({
+      const newFormData = {
         full_name: user.full_name || '',
         avatar_url: user.avatar_url || '',
         industry: user.industry || '',
@@ -107,9 +109,11 @@ const ProfilePage: React.FC = () => {
         country: user.country || '',
         state_province: user.state_province || '',
         city: user.city || ''
-      });
+      };
+      console.log('🔄 ProfilePage: Setting edit form data:', newFormData);
+      setEditProfileForm(newFormData);
     }
-  }, [user]);
+  }, [user, refreshTrigger]);
 
   // Calculate user statistics from database
   const completedCourses = userProgress.filter(p => p.completed).length;
@@ -251,7 +255,7 @@ const ProfilePage: React.FC = () => {
       });
 
       // Update profile using auth service
-      await updateProfile(user?.id || '', {
+      console.log('🔄 Updating profile with data:', {
         full_name: editProfileForm.full_name.trim(),
         avatar_url: editProfileForm.avatar_url,
         industry: editProfileForm.industry,
@@ -262,7 +266,34 @@ const ProfilePage: React.FC = () => {
         city: editProfileForm.city
       });
 
+      const updatedUser = await updateProfile({
+        full_name: editProfileForm.full_name.trim(),
+        avatar_url: editProfileForm.avatar_url,
+        industry: editProfileForm.industry,
+        experience_level: editProfileForm.experience_level,
+        business_stage: editProfileForm.business_stage,
+        country: editProfileForm.country,
+        state_province: editProfileForm.state_province,
+        city: editProfileForm.city
+      });
+
+      console.log('✅ Profile updated successfully:', updatedUser);
+
+      // Update the edit form with the new data to reflect changes immediately
+      setEditProfileForm({
+        full_name: updatedUser.full_name || '',
+        avatar_url: updatedUser.avatar_url || '',
+        industry: updatedUser.industry || '',
+        experience_level: updatedUser.experience_level || '',
+        business_stage: updatedUser.business_stage || '',
+        country: updatedUser.country || '',
+        state_province: updatedUser.state_province || '',
+        city: updatedUser.city || ''
+      });
+
       setProfileSuccess(true);
+      // Force refresh of the form data
+      setRefreshTrigger(prev => prev + 1);
       setTimeout(() => {
         setShowEditProfile(false);
         setProfileSuccess(false);

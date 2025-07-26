@@ -13,7 +13,7 @@ const HeroBanner: React.FC<HeroBannerProps> = ({ course, onPlay }) => {
   const [isVideoError, setIsVideoError] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
-  const videoUrl = course.videoUrl || 'https://youtu.be/q5_PrTvNypY';
+  const videoUrl = course.videoUrl || 'https://www.youtube.com/watch?v=8bUQ0-tjJ-A';
 
   const getYouTubeEmbedUrl = (url: string) => {
     if (url.includes('youtu.be/')) {

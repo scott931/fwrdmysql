@@ -13,6 +13,8 @@ const SystemConfigurationPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'general' | 'database' | 'security' | 'performance' | 'backup' | 'monitoring'>('general');
   const [isLoading, setIsLoading] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
+  const [systemStatus, setSystemStatus] = useState<any>(null);
+  const [backupStatus, setBackupStatus] = useState<'idle' | 'creating' | 'success' | 'error'>('idle');
 
   // System configuration state
   const [systemConfig, setSystemConfig] = useState({
@@ -40,6 +42,43 @@ const SystemConfigurationPage: React.FC = () => {
   // Check if user is super admin
   const isSuperAdmin = userRole === 'super_admin';
 
+  // Load system configuration and status from API
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        // Load configuration
+        const configResponse = await fetch('http://localhost:3002/api/system/config', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+          }
+        });
+
+        if (configResponse.ok) {
+          const config = await configResponse.json();
+          setSystemConfig(config);
+        }
+
+        // Load system status
+        const statusResponse = await fetch('http://localhost:3002/api/system/status', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+          }
+        });
+
+        if (statusResponse.ok) {
+          const status = await statusResponse.json();
+          setSystemStatus(status);
+        }
+      } catch (error) {
+        console.error('Error loading data:', error);
+      }
+    };
+
+    if (isSuperAdmin) {
+      loadData();
+    }
+  }, [isSuperAdmin]);
+
   // Redirect if not super admin
   useEffect(() => {
     if (!isSuperAdmin) {
@@ -52,15 +91,24 @@ const SystemConfigurationPage: React.FC = () => {
     setSaveStatus('saving');
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const response = await fetch('http://localhost:3002/api/system/config', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        },
+        body: JSON.stringify(systemConfig)
+      });
 
-      // Save to localStorage for demo
-      localStorage.setItem('systemConfiguration', JSON.stringify(systemConfig));
+      if (!response.ok) {
+        throw new Error('Failed to save configuration');
+      }
 
+      const result = await response.json();
       setSaveStatus('success');
       setTimeout(() => setSaveStatus('idle'), 3000);
     } catch (error) {
+      console.error('Error saving configuration:', error);
       setSaveStatus('error');
       setTimeout(() => setSaveStatus('idle'), 3000);
     } finally {
@@ -73,6 +121,30 @@ const SystemConfigurationPage: React.FC = () => {
       ...prev,
       [key]: value
     }));
+  };
+
+  const handleCreateBackup = async () => {
+    setBackupStatus('creating');
+    try {
+      const response = await fetch('http://localhost:3002/api/system/backup', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create backup');
+      }
+
+      const result = await response.json();
+      setBackupStatus('success');
+      setTimeout(() => setBackupStatus('idle'), 3000);
+    } catch (error) {
+      console.error('Error creating backup:', error);
+      setBackupStatus('error');
+      setTimeout(() => setBackupStatus('idle'), 3000);
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -149,6 +221,20 @@ const SystemConfigurationPage: React.FC = () => {
           <div className="mb-6 p-4 bg-red-600/20 border border-red-500/30 rounded-lg flex items-center">
             <AlertTriangle className="h-5 w-5 text-red-400 mr-2" />
             <span className="text-red-300">Error saving configuration. Please try again.</span>
+          </div>
+        )}
+
+        {backupStatus === 'success' && (
+          <div className="mb-6 p-4 bg-green-600/20 border border-green-500/30 rounded-lg flex items-center">
+            <CheckCircle className="h-5 w-5 text-green-400 mr-2" />
+            <span className="text-green-300">Backup created successfully!</span>
+          </div>
+        )}
+
+        {backupStatus === 'error' && (
+          <div className="mb-6 p-4 bg-red-600/20 border border-red-500/30 rounded-lg flex items-center">
+            <AlertTriangle className="h-5 w-5 text-red-400 mr-2" />
+            <span className="text-red-300">Error creating backup. Please try again.</span>
           </div>
         )}
 
@@ -286,21 +372,31 @@ const SystemConfigurationPage: React.FC = () => {
                     Database Status
                   </label>
                   <div className="flex items-center space-x-2">
-                    <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                    <span className="text-green-400">Connected</span>
+                    <div className={`w-3 h-3 rounded-full ${
+                      systemStatus?.database?.status === 'operational' ? 'bg-green-500' : 'bg-red-500'
+                    }`}></div>
+                    <span className={`${
+                      systemStatus?.database?.status === 'operational' ? 'text-green-400' : 'text-red-400'
+                    }`}>
+                      {systemStatus ? (systemStatus.database?.status === 'operational' ? 'Connected' : 'Error') : 'Loading...'}
+                    </span>
                   </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
                     Database Size
                   </label>
-                  <span className="text-gray-300">2.4 GB</span>
+                  <span className="text-gray-300">
+                    {systemStatus ? systemStatus.database?.size : 'Loading...'}
+                  </span>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Last Backup
+                    Connection Pool
                   </label>
-                  <span className="text-gray-300">2 hours ago</span>
+                  <span className="text-gray-300">
+                    {systemStatus ? systemStatus.database?.connectionPool : 'Loading...'}
+                  </span>
                 </div>
               </div>
             </div>
@@ -425,15 +521,30 @@ const SystemConfigurationPage: React.FC = () => {
                   <div className="space-y-2">
                     <div className="flex justify-between">
                       <span className="text-gray-400 text-sm">CPU Usage</span>
-                      <span className="text-green-400 text-sm">45%</span>
+                      <span className={`text-sm ${
+                        systemStatus?.systemResources?.cpuUsage > 80 ? 'text-red-400' :
+                        systemStatus?.systemResources?.cpuUsage > 60 ? 'text-yellow-400' : 'text-green-400'
+                      }`}>
+                        {systemStatus ? `${systemStatus.systemResources?.cpuUsage}%` : 'Loading...'}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-400 text-sm">Memory Usage</span>
-                      <span className="text-yellow-400 text-sm">78%</span>
+                      <span className={`text-sm ${
+                        systemStatus?.systemResources?.memoryUsage > 80 ? 'text-red-400' :
+                        systemStatus?.systemResources?.memoryUsage > 60 ? 'text-yellow-400' : 'text-green-400'
+                      }`}>
+                        {systemStatus ? `${systemStatus.systemResources?.memoryUsage}%` : 'Loading...'}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-400 text-sm">Disk Usage</span>
-                      <span className="text-green-400 text-sm">32%</span>
+                      <span className={`text-sm ${
+                        systemStatus?.systemResources?.diskUsage > 80 ? 'text-red-400' :
+                        systemStatus?.systemResources?.diskUsage > 60 ? 'text-yellow-400' : 'text-green-400'
+                      }`}>
+                        {systemStatus ? `${systemStatus.systemResources?.diskUsage}%` : 'Loading...'}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -480,21 +591,31 @@ const SystemConfigurationPage: React.FC = () => {
                   <label className="block text-sm font-medium text-gray-300 mb-2">
                     Last Backup
                   </label>
-                  <span className="text-gray-300">2024-01-15 14:30:00 UTC</span>
+                  <span className="text-gray-300">
+                    {systemStatus ? new Date(systemStatus.lastBackup).toLocaleString() : 'Loading...'}
+                  </span>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
                     Backup Size
                   </label>
-                  <span className="text-gray-300">1.2 GB</span>
+                  <span className="text-gray-300">
+                    {systemStatus ? systemStatus.backupSize : 'Loading...'}
+                  </span>
                 </div>
                 <div>
                   <Button
                     variant="outline"
+                    onClick={handleCreateBackup}
+                    disabled={backupStatus === 'creating'}
                     className="flex items-center"
                   >
-                    <HardDrive className="h-4 w-4 mr-2" />
-                    Create Manual Backup
+                    {backupStatus === 'creating' ? (
+                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <HardDrive className="h-4 w-4 mr-2" />
+                    )}
+                    {backupStatus === 'creating' ? 'Creating Backup...' : 'Create Manual Backup'}
                   </Button>
                 </div>
                 <div>
@@ -562,19 +683,27 @@ const SystemConfigurationPage: React.FC = () => {
                   <div className="space-y-3">
                     <div className="flex justify-between">
                       <span className="text-gray-400 text-sm">Response Time</span>
-                      <span className="text-green-400 text-sm">245ms</span>
+                      <span className="text-green-400 text-sm">
+                        {systemStatus ? `${systemStatus.systemResources?.responseTime}ms` : 'Loading...'}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-400 text-sm">Uptime</span>
-                      <span className="text-green-400 text-sm">99.9%</span>
+                      <span className="text-green-400 text-sm">
+                        {systemStatus ? `${systemStatus.systemResources?.uptime}%` : 'Loading...'}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-400 text-sm">Active Users</span>
-                      <span className="text-blue-400 text-sm">1,247</span>
+                      <span className="text-blue-400 text-sm">
+                        {systemStatus ? systemStatus.systemResources?.activeUsers?.toLocaleString() : 'Loading...'}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-400 text-sm">Error Rate</span>
-                      <span className="text-green-400 text-sm">0.02%</span>
+                      <span className="text-green-400 text-sm">
+                        {systemStatus ? `${systemStatus.systemResources?.errorRate}%` : 'Loading...'}
+                      </span>
                     </div>
                   </div>
                 </div>

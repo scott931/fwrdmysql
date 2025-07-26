@@ -6,6 +6,7 @@ CREATE DATABASE IF NOT EXISTS forward_africa_db;
 USE forward_africa_db;
 
 -- Drop tables if they exist (for clean setup)
+DROP TABLE IF EXISTS system_configuration;
 DROP TABLE IF EXISTS notifications;
 DROP TABLE IF EXISTS community_groups;
 DROP TABLE IF EXISTS group_members;
@@ -98,6 +99,32 @@ CREATE TABLE lessons (
     order_index INT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE
+);
+
+-- System Configuration table
+CREATE TABLE system_configuration (
+    id INT PRIMARY KEY DEFAULT 1,
+    site_name VARCHAR(255) NOT NULL DEFAULT 'Forward Africa',
+    site_description TEXT,
+    maintenance_mode BOOLEAN DEFAULT FALSE,
+    debug_mode BOOLEAN DEFAULT FALSE,
+    max_upload_size INT DEFAULT 50,
+    session_timeout INT DEFAULT 30,
+    email_notifications BOOLEAN DEFAULT TRUE,
+    auto_backup BOOLEAN DEFAULT TRUE,
+    backup_frequency ENUM('hourly', 'daily', 'weekly', 'monthly') DEFAULT 'daily',
+    security_level ENUM('low', 'medium', 'high', 'maximum') DEFAULT 'high',
+    rate_limiting BOOLEAN DEFAULT TRUE,
+    max_requests_per_minute INT DEFAULT 100,
+    database_connection_pool INT DEFAULT 10,
+    cache_enabled BOOLEAN DEFAULT TRUE,
+    cache_ttl INT DEFAULT 3600,
+    cdn_enabled BOOLEAN DEFAULT FALSE,
+    ssl_enabled BOOLEAN DEFAULT TRUE,
+    cors_enabled BOOLEAN DEFAULT TRUE,
+    allowed_origins JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
 -- User Progress table

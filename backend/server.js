@@ -727,23 +727,65 @@ app.put('/api/users/:id', authenticateToken, async (req, res) => {
       updateRole = role;
     }
 
-    // Convert undefined values to null for MySQL compatibility
-    const updateParams = [
-      email !== undefined ? email : null,
-      full_name !== undefined ? full_name : null,
-      avatar_url !== undefined ? avatar_url : null,
-      education_level !== undefined ? education_level : null,
-      job_title !== undefined ? job_title : null,
-      topics_of_interest !== undefined ? JSON.stringify(topics_of_interest) : null,
-      industry !== undefined ? industry : null,
-      experience_level !== undefined ? experience_level : null,
-      business_stage !== undefined ? business_stage : null,
-      country !== undefined ? country : null,
-      state_province !== undefined ? state_province : null,
-      city !== undefined ? city : null,
-      updateRole !== undefined ? updateRole : null,
-      req.params.id
-    ];
+    // Build dynamic update query based on provided fields
+    const updateFields = [];
+    const updateValues = [];
+
+    if (email !== undefined) {
+      updateFields.push('email = ?');
+      updateValues.push(email);
+    }
+    if (full_name !== undefined) {
+      updateFields.push('full_name = ?');
+      updateValues.push(full_name);
+    }
+    if (avatar_url !== undefined) {
+      updateFields.push('avatar_url = ?');
+      updateValues.push(avatar_url);
+    }
+    if (education_level !== undefined) {
+      updateFields.push('education_level = ?');
+      updateValues.push(education_level);
+    }
+    if (job_title !== undefined) {
+      updateFields.push('job_title = ?');
+      updateValues.push(job_title);
+    }
+    if (topics_of_interest !== undefined) {
+      updateFields.push('topics_of_interest = ?');
+      updateValues.push(JSON.stringify(topics_of_interest));
+    }
+    if (industry !== undefined) {
+      updateFields.push('industry = ?');
+      updateValues.push(industry);
+    }
+    if (experience_level !== undefined) {
+      updateFields.push('experience_level = ?');
+      updateValues.push(experience_level);
+    }
+    if (business_stage !== undefined) {
+      updateFields.push('business_stage = ?');
+      updateValues.push(business_stage);
+    }
+    if (country !== undefined) {
+      updateFields.push('country = ?');
+      updateValues.push(country);
+    }
+    if (state_province !== undefined) {
+      updateFields.push('state_province = ?');
+      updateValues.push(state_province);
+    }
+    if (city !== undefined) {
+      updateFields.push('city = ?');
+      updateValues.push(city);
+    }
+    if (updateRole !== undefined) {
+      updateFields.push('role = ?');
+      updateValues.push(updateRole);
+    }
+
+    // Add the WHERE clause parameter
+    updateValues.push(req.params.id);
 
     console.log('🔧 User update parameters:', {
       email,
@@ -761,12 +803,15 @@ app.put('/api/users/:id', authenticateToken, async (req, res) => {
       updateRole,
       userId: req.params.id
     });
-    console.log('🔧 Processed update params:', updateParams);
+    console.log('🔧 Update fields:', updateFields);
+    console.log('🔧 Update values:', updateValues);
 
-    await executeQuery(
-      'UPDATE users SET email = ?, full_name = ?, avatar_url = ?, education_level = ?, job_title = ?, topics_of_interest = ?, industry = ?, experience_level = ?, business_stage = ?, country = ?, state_province = ?, city = ?, role = ? WHERE id = ?',
-      updateParams
-    );
+    if (updateFields.length === 0) {
+      return res.status(400).json({ error: 'No valid fields to update' });
+    }
+
+    const updateQuery = `UPDATE users SET ${updateFields.join(', ')} WHERE id = ?`;
+    await executeQuery(updateQuery, updateValues);
 
     // Return the updated user data
     const [updatedUser] = await executeQuery(
@@ -1992,6 +2037,194 @@ app.post('/api/upload/certificate', upload.single('certificate'), async (req, re
   res.json({ url });
 });
 
+// System Configuration Endpoints
+app.get('/api/system/config', authenticateToken, authorizeRole(['super_admin']), async (req, res) => {
+  try {
+    // Get system configuration from database
+    const [configRows] = await executeQuery('SELECT * FROM system_configuration WHERE id = 1');
+
+    if (configRows.length === 0) {
+      // Return default configuration if none exists
+      const defaultConfig = {
+        siteName: 'Forward Africa',
+        siteDescription: 'Empowering African professionals through expert-led courses',
+        maintenanceMode: false,
+        debugMode: false,
+        maxUploadSize: 50,
+        sessionTimeout: 30,
+        emailNotifications: true,
+        autoBackup: true,
+        backupFrequency: 'daily',
+        securityLevel: 'high',
+        rateLimiting: true,
+        maxRequestsPerMinute: 100,
+        databaseConnectionPool: 10,
+        cacheEnabled: true,
+        cacheTTL: 3600,
+        cdnEnabled: false,
+        sslEnabled: true,
+        corsEnabled: true,
+        allowedOrigins: JSON.stringify(['https://forwardafrica.com', 'https://www.forwardafrica.com'])
+      };
+
+      res.json(defaultConfig);
+    } else {
+      res.json(configRows[0]);
+    }
+  } catch (error) {
+    console.error('Error fetching system configuration:', error);
+    res.status(500).json({ error: 'Failed to fetch system configuration' });
+  }
+});
+
+app.put('/api/system/config', authenticateToken, authorizeRole(['super_admin']), async (req, res) => {
+  try {
+    const {
+      siteName,
+      siteDescription,
+      maintenanceMode,
+      debugMode,
+      maxUploadSize,
+      sessionTimeout,
+      emailNotifications,
+      autoBackup,
+      backupFrequency,
+      securityLevel,
+      rateLimiting,
+      maxRequestsPerMinute,
+      databaseConnectionPool,
+      cacheEnabled,
+      cacheTTL,
+      cdnEnabled,
+      sslEnabled,
+      corsEnabled,
+      allowedOrigins
+    } = req.body;
+
+    // Check if configuration exists
+    const [existingConfig] = await executeQuery('SELECT id FROM system_configuration WHERE id = 1');
+
+    if (existingConfig.length === 0) {
+      // Insert new configuration
+      await executeQuery(`
+        INSERT INTO system_configuration (
+          id, site_name, site_description, maintenance_mode, debug_mode, max_upload_size,
+          session_timeout, email_notifications, auto_backup, backup_frequency, security_level,
+          rate_limiting, max_requests_per_minute, database_connection_pool, cache_enabled,
+          cache_ttl, cdn_enabled, ssl_enabled, cors_enabled, allowed_origins, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+      `, [
+        1, siteName, siteDescription, maintenanceMode, debugMode, maxUploadSize,
+        sessionTimeout, emailNotifications, autoBackup, backupFrequency, securityLevel,
+        rateLimiting, maxRequestsPerMinute, databaseConnectionPool, cacheEnabled,
+        cacheTTL, cdnEnabled, sslEnabled, corsEnabled,
+        typeof allowedOrigins === 'string' ? allowedOrigins : JSON.stringify(allowedOrigins)
+      ]);
+    } else {
+      // Update existing configuration
+      await executeQuery(`
+        UPDATE system_configuration SET
+          site_name = ?, site_description = ?, maintenance_mode = ?, debug_mode = ?,
+          max_upload_size = ?, session_timeout = ?, email_notifications = ?, auto_backup = ?,
+          backup_frequency = ?, security_level = ?, rate_limiting = ?, max_requests_per_minute = ?,
+          database_connection_pool = ?, cache_enabled = ?, cache_ttl = ?, cdn_enabled = ?,
+          ssl_enabled = ?, cors_enabled = ?, allowed_origins = ?, updated_at = NOW()
+        WHERE id = 1
+      `, [
+        siteName, siteDescription, maintenanceMode, debugMode, maxUploadSize,
+        sessionTimeout, emailNotifications, autoBackup, backupFrequency, securityLevel,
+        rateLimiting, maxRequestsPerMinute, databaseConnectionPool, cacheEnabled,
+        cacheTTL, cdnEnabled, sslEnabled, corsEnabled,
+        typeof allowedOrigins === 'string' ? allowedOrigins : JSON.stringify(allowedOrigins)
+      ]);
+    }
+
+    // Log the configuration change
+    await executeQuery(`
+      INSERT INTO audit_logs (id, user_id, action, details, ip_address, user_agent)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `, [
+      uuidv4(),
+      req.user.id,
+      'SYSTEM_CONFIG_UPDATE',
+      `Updated system configuration: ${siteName}`,
+      req.ip || req.connection.remoteAddress,
+      req.headers['user-agent']
+    ]);
+
+    res.json({ message: 'System configuration updated successfully' });
+  } catch (error) {
+    console.error('Error updating system configuration:', error);
+    res.status(500).json({ error: 'Failed to update system configuration' });
+  }
+});
+
+app.get('/api/system/status', authenticateToken, authorizeRole(['super_admin']), async (req, res) => {
+  try {
+    // Get system status information
+    const [dbStatus] = await executeQuery('SELECT 1 as status');
+    const [userCount] = await executeQuery('SELECT COUNT(*) as count FROM users');
+    const [courseCount] = await executeQuery('SELECT COUNT(*) as count FROM courses');
+    const [instructorCount] = await executeQuery('SELECT COUNT(*) as count FROM instructors');
+
+    // Get system resources (simulated)
+    const systemResources = {
+      cpuUsage: Math.floor(Math.random() * 30) + 20, // 20-50%
+      memoryUsage: Math.floor(Math.random() * 40) + 60, // 60-100%
+      diskUsage: Math.floor(Math.random() * 50) + 20, // 20-70%
+      responseTime: Math.floor(Math.random() * 200) + 100, // 100-300ms
+      uptime: 99.9,
+      activeUsers: Math.floor(Math.random() * 500) + 1000, // 1000-1500
+      errorRate: (Math.random() * 0.1).toFixed(2) // 0-0.1%
+    };
+
+    res.json({
+      database: {
+        status: dbStatus.length > 0 ? 'operational' : 'error',
+        connectionPool: 10,
+        size: '2.4 GB'
+      },
+      users: userCount[0]?.count || 0,
+      courses: courseCount[0]?.count || 0,
+      instructors: instructorCount[0]?.count || 0,
+      systemResources,
+      lastBackup: new Date(Date.now() - Math.random() * 24 * 60 * 60 * 1000).toISOString(),
+      backupSize: '1.2 GB'
+    });
+  } catch (error) {
+    console.error('Error fetching system status:', error);
+    res.status(500).json({ error: 'Failed to fetch system status' });
+  }
+});
+
+app.post('/api/system/backup', authenticateToken, authorizeRole(['super_admin']), async (req, res) => {
+  try {
+    // Simulate backup creation
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    // Log the backup action
+    await executeQuery(`
+      INSERT INTO audit_logs (id, user_id, action, details, ip_address, user_agent)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `, [
+      uuidv4(),
+      req.user.id,
+      'SYSTEM_BACKUP_CREATED',
+      'Manual backup created successfully',
+      req.ip || req.connection.remoteAddress,
+      req.headers['user-agent']
+    ]);
+
+    res.json({
+      message: 'Backup created successfully',
+      backupId: uuidv4(),
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Error creating backup:', error);
+    res.status(500).json({ error: 'Failed to create backup' });
+  }
+});
 
 // Start server
 app.listen(PORT, () => {

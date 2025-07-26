@@ -2,8 +2,7 @@
   "/_app": "pages/_app.js",
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
-  "/admin": "pages/admin.js",
-  "/admin/communication-center": "pages/admin/communication-center.js",
-  "/admin/security-settings": "pages/admin/security-settings.js",
-  "/admin/upload-course": "pages/admin/upload-course.js"
+  "/profile": "pages/profile.js",
+  "/home": "pages/home.js",
+  "/admin": "pages/admin.js"
 }

@@ -103,7 +103,7 @@ export const courses: Course[] = [
     category: 'business',
     thumbnail: 'https://images.pexels.com/photos/7681118/pexels-photo-7681118.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
     banner: 'https://images.pexels.com/photos/3184292/pexels-photo-3184292.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-    videoUrl: 'https://youtu.be/q5_PrTvNypY',
+    videoUrl: 'https://www.youtube.com/watch?v=8bUQ0-tjJ-A',
     description: 'Master the core principles of business with Ray Dalio. Learn strategic thinking, decision-making, and organizational leadership that drove Bridgewater\'s success.',
     featured: true,
     lessons: [
@@ -112,7 +112,7 @@ export const courses: Course[] = [
         title: 'Understanding Business Fundamentals',
         duration: '32:15',
         thumbnail: 'https://images.pexels.com/photos/7681891/pexels-photo-7681891.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-        videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+        videoUrl: 'https://www.youtube.com/watch?v=8bUQ0-tjJ-A',
         description: 'Ray introduces the essential components of successful business operations and the foundational principles that every entrepreneur needs to understand.',
         xpPoints: 100
       },
@@ -121,7 +121,7 @@ export const courses: Course[] = [
         title: 'Strategic Decision Making',
         duration: '41:30',
         thumbnail: 'https://images.pexels.com/photos/7681866/pexels-photo-7681866.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-        videoUrl: 'https://www.youtube.com/watch?v=9bZkp7q19f0',
+        videoUrl: 'https://www.youtube.com/watch?v=HAnw168huqA',
         description: 'Learn how to make effective business decisions using proven frameworks and analytical thinking processes.',
         xpPoints: 100
       },
@@ -130,7 +130,7 @@ export const courses: Course[] = [
         title: 'Building High-Performance Teams',
         duration: '38:45',
         thumbnail: 'https://images.pexels.com/photos/7681892/pexels-photo-7681892.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-        videoUrl: 'https://www.youtube.com/watch?v=kJQP7kiw5Fk',
+        videoUrl: 'https://www.youtube.com/watch?v=u6XAPnuFjJc',
         description: 'Discover the secrets to creating and managing teams that consistently deliver exceptional results.',
         xpPoints: 100
       },
@@ -139,7 +139,7 @@ export const courses: Course[] = [
         title: 'Financial Management Essentials',
         duration: '45:20',
         thumbnail: 'https://images.pexels.com/photos/7681893/pexels-photo-7681893.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-        videoUrl: 'https://www.youtube.com/watch?v=L_jWHffIx5E',
+        videoUrl: 'https://www.youtube.com/watch?v=Gv2u7BN7dXw',
         description: 'Master the fundamentals of business finance, cash flow management, and financial planning strategies.',
         xpPoints: 100
       },
@@ -148,7 +148,7 @@ export const courses: Course[] = [
         title: 'Scaling Your Business',
         duration: '52:10',
         thumbnail: 'https://images.pexels.com/photos/7681894/pexels-photo-7681894.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-        videoUrl: 'https://www.youtube.com/watch?v=fJ9rUzIMcZQ',
+        videoUrl: 'https://www.youtube.com/watch?v=7sEVzqJqQn4',
         description: 'Learn proven strategies for scaling your business operations while maintaining quality and culture.',
         xpPoints: 100
       }
@@ -164,7 +164,7 @@ export const courses: Course[] = [
     category: 'technology',
     thumbnail: 'https://images.pexels.com/photos/3861958/pexels-photo-3861958.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
     banner: 'https://images.pexels.com/photos/3861959/pexels-photo-3861959.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-    videoUrl: 'https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_2mb.mp4',
+    videoUrl: 'https://www.youtube.com/watch?v=cdiD-9MMpb0',
     description: 'Learn from Elon Musk about innovation, technology leadership, and building companies that change the world. Discover the mindset and strategies behind Tesla, SpaceX, and other revolutionary ventures.',
     featured: true,
     lessons: [
@@ -182,7 +182,7 @@ export const courses: Course[] = [
         title: 'Building Revolutionary Products',
         duration: '35:45',
         thumbnail: 'https://images.pexels.com/photos/3861961/pexels-photo-3861961.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-        videoUrl: 'https://www.youtube.com/watch?v=t705r8ICkRw',
+        videoUrl: 'https://www.youtube.com/watch?v=cdiD-9MMpb0',
         description: 'Learn how to design and develop products that fundamentally change industries and create new markets.',
         xpPoints: 120
       },
@@ -191,7 +191,7 @@ export const courses: Course[] = [
         title: 'Managing Risk in Innovation',
         duration: '42:15',
         thumbnail: 'https://images.pexels.com/photos/3861962/pexels-photo-3861962.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-        videoUrl: 'https://www.youtube.com/watch?v=H7Uyfqi_TE8',
+        videoUrl: 'https://www.youtube.com/watch?v=zIwLWfaAg-8',
         description: 'Understand how to balance bold innovation with calculated risk management in high-stakes ventures.',
         xpPoints: 120
       },

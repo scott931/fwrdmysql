@@ -10,7 +10,7 @@ interface AuthContextType {
   signIn: (credentials: LoginCredentials) => Promise<void>;
   signUp: (data: RegisterData) => Promise<void>;
   signOut: () => Promise<void>;
-  updateProfile: (userId: string, profileData: any) => Promise<void>;
+  updateProfile: (profileData: Partial<AuthUser>) => Promise<AuthUser>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -83,10 +83,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const updateProfile = async (userId: string, profileData: any) => {
+  const updateProfile = async (profileData: Partial<AuthUser>) => {
     try {
+      console.log('🔄 AuthContext: Updating profile with data:', profileData);
       const updatedUser = await authService.updateProfile(profileData);
+      console.log('✅ AuthContext: Profile updated, new user data:', updatedUser);
       setUser(updatedUser);
+      return updatedUser;
     } catch (error) {
       console.error('Profile update error:', error);
       throw error;
