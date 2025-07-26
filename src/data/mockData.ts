@@ -103,7 +103,7 @@ export const courses: Course[] = [
     category: 'business',
     thumbnail: 'https://images.pexels.com/photos/7681118/pexels-photo-7681118.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
     banner: 'https://images.pexels.com/photos/3184292/pexels-photo-3184292.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-    videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+    videoUrl: 'https://www.youtube.com/watch?v=8jPQjjsBbIc',
     description: 'Master the core principles of business with Ray Dalio. Learn strategic thinking, decision-making, and organizational leadership that drove Bridgewater\'s success.',
     featured: true,
     lessons: [
@@ -112,7 +112,7 @@ export const courses: Course[] = [
         title: 'Understanding Business Fundamentals',
         duration: '32:15',
         thumbnail: 'https://images.pexels.com/photos/7681891/pexels-photo-7681891.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-        videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+        videoUrl: 'https://www.youtube.com/watch?v=8jPQjjsBbIc',
         description: 'Ray introduces the essential components of successful business operations and the foundational principles that every entrepreneur needs to understand.',
         xpPoints: 100
       },
@@ -164,7 +164,7 @@ export const courses: Course[] = [
     category: 'technology',
     thumbnail: 'https://images.pexels.com/photos/3861958/pexels-photo-3861958.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
     banner: 'https://images.pexels.com/photos/3861959/pexels-photo-3861959.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-    videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+    videoUrl: 'https://www.youtube.com/watch?v=cdiD-9MMpb0',
     description: 'Learn from Elon Musk about innovation, technology leadership, and building companies that change the world. Discover the mindset and strategies behind Tesla, SpaceX, and other revolutionary ventures.',
     featured: true,
     lessons: [
@@ -173,7 +173,7 @@ export const courses: Course[] = [
         title: 'First Principles Thinking',
         duration: '28:30',
         thumbnail: 'https://images.pexels.com/photos/3861960/pexels-photo-3861960.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-        videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+        videoUrl: 'https://www.youtube.com/watch?v=cdiD-9MMpb0',
         description: 'Master the art of first principles thinking to break down complex problems and find innovative solutions.',
         xpPoints: 120
       },
@@ -182,7 +182,7 @@ export const courses: Course[] = [
         title: 'Building Revolutionary Products',
         duration: '35:45',
         thumbnail: 'https://images.pexels.com/photos/3861961/pexels-photo-3861961.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-        videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+        videoUrl: 'https://www.youtube.com/watch?v=cdiD-9MMpb0',
         description: 'Learn how to design and develop products that fundamentally change industries and create new markets.',
         xpPoints: 120
       },
@@ -191,7 +191,7 @@ export const courses: Course[] = [
         title: 'Managing Risk in Innovation',
         duration: '42:15',
         thumbnail: 'https://images.pexels.com/photos/3861962/pexels-photo-3861962.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-        videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+        videoUrl: 'https://www.youtube.com/watch?v=cdiD-9MMpb0',
         description: 'Understand how to balance bold innovation with calculated risk management in high-stakes ventures.',
         xpPoints: 120
       },
@@ -200,7 +200,7 @@ export const courses: Course[] = [
         title: 'Leading Through Disruption',
         duration: '39:20',
         thumbnail: 'https://images.pexels.com/photos/3861963/pexels-photo-3861963.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-        videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+        videoUrl: 'https://www.youtube.com/watch?v=cdiD-9MMpb0',
         description: 'Discover leadership strategies for navigating uncertainty and driving change in rapidly evolving industries.',
         xpPoints: 120
       }
@@ -314,7 +314,7 @@ export const courses: Course[] = [
         title: 'Courageous Leadership',
         duration: '39:30',
         thumbnail: 'https://images.pexels.com/photos/6592627/pexels-photo-6592627.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-        videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+        videoUrl: 'https://www.youtube.com/watch?v=8jPQjjsBbIc',
         description: 'Learn the principles of leading with courage and authenticity in challenging times.',
         xpPoints: 100
       },
@@ -323,7 +323,7 @@ export const courses: Course[] = [
         title: 'Building Resilient Teams',
         duration: '44:15',
         thumbnail: 'https://images.pexels.com/photos/6592628/pexels-photo-6592628.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-        videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+        videoUrl: 'https://www.youtube.com/watch?v=9bZkp7q19f0',
         description: 'Develop strategies for creating and maintaining high-performing teams that thrive under pressure.',
         xpPoints: 100
       },
@@ -332,7 +332,7 @@ export const courses: Course[] = [
         title: 'Vulnerability in Leadership',
         duration: '36:50',
         thumbnail: 'https://images.pexels.com/photos/6592629/pexels-photo-6592629.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-        videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+        videoUrl: 'https://www.youtube.com/watch?v=kJQP7kiw5Fk',
         description: 'Understand how vulnerability can be a strength in leadership and team building.',
         xpPoints: 100
       }

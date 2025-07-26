@@ -179,7 +179,7 @@ const RegisterPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-2xl w-full">
         {/* Header */}
         <div className="text-center mb-8">
@@ -486,7 +486,7 @@ const RegisterPage: React.FC = () => {
               </div>
             </div>
 
-                        {/* Geographic Location - 3 columns */}
+            {/* Geographic Location - 3 columns */}
             <div className="space-y-2">
               <label className="block text-sm font-medium text-gray-300">
                 Geographic Location

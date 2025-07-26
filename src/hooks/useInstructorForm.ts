@@ -112,26 +112,38 @@ export const useInstructorForm = (options: UseInstructorFormOptions = {}): UseIn
     if (!instructorId) return;
 
     setIsLoading(true);
-    clearErrors();
+    setValidationErrors([]);
+    setLastError(null);
+    setLastErrorCode(null);
 
     try {
       const instructor = await InstructorService.fetchInstructorById(instructorId);
       const formDataFromInstructor = InstructorService.instructorToFormData(instructor);
       setFormData(formDataFromInstructor);
-      setValidationErrors([]);
     } catch (error) {
-      handleError(error, 'Loading instructor data');
+      let message = 'Failed to load instructor data. Please try again.';
+      let code = null;
+
+      if (error instanceof InstructorServiceError) {
+        message = error.message;
+        code = error.code || null;
+      } else if (error instanceof Error) {
+        message = error.message;
+      }
+
+      setLastError(message);
+      setLastErrorCode(code);
     } finally {
       setIsLoading(false);
     }
-  }, [instructorId, clearErrors, handleError]);
+  }, [instructorId]);
 
   // Load data on mount if editing
   useEffect(() => {
-    if (isEditing) {
+    if (isEditing && instructorId) {
       loadInstructorData();
     }
-  }, [isEditing, loadInstructorData]);
+  }, [isEditing, instructorId, loadInstructorData]);
 
   // Handle form submission
   const handleSubmit = useCallback(async (e: React.FormEvent) => {

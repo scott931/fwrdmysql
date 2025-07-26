@@ -151,6 +151,9 @@ export const instructorAPI = {
   // Get instructor by ID
   getInstructor: (instructorId: string) => apiRequest(`/instructors/${instructorId}`),
 
+  // Get instructor courses
+  getInstructorCourses: (instructorId: string) => apiRequest(`/instructors/${instructorId}/courses`),
+
   // Create new instructor
   createInstructor: (instructorData: Partial<Instructor>) =>
     apiRequest('/instructors', {

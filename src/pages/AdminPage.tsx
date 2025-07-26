@@ -180,45 +180,95 @@ const AdminPage: React.FC = () => {
     localStorage.setItem('auditLogs', JSON.stringify(existingLogs.slice(0, 1000)));
   };
 
-  const handleDeleteCourse = (courseId: string) => {
+  const handleDeleteCourse = async (courseId: string) => {
+    console.log('🔍 Delete Course Debug:', {
+      courseId,
+      canDeleteCourses,
+      userRole,
+      profile,
+      token: localStorage.getItem('forward_africa_token') ? 'Token exists' : 'No token'
+    });
+
     if (!canDeleteCourses) {
       setPermissionError('You do not have permission to delete courses. This action requires Admin or Super Admin privileges.');
       return;
     }
 
-    if (confirm('Are you sure you want to delete this course?')) {
-      if (!isClient) return;
+    if (confirm('Are you sure you want to delete this course? This action cannot be undone.')) {
+      try {
+        const token = localStorage.getItem('forward_africa_token');
+        console.log('🔑 Using token:', token ? 'Token exists' : 'No token found');
 
-      const savedCourses = JSON.parse(localStorage.getItem('courses') || '[]');
-      const updatedCourses = savedCourses.filter((c: Course) => c.id !== courseId);
-      localStorage.setItem('courses', JSON.stringify(updatedCourses));
+        // Call the API to delete the course
+        const response = await fetch(`http://localhost:3002/api/courses/${courseId}`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        });
 
-      const course = courses.find(c => c.id === courseId);
-      logAuditEvent('course_deleted', `Deleted course: ${course?.title}`);
+        console.log('📡 Delete response status:', response.status);
+        console.log('📡 Delete response headers:', Object.fromEntries(response.headers.entries()));
 
-      // Trigger update
-      window.dispatchEvent(new Event('storage'));
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error('❌ Delete error response:', errorData);
+          throw new Error(errorData.error || 'Failed to delete course');
+        }
+
+        const responseData = await response.json();
+        console.log('✅ Delete success response:', responseData);
+
+        const course = courses.find(c => c.id === courseId);
+        logAuditEvent('course_deleted', `Deleted course: ${course?.title}`);
+
+        // Refresh the courses list from the database
+        await fetchAllCourses();
+
+        // Show success message
+        alert('Course deleted successfully');
+      } catch (error) {
+        console.error('❌ Error deleting course:', error);
+        alert(`Failed to delete course: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
     }
   };
 
-  const handleDeleteInstructor = (instructorId: string) => {
+  const handleDeleteInstructor = async (instructorId: string) => {
     if (!canManageInstructors) {
       setPermissionError('You do not have permission to delete instructors. This action requires Content Manager, Admin, or Super Admin privileges.');
       return;
     }
 
     if (confirm('Are you sure you want to delete this instructor? This will affect all courses they are assigned to.')) {
-      if (!isClient) return;
+      try {
+        // Call the API to delete the instructor
+        const response = await fetch(`http://localhost:3002/api/instructors/${instructorId}`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('forward_africa_token')}`
+          }
+        });
 
-      const savedInstructors = JSON.parse(localStorage.getItem('instructors') || '[]');
-      const updatedInstructors = savedInstructors.filter((i: Instructor) => i.id !== instructorId);
-      localStorage.setItem('instructors', JSON.stringify(updatedInstructors));
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to delete instructor');
+        }
 
-      const instructor = instructors.find(i => i.id === instructorId);
-      logAuditEvent('instructor_deleted', `Deleted instructor: ${instructor?.name}`);
+        const instructor = instructors.find(i => i.id === instructorId);
+        logAuditEvent('instructor_deleted', `Deleted instructor: ${instructor?.name}`);
 
-      // Trigger update
-      window.dispatchEvent(new Event('storage'));
+        // Refresh the instructors list from the database
+        await fetchAllInstructors();
+
+        // Show success message
+        alert('Instructor deleted successfully');
+      } catch (error) {
+        console.error('Error deleting instructor:', error);
+        alert(`Failed to delete instructor: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
     }
   };
 
@@ -424,16 +474,17 @@ const AdminPage: React.FC = () => {
             <p className="text-white font-medium">{adminRole === 'super_admin' ? 'Super Administrator' : adminRole === 'content_manager' ? 'Content Manager' : 'Administrator'}</p>
             <p className="text-gray-400 text-sm">{adminEmail}</p>
             {/* Debug info */}
-            <p className="text-gray-500 text-xs">Role: {userRole} | Permissions: {profile?.permissions?.length || 0}</p>
+            {/* <p className="text-gray-500 text-xs">Role: {userRole} | Permissions: {profile?.permissions?.length || 0}</p> */}
+            <p className="text-gray-500 text-xs">Role: {userRole}</p>
           </div>
-          <Button
+          {/* <Button
             variant="outline"
             onClick={() => navigate('/admin/profile')}
             className="flex items-center"
           >
             <User className="h-4 w-4 mr-2" />
             Profile
-          </Button>
+          </Button> */}
         </div>
       </div>
 

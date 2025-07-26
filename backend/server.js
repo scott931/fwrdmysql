@@ -91,14 +91,23 @@ const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 
+  console.log('🔍 Token Authentication Debug:', {
+    hasAuthHeader: !!authHeader,
+    hasToken: !!token,
+    tokenLength: token ? token.length : 0
+  });
+
   if (!token) {
+    console.log('❌ No token provided');
     return res.status(401).json({ error: 'Access token required' });
   }
 
   jwt.verify(token, JWT_SECRET, (err, user) => {
     if (err) {
+      console.log('❌ Token verification failed:', err.message);
       return res.status(403).json({ error: 'Invalid or expired token' });
     }
+    console.log('✅ Token verified, user:', user);
     req.user = user;
     next();
   });
@@ -107,14 +116,24 @@ const authenticateToken = (req, res, next) => {
 // Role-based authorization middleware
 const authorizeRole = (roles) => {
   return (req, res, next) => {
+    console.log('🔍 Role Authorization Debug:', {
+      user: req.user,
+      userRole: req.user?.role,
+      requiredRoles: roles,
+      hasRole: req.user ? roles.includes(req.user.role) : false
+    });
+
     if (!req.user) {
+      console.log('❌ No user found in request');
       return res.status(401).json({ error: 'Authentication required' });
     }
 
     if (!roles.includes(req.user.role)) {
+      console.log('❌ User role not authorized:', req.user.role, 'Required:', roles);
       return res.status(403).json({ error: 'Insufficient permissions' });
     }
 
+    console.log('✅ Role authorization passed');
     next();
   };
 };
@@ -978,6 +997,68 @@ app.post('/api/courses', async (req, res) => {
   } catch (error) {
     console.error('Course creation error:', error);
     res.status(500).json({ error: 'Failed to create course' });
+  }
+});
+
+// Delete course
+app.delete('/api/courses/:id', authenticateToken, authorizeRole(['super_admin', 'content_manager']), async (req, res) => {
+  console.log('🔍 Delete Course Debug:', {
+    courseId: req.params.id,
+    user: req.user,
+    userRole: req.user?.role,
+    authorizedRoles: ['super_admin', 'content_manager']
+  });
+
+  try {
+    // Check if course exists
+    const [course] = await executeQuery('SELECT title, instructor_id FROM courses WHERE id = ?', [req.params.id]);
+    if (!course) {
+      console.log('❌ Course not found:', req.params.id);
+      return res.status(404).json({ error: 'Course not found' });
+    }
+
+    console.log('✅ Course found:', course);
+
+    // Check if course has lessons
+    const [lessonCount] = await executeQuery('SELECT COUNT(*) as count FROM lessons WHERE course_id = ?', [req.params.id]);
+    console.log('📚 Lesson count:', lessonCount.count);
+
+    if (lessonCount.count > 0) {
+      console.log('❌ Cannot delete course with lessons');
+      return res.status(400).json({ error: 'Cannot delete course with existing lessons. Please delete all lessons first.' });
+    }
+
+    // Delete course
+    await executeQuery('DELETE FROM courses WHERE id = ?', [req.params.id]);
+    console.log('✅ Course deleted successfully');
+
+    // Log audit event
+    try {
+      await executeQuery(
+        'INSERT INTO audit_logs (id, user_id, action, details, ip_address, user_agent) VALUES (?, ?, ?, ?, ?, ?)',
+        [
+          uuidv4(),
+          req.user?.id || 'system',
+          'course_deleted',
+          JSON.stringify({
+            message: `Deleted course: ${course.title}`,
+            course_id: req.params.id,
+            course_title: course.title,
+            instructor_id: course.instructor_id
+          }),
+          req.ip,
+          req.get('User-Agent')
+        ]
+      );
+      console.log('✅ Audit log created');
+    } catch (auditError) {
+      console.warn('Audit logging failed, but course was deleted:', auditError.message);
+    }
+
+    res.json({ message: 'Course deleted successfully' });
+  } catch (error) {
+    console.error('❌ Error deleting course:', error);
+    res.status(500).json({ error: 'Failed to delete course' });
   }
 });
 

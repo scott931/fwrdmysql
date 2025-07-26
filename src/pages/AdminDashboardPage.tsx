@@ -4,6 +4,7 @@ import { BarChart2, BookOpen, Users, TrendingUp, Activity, UserPlus, Plus, Setti
 import { useAuth } from "../contexts/AuthContext";
 import { usePermissions } from "../contexts/PermissionContext";
 import { useAnalytics, useUsers } from "../hooks/useDatabase";
+import Layout from "../components/layout/Layout";
 
 const adminNav = [
   { to: "/admin/dashboard", label: "Dashboard", icon: <BarChart2 className="h-5 w-5 mr-1" /> },
@@ -87,7 +88,8 @@ export default function AdminDashboardPage() {
   }
 
   return (
-    <div className="min-h-screen flex bg-gray-900 text-white pt-20">
+    <Layout>
+      <div className="min-h-screen flex bg-gray-900 text-white pt-20">
       {/* Admin Nav */}
       <nav className="flex space-x-8 border-b border-gray-800 bg-[#181c23] px-8 pt-6 overflow-x-auto">
         {adminNav.map((item) => (
@@ -382,5 +384,6 @@ export default function AdminDashboardPage() {
         </div>
       </footer>
     </div>
+    </Layout>
   );
 }

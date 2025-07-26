@@ -1,9 +1,9 @@
 /**
  * VideoPlayer Component
- * 
+ *
  * Custom video player with controls and overlay information.
  * Supports both direct video files and YouTube URLs.
- * 
+ *
  * Features:
  * - Play/pause controls (for direct videos)
  * - Volume controls (for direct videos)
@@ -13,7 +13,7 @@
  * - Custom overlay with lesson information
  * - Hover controls
  * - YouTube video embedding
- * 
+ *
  * @component
  * @example
  * ```tsx
@@ -42,18 +42,18 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson }) => {
   const [youTubeId, setYouTubeId] = useState('');
   const videoRef = useRef<HTMLVideoElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  
+
   // Function to extract YouTube video ID from various YouTube URL formats
   const extractYouTubeId = (url: string): string | null => {
     if (!url) {
       console.log('No URL provided');
       return null;
     }
-    
+
     // Remove any whitespace
     url = url.trim();
     console.log('Processing URL:', url);
-    
+
     const patterns = [
       // Standard YouTube URLs
       /(?:https?:\/\/)?(?:www\.)?youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})/,
@@ -68,7 +68,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson }) => {
       // YouTube mobile URLs
       /(?:https?:\/\/)?m\.youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})/
     ];
-    
+
     for (let i = 0; i < patterns.length; i++) {
       const pattern = patterns[i];
       const match = url.match(pattern);
@@ -77,7 +77,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson }) => {
         return match[1];
       }
     }
-    
+
     console.log('No YouTube ID found for URL:', url);
     return null;
   };
@@ -86,29 +86,53 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson }) => {
   useEffect(() => {
     console.log('=== VideoPlayer: Processing video URL ===');
     console.log('Video URL:', lesson.videoUrl);
-    
+
     if (!lesson.videoUrl) {
       console.log('No video URL provided');
       setIsLoading(false);
       setHasError(true);
       return;
     }
-    
+
     const videoUrl = lesson.videoUrl;
     const ytId = extractYouTubeId(videoUrl);
-    
+
     if (ytId) {
       console.log('✅ YouTube video detected, ID:', ytId);
       setIsYouTube(true);
       setYouTubeId(ytId);
       setHasError(false);
-      
+
       // For YouTube videos, we'll set loading to false after a short delay
       // to allow the iframe to start loading
-      setTimeout(() => {
+      const loadingTimer = setTimeout(() => {
         console.log('Setting YouTube loading to false');
         setIsLoading(false);
       }, 500);
+
+      // Add a timeout to detect if the video takes too long to load
+      const timeoutTimer = setTimeout(() => {
+        if (isLoading) {
+          console.log('YouTube video loading timeout - checking if iframe loaded');
+          // Check if iframe has loaded content
+          if (iframeRef.current) {
+            try {
+              // Try to access iframe content (this might fail due to CORS)
+              const iframeDoc = iframeRef.current.contentDocument || iframeRef.current.contentWindow?.document;
+              if (!iframeDoc) {
+                console.log('Iframe not accessible - likely still loading or blocked');
+              }
+            } catch (error) {
+              console.log('Iframe access blocked by CORS - this is normal for YouTube');
+            }
+          }
+        }
+      }, 10000); // 10 second timeout
+
+      return () => {
+        clearTimeout(loadingTimer);
+        clearTimeout(timeoutTimer);
+      };
     } else {
       console.log('📹 Direct video file detected');
       setIsYouTube(false);
@@ -117,13 +141,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson }) => {
       setHasError(false);
     }
   }, [lesson.videoUrl]);
-  
+
   useEffect(() => {
     if (isYouTube) {
       console.log('Skipping video element setup for YouTube video');
       return; // Skip video element setup for YouTube videos
     }
-    
+
     const video = videoRef.current;
     if (!video) {
       console.log('No video element found');
@@ -172,7 +196,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson }) => {
     video.addEventListener('canplay', handleCanPlay);
     video.addEventListener('error', handleError);
     video.addEventListener('loadstart', handleLoadStart);
-    
+
     return () => {
       video.removeEventListener('timeupdate', handleTimeUpdate);
       video.removeEventListener('loadedmetadata', handleLoadedMetadata);
@@ -187,7 +211,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson }) => {
     if (!isYouTube || !iframeRef.current) return;
 
     const iframe = iframeRef.current;
-    
+
     const handleIframeLoad = () => {
       console.log('YouTube iframe loaded');
       setIsLoading(false);
@@ -208,10 +232,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson }) => {
       iframe.removeEventListener('error', handleIframeError);
     };
   }, [isYouTube, youTubeId]);
-  
+
   const togglePlay = async () => {
     if (isYouTube || !videoRef.current) return;
-    
+
     try {
       if (isPlaying) {
         videoRef.current.pause();
@@ -225,10 +249,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson }) => {
       setHasError(true);
     }
   };
-  
+
   const toggleMute = () => {
     if (isYouTube || !videoRef.current) return;
-    
+
     if (videoRef.current) {
       videoRef.current.muted = !isMuted;
       setIsMuted(!isMuted);
@@ -244,25 +268,25 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson }) => {
 
   const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (isYouTube || !videoRef.current || !duration || !isFinite(duration)) return;
-    
+
     const progressBar = e.currentTarget;
     const rect = progressBar.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const percentage = (x / rect.width) * 100;
     const newTime = (percentage / 100) * duration;
-    
+
     if (isFinite(newTime)) {
       videoRef.current.currentTime = newTime;
     }
   };
 
   const toggleFullscreen = () => {
-    const element = isYouTube ? 
-      document.querySelector('.youtube-container') as HTMLElement : 
+    const element = isYouTube ?
+      document.querySelector('.youtube-container') as HTMLElement :
       videoRef.current;
-      
+
     if (!element) return;
-    
+
     if (document.fullscreenElement) {
       document.exitFullscreen();
     } else {
@@ -290,12 +314,14 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson }) => {
       showinfo: '0',
       fs: '1',
       cc_load_policy: '0',
-      iv_load_policy: '3'
+      iv_load_policy: '3',
+      playsinline: '1',
+      allowfullscreen: '1'
     });
-    
+
     return `https://www.youtube.com/embed/${videoId}?${params.toString()}`;
   };
-  
+
   console.log('=== VideoPlayer Render ===');
   console.log('isYouTube:', isYouTube);
   console.log('youTubeId:', youTubeId);
@@ -321,7 +347,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson }) => {
             ref={iframeRef}
             src={getYouTubeEmbedUrl(youTubeId)}
             className="w-full h-full border-0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
             allowFullScreen
             title={lesson.title}
             loading="lazy"
@@ -336,8 +362,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson }) => {
               setIsLoading(false);
               setHasError(true);
             }}
+            onAbort={() => {
+              console.error('YouTube iframe onAbort triggered');
+              setIsLoading(false);
+              setHasError(true);
+            }}
           />
-          
+
           {/* YouTube Overlay Controls */}
           {!isLoading && !hasError && (
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-between p-4 pointer-events-none">
@@ -346,10 +377,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson }) => {
                 <h3 className="font-bold text-lg">{lesson.title}</h3>
                 <p className="text-sm text-gray-300 mt-1">YouTube Video</p>
               </div>
-              
+
               {/* Bottom Controls */}
               <div className="flex justify-between items-center pointer-events-auto">
-                <button 
+                <button
                   onClick={openInYouTube}
                   className="text-white hover:text-red-500 transition-colors bg-black/50 px-3 py-2 rounded flex items-center text-sm"
                   title="Open in YouTube"
@@ -357,9 +388,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson }) => {
                   <ExternalLink className="h-4 w-4 mr-2" />
                   Open in YouTube
                 </button>
-                
-                <button 
-                  onClick={toggleFullscreen} 
+
+                <button
+                  onClick={toggleFullscreen}
                   className="text-white hover:text-red-500 transition-colors bg-black/50 p-2 rounded"
                   title="Fullscreen"
                 >
@@ -385,6 +416,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson }) => {
                   <li>• The video has been removed</li>
                   <li>• Embedding is disabled for this video</li>
                   <li>• Network connectivity issues</li>
+                  <li>• Content filtering or regional restrictions</li>
                 </ul>
                 <div className="space-y-2">
                   <button
@@ -412,6 +444,20 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson }) => {
                   >
                     Open in YouTube
                   </button>
+                  <button
+                    onClick={() => {
+                      // Try alternative video URL format
+                      const alternativeUrl = lesson.videoUrl.replace('youtube.com/watch?v=', 'youtu.be/');
+                      if (alternativeUrl !== lesson.videoUrl) {
+                        console.log('Trying alternative URL format:', alternativeUrl);
+                        // This would require updating the lesson object, but for now just open in new tab
+                        window.open(alternativeUrl, '_blank');
+                      }
+                    }}
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors w-full"
+                  >
+                    Try Alternative Format
+                  </button>
                 </div>
               </div>
             </div>
@@ -429,7 +475,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson }) => {
             preload="metadata"
             crossOrigin="anonymous"
           />
-          
+
           {/* Loading State */}
           {isLoading && !isYouTube && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/50">
@@ -482,7 +528,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson }) => {
               </div>
             </div>
           )}
-          
+
           {/* Controls Overlay for Direct Videos */}
           {!isLoading && !hasError && !isYouTube && (
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-between p-4">
@@ -490,9 +536,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson }) => {
               <div className="text-white">
                 <h3 className="font-bold text-lg">{lesson.title}</h3>
               </div>
-              
+
               {/* Center Play Button */}
-              <button 
+              <button
                 onClick={togglePlay}
                 className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-red-600 rounded-full p-5 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-700"
               >
@@ -502,20 +548,20 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson }) => {
                   <Play className="h-8 w-8 text-white" />
                 )}
               </button>
-              
+
               {/* Bottom Controls */}
               <div className="flex flex-col space-y-2">
                 {/* Progress Bar */}
-                <div 
+                <div
                   className="w-full bg-gray-600 h-1 rounded-full overflow-hidden cursor-pointer"
                   onClick={handleProgressClick}
                 >
-                  <div 
+                  <div
                     className="bg-red-600 h-full transition-all duration-300"
                     style={{ width: `${progress}%` }}
                   ></div>
                 </div>
-                
+
                 {/* Control Buttons */}
                 <div className="flex justify-between items-center">
                   <div className="flex items-center space-x-4">
@@ -526,7 +572,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson }) => {
                         <Play className="h-5 w-5" />
                       )}
                     </button>
-                    
+
                     <button onClick={toggleMute} className="text-white hover:text-red-500 transition-colors">
                       {isMuted ? (
                         <VolumeX className="h-5 w-5" />
@@ -534,12 +580,12 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson }) => {
                         <Volume2 className="h-5 w-5" />
                       )}
                     </button>
-                    
+
                     <span className="text-white text-sm">
                       {formatTime(currentTime)} / {formatTime(duration)}
                     </span>
                   </div>
-                  
+
                   <button onClick={toggleFullscreen} className="text-white hover:text-red-500 transition-colors">
                     <Maximize2 className="h-5 w-5" />
                   </button>
