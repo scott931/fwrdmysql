@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import Layout from '../components/layout/Layout';
 import CourseCard from '../components/ui/CourseCard';
 import { useCourses } from '../hooks/useDatabase';
-import { getAllCourses as getMockCourses } from '../data/mockData';
 import { Course } from '../types';
 
 // Transform backend course data to frontend format
@@ -51,7 +50,17 @@ const transformCourseData = (backendCourse: any): Course => {
     banner: backendCourse.banner || '/placeholder-course.jpg',
     videoUrl: backendCourse.video_url,
     description: backendCourse.description || 'Course description coming soon.',
-    lessons: backendCourse.lessons || [],
+    lessons: (backendCourse.lessons || []).slice().sort((a: any, b: any) => {
+      // Sort by order_index if present, then by title
+      if (a.orderIndex !== undefined && b.orderIndex !== undefined) {
+        return a.orderIndex - b.orderIndex;
+      }
+      if (a.order_index !== undefined && b.order_index !== undefined) {
+        return a.order_index - b.order_index;
+      }
+      // fallback: sort by title
+      return (a.title || '').localeCompare(b.title || '');
+    }),
     featured: backendCourse.featured || false,
     totalXP: backendCourse.total_xp || 1000,
     comingSoon: backendCourse.coming_soon || false,
@@ -84,32 +93,12 @@ const CoursesPage: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      // TEMPORARY: Force mock data while debugging database
-      const USE_MOCK_DATA = false; // Set to false when database is working
-
-      if (USE_MOCK_DATA) {
-        console.log('Using mock data (temporary)');
-        const mockCourses = getMockCourses();
-        setCourses(mockCourses);
-        setLoading(false);
-        return;
-      }
-
       try {
-        // Test direct API call to see what we get
-        console.log('Testing direct API call...');
-        const response = await fetch('http://localhost:3002/api/courses');
-        const apiData = await response.json();
-        console.log('Direct API response:', apiData);
-
-        // Try to fetch from API first
+        // Fetch from API
         await fetchAllCourses();
       } catch (err) {
-        console.log('API failed, using mock data as fallback');
-        console.log('Error details:', err);
-        // If API fails, use mock data as fallback
-        const mockCourses = getMockCourses();
-        setCourses(mockCourses);
+        console.error('Failed to load courses:', err);
+        setError('Failed to load courses from server');
         setLoading(false);
       }
     };
@@ -130,9 +119,6 @@ const CoursesPage: React.FC = () => {
   // Update loading state based on API loading
   useEffect(() => {
     if (!apiLoading && apiCourses.length === 0 && !apiError) {
-      // If API is not loading and no courses, use mock data
-      const mockCourses = getMockCourses();
-      setCourses(mockCourses);
       setLoading(false);
     }
   }, [apiLoading, apiCourses, apiError]);
@@ -180,18 +166,39 @@ const CoursesPage: React.FC = () => {
   }
 
   // Show error state
-  if (error && courses.length === 0) {
+  if (error) {
     return (
       <Layout>
         <div className="max-w-screen-xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
-          <div className="text-center py-12">
-            <p className="text-red-500 mb-4">Error loading courses: {error}</p>
-            <button
-              onClick={() => window.location.reload()}
-              className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
-            >
-              Retry
-            </button>
+          <div className="flex items-center justify-center min-h-96">
+            <div className="text-center">
+              <div className="text-red-500 text-6xl mb-4">⚠️</div>
+              <h2 className="text-2xl font-bold text-white mb-2">Failed to Load Courses</h2>
+              <p className="text-gray-400 mb-4">{error}</p>
+              <button
+                onClick={() => window.location.reload()}
+                className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Retry
+              </button>
+            </div>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  // Show empty state
+  if (courses.length === 0) {
+    return (
+      <Layout>
+        <div className="max-w-screen-xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-center min-h-96">
+            <div className="text-center">
+              <div className="text-gray-500 text-6xl mb-4">📚</div>
+              <h2 className="text-2xl font-bold text-white mb-2">No Courses Available</h2>
+              <p className="text-gray-400">Check back later for new courses!</p>
+            </div>
           </div>
         </div>
       </Layout>

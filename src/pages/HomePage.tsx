@@ -9,31 +9,6 @@ import { Award, Users, Star, BookOpen } from 'lucide-react';
 import { useCourses, useUserProgress, useAnalytics } from '../hooks/useDatabase';
 import { useAuth } from '../contexts/AuthContext';
 
-// Fallback data to prevent flickering
-const fallbackCourse: Course = {
-  id: 'fallback-course',
-  title: 'Welcome to Forward Africa',
-  description: 'Discover amazing courses and advance your skills with expert instructors.',
-  thumbnail: '/placeholder-course.jpg',
-  banner: '/placeholder-course.jpg',
-  category: 'Featured',
-  instructor: {
-    id: 'fallback-instructor',
-    name: 'Expert Instructor',
-    title: 'Course Creator',
-    image: '/placeholder-avatar.jpg',
-    bio: 'Experienced instructor with years of teaching experience.',
-    email: 'instructor@forwardafrica.com',
-    expertise: ['Education', 'Technology'],
-    experience: 5,
-    createdAt: new Date()
-  },
-  lessons: [],
-  videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-  featured: true,
-  totalXP: 1000
-};
-
 const HomePage: React.FC = () => {
   const router = useRouter();
   const { user } = useAuth();
@@ -67,10 +42,6 @@ const HomePage: React.FC = () => {
     fetchFeaturedCourses();
     fetchPlatformStats();
   }, [fetchAllCourses, fetchFeaturedCourses, fetchPlatformStats]);
-
-
-
-
 
   // Fetch user progress when user is available
   useEffect(() => {
@@ -110,10 +81,57 @@ const HomePage: React.FC = () => {
     router.push(`/course/${courseId}`);
   };
 
-  // Use fallback data if no courses are loaded yet
-  const displayCourses = allCourses.length > 0 ? allCourses : [fallbackCourse];
-  const displayFeaturedCourses = featuredCourses.length > 0 ? featuredCourses : [fallbackCourse];
-  const featuredCourse = displayFeaturedCourses[0];
+  // Show loading state
+  if (coursesLoading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto"></div>
+            <p className="mt-4 text-gray-400">Loading courses...</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  // Show error state
+  if (coursesError) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <div className="text-red-500 text-6xl mb-4">⚠️</div>
+            <h2 className="text-2xl font-bold text-white mb-2">Failed to Load Courses</h2>
+            <p className="text-gray-400 mb-4">{coursesError}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition-colors"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  // Show empty state
+  if (allCourses.length === 0) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <div className="text-gray-500 text-6xl mb-4">📚</div>
+            <h2 className="text-2xl font-bold text-white mb-2">No Courses Available</h2>
+            <p className="text-gray-400">Check back later for new courses!</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  const featuredCourse = featuredCourses.length > 0 ? featuredCourses[0] : allCourses[0];
 
   return (
     <Layout>
@@ -135,7 +153,7 @@ const HomePage: React.FC = () => {
               <div className="text-center p-6 bg-gray-800/50 rounded-lg backdrop-blur-sm border border-gray-700">
                 <BookOpen className="h-8 w-8 text-red-500 mx-auto mb-3" />
                 <div className="text-3xl font-bold text-white mb-1">
-                  {`${platformStats?.totalCourses || displayCourses.length}+`}
+                  {`${platformStats?.totalCourses || allCourses.length}+`}
                 </div>
                 <div className="text-gray-400">Courses</div>
               </div>
@@ -166,16 +184,16 @@ const HomePage: React.FC = () => {
         <div className="mt-8">
           <CategoryRow
             title="Featured Classes"
-            courses={displayFeaturedCourses}
+            courses={featuredCourses}
           />
         </div>
 
         {/* Category Rows - Group courses by category */}
         {(() => {
-          const categories = Array.from(new Set(displayCourses.map((course: Course) => course.category)));
+          const categories = Array.from(new Set(allCourses.map((course: Course) => course.category)));
 
           return categories.map((categoryName) => {
-            const categoryCourses = displayCourses.filter((course: Course) => course.category === categoryName);
+            const categoryCourses = allCourses.filter((course: Course) => course.category === categoryName);
 
           if (categoryCourses.length > 0 && categoryName !== 'Featured') {
               console.log(`Rendering category "${categoryName}" with:`, categoryCourses);

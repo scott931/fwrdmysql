@@ -1000,6 +1000,81 @@ app.post('/api/courses', async (req, res) => {
   }
 });
 
+// Update course
+app.put('/api/courses/:id', async (req, res) => {
+  try {
+    const courseId = req.params.id;
+
+    // Check if course exists
+    const [existingCourse] = await executeQuery('SELECT * FROM courses WHERE id = ?', [courseId]);
+    if (!existingCourse) {
+      return res.status(404).json({ error: 'Course not found' });
+    }
+
+    // Build dynamic update query based on provided fields
+    const updateFields = [];
+    const updateValues = [];
+
+    if (req.body.title !== undefined) {
+      updateFields.push('title = ?');
+      updateValues.push(req.body.title);
+    }
+    if (req.body.instructor_id !== undefined) {
+      updateFields.push('instructor_id = ?');
+      updateValues.push(req.body.instructor_id);
+    }
+    if (req.body.category_id !== undefined) {
+      updateFields.push('category_id = ?');
+      updateValues.push(req.body.category_id);
+    }
+    if (req.body.thumbnail !== undefined) {
+      updateFields.push('thumbnail = ?');
+      updateValues.push(req.body.thumbnail);
+    }
+    if (req.body.banner !== undefined) {
+      updateFields.push('banner = ?');
+      updateValues.push(req.body.banner);
+    }
+    if (req.body.video_url !== undefined) {
+      updateFields.push('video_url = ?');
+      updateValues.push(req.body.video_url);
+    }
+    if (req.body.description !== undefined) {
+      updateFields.push('description = ?');
+      updateValues.push(req.body.description);
+    }
+    if (req.body.featured !== undefined) {
+      updateFields.push('featured = ?');
+      updateValues.push(req.body.featured);
+    }
+    if (req.body.total_xp !== undefined) {
+      updateFields.push('total_xp = ?');
+      updateValues.push(req.body.total_xp);
+    }
+
+    // Always update the updated_at timestamp
+    updateFields.push('updated_at = CURRENT_TIMESTAMP');
+
+    if (updateFields.length === 0) {
+      return res.status(400).json({ error: 'No fields to update' });
+    }
+
+    // Add courseId to the end of values array
+    updateValues.push(courseId);
+
+    // Update course
+    await executeQuery(
+      `UPDATE courses SET ${updateFields.join(', ')} WHERE id = ?`,
+      updateValues
+    );
+
+    res.json({ message: 'Course updated successfully' });
+  } catch (error) {
+    console.error('Course update error:', error);
+    res.status(500).json({ error: 'Failed to update course' });
+  }
+});
+
 // Delete course
 app.delete('/api/courses/:id', authenticateToken, authorizeRole(['super_admin', 'content_manager']), async (req, res) => {
   console.log('🔍 Delete Course Debug:', {
@@ -1090,6 +1165,74 @@ app.get('/api/lessons/:courseId', async (req, res) => {
   } catch (error) {
     console.error('Error fetching lessons:', error);
     res.status(500).json({ error: 'Failed to fetch lessons' });
+  }
+});
+
+// Update lesson
+app.put('/api/lessons/:id', async (req, res) => {
+  try {
+    const lessonId = req.params.id;
+
+    // Check if lesson exists
+    const [existingLesson] = await executeQuery('SELECT * FROM lessons WHERE id = ?', [lessonId]);
+    if (!existingLesson) {
+      return res.status(404).json({ error: 'Lesson not found' });
+    }
+
+    // Build dynamic update query based on provided fields
+    const updateFields = [];
+    const updateValues = [];
+
+    if (req.body.course_id !== undefined) {
+      updateFields.push('course_id = ?');
+      updateValues.push(req.body.course_id);
+    }
+    if (req.body.title !== undefined) {
+      updateFields.push('title = ?');
+      updateValues.push(req.body.title);
+    }
+    if (req.body.duration !== undefined) {
+      updateFields.push('duration = ?');
+      updateValues.push(req.body.duration);
+    }
+    if (req.body.thumbnail !== undefined) {
+      updateFields.push('thumbnail = ?');
+      updateValues.push(req.body.thumbnail);
+    }
+    if (req.body.video_url !== undefined) {
+      updateFields.push('video_url = ?');
+      updateValues.push(req.body.video_url);
+    }
+    if (req.body.description !== undefined) {
+      updateFields.push('description = ?');
+      updateValues.push(req.body.description);
+    }
+    if (req.body.xp_points !== undefined) {
+      updateFields.push('xp_points = ?');
+      updateValues.push(req.body.xp_points);
+    }
+    if (req.body.order_index !== undefined) {
+      updateFields.push('order_index = ?');
+      updateValues.push(req.body.order_index);
+    }
+
+    if (updateFields.length === 0) {
+      return res.status(400).json({ error: 'No fields to update' });
+    }
+
+    // Add lessonId to the end of values array
+    updateValues.push(lessonId);
+
+    // Update lesson
+    await executeQuery(
+      `UPDATE lessons SET ${updateFields.join(', ')} WHERE id = ?`,
+      updateValues
+    );
+
+    res.json({ message: 'Lesson updated successfully' });
+  } catch (error) {
+    console.error('Lesson update error:', error);
+    res.status(500).json({ error: 'Failed to update lesson' });
   }
 });
 

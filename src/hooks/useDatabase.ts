@@ -4,7 +4,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { courseAPI, categoryAPI, instructorAPI, progressAPI, certificateAPI, achievementAPI, analyticsAPI, userAPI, auditLogsAPI } from '../lib/api';
 import { Course, Category, Instructor, UserProgress, Certificate, Achievement } from '../types';
-import { getAllCourses as getMockCourses, getFeaturedCourses as getMockFeaturedCourses } from '../data/mockData';
 
 // Custom hook for courses
 export const useCourses = () => {
@@ -50,10 +49,9 @@ export const useCourses = () => {
 
       setCourses(transformedCourses);
     } catch (err) {
-      console.error('Failed to fetch courses from API, using mock data:', err);
-      const mockCourses = getMockCourses();
-      setCourses(mockCourses);
+      console.error('Failed to fetch courses from API:', err);
       setError('Failed to load courses from server');
+      setCourses([]); // Set empty array instead of mock data
     } finally {
       setLoading(false);
     }
@@ -93,9 +91,8 @@ export const useCourses = () => {
 
       setFeaturedCourses(transformedCourses);
     } catch (err) {
-      console.error('Failed to fetch featured courses from API, using mock data:', err);
-      const mockFeaturedCourses = getMockFeaturedCourses();
-      setFeaturedCourses(mockFeaturedCourses);
+      console.error('Failed to fetch featured courses from API:', err);
+      setFeaturedCourses([]); // Set empty array instead of mock data
     }
   }, []);
 

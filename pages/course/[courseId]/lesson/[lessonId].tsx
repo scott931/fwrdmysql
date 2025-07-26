@@ -36,11 +36,48 @@ export default function LessonPage() {
           const foundCourse = await response.json();
           console.log('Course data from API:', foundCourse);
 
-          setCourse(foundCourse);
+          // Transform course data to match frontend format
+          const transformedCourse: Course = {
+            id: foundCourse.id,
+            title: foundCourse.title,
+            instructor: {
+              id: foundCourse.instructor_id || 'unknown',
+              name: foundCourse.instructor_name || 'Unknown Instructor',
+              title: foundCourse.instructor_title || 'Instructor',
+              image: foundCourse.instructor_image || '/placeholder-avatar.jpg',
+              bio: foundCourse.instructor_bio || 'Experienced instructor',
+              email: foundCourse.instructor_email || 'instructor@forwardafrica.com',
+              expertise: ['Education'],
+              experience: 5,
+              createdAt: new Date()
+            },
+            instructorId: foundCourse.instructor_id,
+            category: foundCourse.category_name || 'General',
+            thumbnail: foundCourse.thumbnail || '/placeholder-course.jpg',
+            banner: foundCourse.banner || '/placeholder-course.jpg',
+            videoUrl: foundCourse.video_url,
+            description: foundCourse.description || 'Course description coming soon.',
+            lessons: (foundCourse.lessons || []).map((lesson: any) => ({
+              id: lesson.id,
+              title: lesson.title,
+              duration: lesson.duration || '00:00',
+              thumbnail: lesson.thumbnail || '/placeholder-course.jpg',
+              videoUrl: lesson.video_url, // Transform snake_case to camelCase
+              description: lesson.description || 'Lesson description coming soon.',
+              xpPoints: lesson.xp_points || 100
+            })),
+            featured: foundCourse.featured || false,
+            totalXP: foundCourse.total_xp || 1000,
+            comingSoon: foundCourse.coming_soon || false,
+            releaseDate: foundCourse.release_date
+          };
+
+          console.log('Transformed course data:', transformedCourse);
+          setCourse(transformedCourse);
 
           // Find the current lesson
           let targetLessonId = lessonId as string;
-          if (!targetLessonId && foundCourse.lessons.length > 0) {
+          if (!targetLessonId && transformedCourse.lessons.length > 0) {
             // If no lessonId provided, use the first lesson or last watched
             const storedProgress = localStorage.getItem('userProgress');
             if (storedProgress) {
@@ -48,20 +85,22 @@ export default function LessonPage() {
               if (progressData[courseId]) {
                 targetLessonId = progressData[courseId].lessonId;
               } else {
-                targetLessonId = foundCourse.lessons[0].id;
+                targetLessonId = transformedCourse.lessons[0].id;
               }
             } else {
-              targetLessonId = foundCourse.lessons[0].id;
+              targetLessonId = transformedCourse.lessons[0].id;
             }
           }
 
-          const lessonIndex = foundCourse.lessons.findIndex((l: Lesson) => l.id === targetLessonId);
+          const lessonIndex = transformedCourse.lessons.findIndex((l: Lesson) => l.id === targetLessonId);
           if (lessonIndex !== -1) {
-            setCurrentLesson(foundCourse.lessons[lessonIndex]);
+            const transformedLesson = transformedCourse.lessons[lessonIndex];
+            console.log('Selected lesson data:', transformedLesson);
+            setCurrentLesson(transformedLesson);
             setCurrentLessonIndex(lessonIndex);
 
             // Calculate progress
-            const progressValue = ((lessonIndex + 1) / foundCourse.lessons.length) * 100;
+            const progressValue = ((lessonIndex + 1) / transformedCourse.lessons.length) * 100;
             setProgress(progressValue);
 
             // Update URL if needed
