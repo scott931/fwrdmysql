@@ -1,1 +1,1 @@
-self.__REACT_LOADABLE_MANIFEST="{\"pages\\\\home.tsx -> ../src/pages/HomePage\":{\"id\":\"pages\\\\home.tsx -> ../src/pages/HomePage\",\"files\":[\"static/chunks/src_pages_HomePage_tsx.js\"]},\"pages\\\\profile.tsx -> ../src/pages/ProfilePage\":{\"id\":\"pages\\\\profile.tsx -> ../src/pages/ProfilePage\",\"files\":[\"static/chunks/src_pages_ProfilePage_tsx.js\"]}}"
+self.__REACT_LOADABLE_MANIFEST="{\"pages\\\\home.tsx -> ../src/pages/HomePage\":{\"id\":\"pages\\\\home.tsx -> ../src/pages/HomePage\",\"files\":[\"static/chunks/src_pages_HomePage_tsx.js\"]}}"

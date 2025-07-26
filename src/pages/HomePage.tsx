@@ -29,7 +29,7 @@ const fallbackCourse: Course = {
     createdAt: new Date()
   },
   lessons: [],
-  videoUrl: 'https://youtu.be/q5_PrTvNypY',
+  videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
   featured: true,
   totalXP: 1000
 };

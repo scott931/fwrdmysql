@@ -56,6 +56,7 @@ const Header: React.FC = () => {
           {/* Logo */}
           <Link href="/home" className="flex items-center flex-shrink-0">
             <div className="flex items-center">
+              <img src="/images/logo/logo2.png" alt="Forward Africa Logo" className="h-8 w-auto mr-3" />
               <span className="text-red-600 font-bold text-xl lg:text-2xl tracking-tight">FORWARD</span>
               <span className="text-white font-bold text-xl lg:text-2xl tracking-tight">AFRICA</span>
             </div>
