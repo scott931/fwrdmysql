@@ -4,15 +4,12 @@ import Button from '../components/ui/Button';
 import { useNavigate } from '../lib/router';
 import ErrorMessage from '../components/ui/ErrorMessage';
 import { useAuth } from '../contexts/AuthContext';
-import { auth, db } from '../lib/firebase';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 
 interface AdminUser {
   id: string;
   name: string;
   email: string;
-  role: 'content_manager' | 'admin' | 'super_admin';
+  role: 'content_manager' | 'community_manager' | 'user_support' | 'super_admin';
   password: string;
   createdAt: Date;
   createdBy: string;
@@ -24,7 +21,7 @@ const CreateAdminUserPage: React.FC = () => {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    role: 'content_manager' as 'content_manager' | 'admin' | 'super_admin',
+    role: 'content_manager' as 'content_manager' | 'community_manager' | 'user_support' | 'super_admin',
     password: '',
     confirmPassword: ''
   });
@@ -35,6 +32,7 @@ const CreateAdminUserPage: React.FC = () => {
   const [errors, setErrors] = useState<string[]>([]);
   const [success, setSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCheckingServer, setIsCheckingServer] = useState(false);
 
   // Check if current user can create admin users
   const currentUserRole = profile?.role || 'user';
@@ -82,12 +80,6 @@ const CreateAdminUserPage: React.FC = () => {
       validationErrors.push('Please enter a valid email address');
     }
 
-    // Check if email already exists
-    // const existingAdminUsers = JSON.parse(localStorage.getItem('adminUsers') || '[]');
-    // if (existingAdminUsers.some((user: AdminUser) => user.email === formData.email)) {
-    //   validationErrors.push('An admin user with this email already exists');
-    // }
-
     // Password validation
     const passwordErrors = validatePassword(formData.password);
     validationErrors.push(...passwordErrors);
@@ -99,24 +91,22 @@ const CreateAdminUserPage: React.FC = () => {
 
     // Role validation for super_admin creation
     if (formData.role === 'super_admin' && currentUserRole !== 'super_admin') {
-      validationErrors.push('Only super admins can create other super admin accounts');
+      validationErrors.push('Only super admins can create super admin accounts');
     }
 
     return validationErrors;
   };
 
   const logAuditEvent = (action: string, details: string) => {
-    const auditLog = {
+    const existingLogs = JSON.parse(localStorage.getItem('auditLogs') || '[]');
+    const newLog = {
       id: Date.now().toString(),
-      timestamp: new Date().toISOString(),
-      user: currentUserEmail,
       action,
       details,
-      ipAddress: '192.168.1.100'
+      timestamp: new Date().toISOString(),
+      user: currentUserEmail
     };
-
-    const existingLogs = JSON.parse(localStorage.getItem('auditLogs') || '[]');
-    existingLogs.unshift(auditLog);
+    existingLogs.unshift(newLog);
     localStorage.setItem('auditLogs', JSON.stringify(existingLogs.slice(0, 1000)));
   };
 
@@ -125,34 +115,51 @@ const CreateAdminUserPage: React.FC = () => {
     setErrors([]);
     setSuccess(false);
     setIsSubmitting(true);
+    setIsCheckingServer(true);
 
     // Validate form
     const validationErrors = validateForm();
     if (validationErrors.length > 0) {
       setErrors(validationErrors);
       setIsSubmitting(false);
+      setIsCheckingServer(false);
       return;
     }
 
     try {
-      // Create user in Firebase Auth
-      const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
-      const newUser = userCredential.user;
+      // Check if backend server is running
+      try {
+        const healthCheck = await fetch('http://localhost:3002/api/health', { method: 'GET' });
+        if (!healthCheck.ok) {
+          throw new Error('Backend server is not responding');
+        }
+      } catch (healthError) {
+        throw new Error('Unable to connect to the backend server. Please make sure it is running on port 3002.');
+      }
 
-      // Create user document in Firestore
-      await setDoc(doc(db, "users", newUser.uid), {
-        id: newUser.uid,
-        email: formData.email.trim(),
-        full_name: formData.name.trim(),
-        role: formData.role,
-        onboarding_completed: true, // Admins don't need onboarding
-        created_at: serverTimestamp(),
-        updated_at: serverTimestamp(),
-        createdBy: currentUserEmail
+      // Create user via API
+      const response = await fetch('http://localhost:3002/api/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: formData.email.trim(),
+          full_name: formData.name.trim(),
+          role: formData.role,
+          password: formData.password,
+        }),
       });
 
-      // TODO: Implement proper audit logging with Firestore
-      // logAuditEvent('admin_user_created', `Created ${formData.role} account: ${formData.email} by ${currentUserEmail}`);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create user');
+      }
+
+      const result = await response.json();
+
+      // Log audit event
+      logAuditEvent('admin_user_created', `Created ${formData.role} account: ${formData.email} by ${currentUserEmail}`);
 
       setSuccess(true);
 
@@ -171,13 +178,21 @@ const CreateAdminUserPage: React.FC = () => {
       }, 3000);
 
     } catch (error: any) {
-      if (error.code === 'auth/email-already-in-use') {
+      console.error('Error creating admin user:', error);
+
+      // Handle different types of errors
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        setErrors(['Unable to connect to the server. Please make sure the backend server is running.']);
+      } else if (error.message.includes('already exists')) {
         setErrors(['An admin user with this email already exists']);
+      } else if (error.message.includes('JSON')) {
+        setErrors(['Server returned an invalid response. Please try again.']);
       } else {
-        setErrors(['Failed to create admin user. Please try again.']);
+        setErrors([error.message || 'Failed to create admin user. Please try again.']);
       }
     } finally {
       setIsSubmitting(false);
+      setIsCheckingServer(false);
     }
   };
 
@@ -198,8 +213,9 @@ const CreateAdminUserPage: React.FC = () => {
   const getRoleIcon = (role: string) => {
     switch (role) {
       case 'super_admin': return <Crown className="h-5 w-5" />;
-      case 'admin': return <Shield className="h-5 w-5" />;
-      case 'content_manager': return <UserPlus className="h-5 w-5" />;
+      case 'content_manager': return <Shield className="h-5 w-5" />;
+      case 'community_manager': return <UserPlus className="h-5 w-5" />;
+      case 'user_support': return <User className="h-5 w-5" />;
       default: return <User className="h-5 w-5" />;
     }
   };
@@ -207,8 +223,9 @@ const CreateAdminUserPage: React.FC = () => {
   const getRoleDescription = (role: string) => {
     switch (role) {
       case 'super_admin': return 'Full system access, can manage all users and settings';
-      case 'admin': return 'Platform management, user management, and analytics access';
       case 'content_manager': return 'Content creation and management permissions';
+      case 'community_manager': return 'Community moderation and management';
+      case 'user_support': return 'User support and assistance';
       default: return 'Basic access permissions';
     }
   };
@@ -220,257 +237,236 @@ const CreateAdminUserPage: React.FC = () => {
         <div className="flex items-center mb-8">
           <Button
             variant="ghost"
-            onClick={() => navigate('/admin')}
+            onClick={() => navigate('/admin/manage-users')}
             className="mr-4"
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
             <h1 className="text-3xl font-bold text-white">Create Admin User</h1>
-            <p className="text-gray-400 mt-2">Create a new admin account with login credentials</p>
+            <p className="text-gray-400 mt-2">Add a new administrator to the platform</p>
           </div>
         </div>
 
         {/* Success Message */}
         {success && (
-          <div className="mb-8">
-            <ErrorMessage
-              title="Success!"
-              message="Admin user created successfully! Redirecting to user management..."
-              type="info"
-            />
+          <div className="mb-6 p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
+            <div className="flex items-center">
+              <CheckCircle className="h-5 w-5 text-green-500 mr-3" />
+              <div>
+                <h3 className="text-green-500 font-medium">Admin User Created Successfully!</h3>
+                <p className="text-green-400 text-sm">Redirecting to user management...</p>
+              </div>
+            </div>
           </div>
         )}
 
         {/* Error Messages */}
         {errors.length > 0 && (
-          <div className="mb-8">
+          <div className="mb-6">
             <ErrorMessage
-              title="Error Creating User"
-              message={errors.join('. ')}
+              title="Please fix the following errors:"
+              message={errors.join(', ')}
               onClose={() => setErrors([])}
             />
           </div>
         )}
 
         {/* Form */}
-        <div className="bg-gray-800 rounded-lg p-6">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Basic Information */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Full Name *
-                </label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500"
-                  placeholder="Enter full name"
-                  required
-                  disabled={isSubmitting}
-                />
-              </div>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Name Field */}
+          <div>
+            <label htmlFor="name" className="block text-sm font-medium text-gray-300 mb-2">
+              Full Name
+            </label>
+            <input
+              type="text"
+              id="name"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500"
+              placeholder="Enter full name"
+              required
+            />
+          </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Email Address *
-                </label>
-                <input
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500"
-                  placeholder="admin@forwardafrica.com"
-                  required
-                  disabled={isSubmitting}
-                />
-              </div>
-            </div>
+          {/* Email Field */}
+          <div>
+            <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
+              Email Address
+            </label>
+            <input
+              type="email"
+              id="email"
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500"
+              placeholder="Enter email address"
+              required
+            />
+          </div>
 
-            {/* Role Selection */}
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Admin Role *
-              </label>
-              <div className="space-y-3">
-                {[
-                  { value: 'content_manager', label: 'Content Manager', disabled: false },
-                  { value: 'admin', label: 'Administrator', disabled: false },
-                  { value: 'super_admin', label: 'Super Administrator', disabled: currentUserRole !== 'super_admin' }
-                ].map((role) => (
-                  <div
-                    key={role.value}
-                    className={`border rounded-lg p-4 cursor-pointer transition-colors ${
-                      formData.role === role.value
-                        ? 'border-red-500 bg-red-500/10'
-                        : role.disabled
-                        ? 'border-gray-600 bg-gray-700/50 cursor-not-allowed opacity-50'
-                        : 'border-gray-600 bg-gray-700 hover:border-gray-500'
-                    }`}
-                    onClick={() => !role.disabled && !isSubmitting && setFormData(prev => ({ ...prev, role: role.value as any }))}
-                  >
-                    <div className="flex items-center">
-                      <input
-                        type="radio"
-                        name="role"
-                        value={role.value}
-                        checked={formData.role === role.value}
-                        onChange={(e) => setFormData(prev => ({ ...prev, role: e.target.value as any }))}
-                        className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-600 bg-gray-700"
-                        disabled={role.disabled || isSubmitting}
-                      />
-                      <div className="ml-3 flex-1">
-                        <div className="flex items-center">
-                          {getRoleIcon(role.value)}
-                          <span className="ml-2 text-white font-medium">{role.label}</span>
-                          {role.disabled && (
-                            <span className="ml-2 text-xs text-gray-400">(Requires Super Admin)</span>
-                          )}
-                        </div>
-                        <p className="text-gray-400 text-sm mt-1">
-                          {getRoleDescription(role.value)}
-                        </p>
-                      </div>
+          {/* Role Selection */}
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-3">
+              Admin Role
+            </label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {[
+                { value: 'content_manager', label: 'Content Manager' },
+                { value: 'community_manager', label: 'Community Manager' },
+                { value: 'user_support', label: 'User Support' },
+                ...(currentUserRole === 'super_admin' ? [{ value: 'super_admin', label: 'Super Admin' }] : [])
+              ].map((role) => (
+                <label
+                  key={role.value}
+                  className={`relative flex items-center p-4 border rounded-lg cursor-pointer transition-colors ${
+                    formData.role === role.value
+                      ? 'border-red-500 bg-red-500/10'
+                      : 'border-gray-600 bg-gray-700 hover:border-gray-500'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="role"
+                    value={role.value}
+                    checked={formData.role === role.value}
+                    onChange={(e) => setFormData({ ...formData, role: e.target.value as any })}
+                    className="sr-only"
+                  />
+                  <div className="flex items-center">
+                    <div className="mr-3">
+                      {getRoleIcon(role.value)}
+                    </div>
+                    <div>
+                      <div className="text-white font-medium">{role.label}</div>
+                      <div className="text-gray-400 text-sm">{getRoleDescription(role.value)}</div>
                     </div>
                   </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Password Fields */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Password *
+                  {formData.role === role.value && (
+                    <CheckCircle className="absolute top-3 right-3 h-5 w-5 text-red-500" />
+                  )}
                 </label>
-                <div className="relative">
-                  <input
-                    type={showPasswords.password ? 'text' : 'password'}
-                    value={formData.password}
-                    onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
-                    className="w-full px-4 py-3 pr-12 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500"
-                    placeholder="Enter password"
-                    required
-                    disabled={isSubmitting}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPasswords(prev => ({ ...prev, password: !prev.password }))}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
-                    disabled={isSubmitting}
-                  >
-                    {showPasswords.password ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                  </button>
-                </div>
-
-                {/* Password Strength Indicator */}
-                {formData.password && (
-                  <div className="mt-2">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs text-gray-400">Password Strength</span>
-                      <span className={`text-xs font-medium ${
-                        passwordStrength.strength >= 80 ? 'text-green-400' :
-                        passwordStrength.strength >= 60 ? 'text-yellow-400' :
-                        'text-red-400'
-                      }`}>
-                        {passwordStrength.label}
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-600 h-2 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full transition-all duration-300 ${passwordStrength.color}`}
-                        style={{ width: `${passwordStrength.strength}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Confirm Password *
-                </label>
-                <div className="relative">
-                  <input
-                    type={showPasswords.confirm ? 'text' : 'password'}
-                    value={formData.confirmPassword}
-                    onChange={(e) => setFormData(prev => ({ ...prev, confirmPassword: e.target.value }))}
-                    className="w-full px-4 py-3 pr-12 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500"
-                    placeholder="Confirm password"
-                    required
-                    disabled={isSubmitting}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPasswords(prev => ({ ...prev, confirm: !prev.confirm }))}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
-                    disabled={isSubmitting}
-                  >
-                    {showPasswords.confirm ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                  </button>
-                </div>
-              </div>
+              ))}
             </div>
+          </div>
 
-            {/* Password Requirements */}
-            <div className="bg-gray-700 rounded-lg p-4">
-              <h4 className="text-sm font-medium text-white mb-2">Password Requirements:</h4>
-              <ul className="text-xs text-gray-400 space-y-1">
-                <li className={formData.password.length >= 8 ? 'text-green-400' : ''}>
-                  • At least 8 characters long
-                </li>
-                <li className={/[A-Z]/.test(formData.password) ? 'text-green-400' : ''}>
-                  • One uppercase letter
-                </li>
-                <li className={/[a-z]/.test(formData.password) ? 'text-green-400' : ''}>
-                  • One lowercase letter
-                </li>
-                <li className={/\d/.test(formData.password) ? 'text-green-400' : ''}>
-                  • One number
-                </li>
-                <li className={/[!@#$%^&*(),.?":{}|<>]/.test(formData.password) ? 'text-green-400' : ''}>
-                  • One special character
-                </li>
-              </ul>
-            </div>
-
-            {/* Submit Buttons */}
-            <div className="flex justify-end space-x-4 pt-6 border-t border-gray-700">
-              <Button
+          {/* Password Field */}
+          <div>
+            <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-2">
+              Password
+            </label>
+            <div className="relative">
+              <input
+                type={showPasswords.password ? 'text' : 'password'}
+                id="password"
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                className="w-full px-4 py-3 pr-12 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500"
+                placeholder="Enter password"
+                required
+              />
+              <button
                 type="button"
-                variant="outline"
-                onClick={() => navigate('/admin')}
-                disabled={isSubmitting}
+                onClick={() => setShowPasswords({ ...showPasswords, password: !showPasswords.password })}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
               >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                variant="primary"
-                disabled={isSubmitting || success}
-                className="flex items-center"
-              >
-                {isSubmitting ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></div>
-                    Creating...
-                  </>
-                ) : success ? (
-                  <>
-                    <CheckCircle className="h-4 w-4 mr-2" />
-                    Created!
-                  </>
-                ) : (
-                  <>
-                    <Save className="h-4 w-4 mr-2" />
-                    Create Admin User
-                  </>
-                )}
-              </Button>
+                {showPasswords.password ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+              </button>
             </div>
-          </form>
+
+            {/* Password Strength Indicator */}
+            {formData.password && (
+              <div className="mt-3">
+                <div className="flex items-center justify-between text-sm mb-2">
+                  <span className="text-gray-400">Password Strength:</span>
+                  <span className={`font-medium ${passwordStrength.color.replace('bg-', 'text-')}`}>
+                    {passwordStrength.label}
+                  </span>
+                </div>
+                <div className="w-full bg-gray-700 rounded-full h-2">
+                  <div
+                    className={`h-2 rounded-full transition-all duration-300 ${passwordStrength.color}`}
+                    style={{ width: `${passwordStrength.strength}%` }}
+                  ></div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Confirm Password Field */}
+          <div>
+            <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-300 mb-2">
+              Confirm Password
+            </label>
+            <div className="relative">
+              <input
+                type={showPasswords.confirm ? 'text' : 'password'}
+                id="confirmPassword"
+                value={formData.confirmPassword}
+                onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                className="w-full px-4 py-3 pr-12 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500"
+                placeholder="Confirm password"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPasswords({ ...showPasswords, confirm: !showPasswords.confirm })}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
+              >
+                {showPasswords.confirm ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+              </button>
+            </div>
+          </div>
+
+          {/* Submit Button */}
+          <div className="flex space-x-4 pt-6">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => navigate('/admin/manage-users')}
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              disabled={isSubmitting}
+              className="flex-1"
+            >
+              {isCheckingServer ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Checking Server...
+                </>
+              ) : isSubmitting ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Creating...
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  Create Admin User
+                </>
+              )}
+            </Button>
+          </div>
+        </form>
+
+        {/* Info Box */}
+        <div className="mt-8 p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
+          <div className="flex items-start">
+            <CheckCircle className="h-5 w-5 text-green-500 mr-3 mt-0.5" />
+            <div>
+              <h3 className="text-green-500 font-medium">Ready to Create</h3>
+              <p className="text-green-400 text-sm mt-1">
+                The new admin user will be created with the provided password and can log in immediately.
+                Make sure the backend server is running on port 3002 and frontend on port 3000/3001.
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </div>

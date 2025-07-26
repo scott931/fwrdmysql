@@ -20,7 +20,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-producti
 
 // CORS configuration
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+  origin: process.env.CORS_ORIGIN || ['http://localhost:3000', 'http://localhost:3001'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
@@ -644,17 +644,57 @@ app.get('/api/users/email/:email', async (req, res) => {
 
 app.post('/api/users', async (req, res) => {
   try {
-    const { email, full_name, avatar_url, education_level, job_title, topics_of_interest, role } = req.body;
+    console.log('🔧 Creating user with data:', req.body);
+    const { email, full_name, avatar_url, education_level, job_title, topics_of_interest, role, password } = req.body;
     const id = uuidv4();
 
-    const result = await executeQuery(
-      'INSERT INTO users (id, email, full_name, avatar_url, education_level, job_title, topics_of_interest, role) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [id, email, full_name, avatar_url, education_level, job_title, JSON.stringify(topics_of_interest), role || 'user']
+    // Validate required fields
+    if (!email || !full_name) {
+      return res.status(400).json({ error: 'Email and full_name are required' });
+    }
+
+    // Check if user already exists
+    const [existingUser] = await executeQuery(
+      'SELECT id FROM users WHERE email = ?',
+      [email]
     );
 
+    if (existingUser) {
+      return res.status(400).json({ error: 'User with this email already exists' });
+    }
+
+    // Hash password if provided
+    let passwordHash = null;
+    if (password) {
+      passwordHash = await bcrypt.hash(password, 10);
+    }
+
+    // Prepare insert parameters with proper null handling
+    const insertParams = [
+      id,
+      email,
+      full_name,
+      avatar_url || null,
+      education_level || null,
+      job_title || null,
+      topics_of_interest ? JSON.stringify(topics_of_interest) : null,
+      role || 'user',
+      passwordHash
+    ];
+
+    console.log('🔧 Insert parameters:', insertParams);
+
+    const result = await executeQuery(
+      'INSERT INTO users (id, email, full_name, avatar_url, education_level, job_title, topics_of_interest, role, password_hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      insertParams
+    );
+
+    console.log('🔧 User created successfully with ID:', id);
     res.status(201).json({ id, message: 'User created successfully' });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to create user' });
+    console.error('❌ User creation error:', error);
+    console.error('❌ Error stack:', error.stack);
+    res.status(500).json({ error: 'Failed to create user', details: error.message });
   }
 });
 

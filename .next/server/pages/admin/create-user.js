@@ -251,61 +251,6 @@ module.exports = require("stream");
 "use strict";
 module.exports = require("zlib");
 
-/***/ }),
-
-/***/ "firebase/analytics":
-/*!*************************************!*\
-  !*** external "firebase/analytics" ***!
-  \*************************************/
-/***/ ((module) => {
-
-"use strict";
-module.exports = import("firebase/analytics");;
-
-/***/ }),
-
-/***/ "firebase/app":
-/*!*******************************!*\
-  !*** external "firebase/app" ***!
-  \*******************************/
-/***/ ((module) => {
-
-"use strict";
-module.exports = import("firebase/app");;
-
-/***/ }),
-
-/***/ "firebase/auth":
-/*!********************************!*\
-  !*** external "firebase/auth" ***!
-  \********************************/
-/***/ ((module) => {
-
-"use strict";
-module.exports = import("firebase/auth");;
-
-/***/ }),
-
-/***/ "firebase/firestore":
-/*!*************************************!*\
-  !*** external "firebase/firestore" ***!
-  \*************************************/
-/***/ ((module) => {
-
-"use strict";
-module.exports = import("firebase/firestore");;
-
-/***/ }),
-
-/***/ "firebase/storage":
-/*!***********************************!*\
-  !*** external "firebase/storage" ***!
-  \***********************************/
-/***/ ((module) => {
-
-"use strict";
-module.exports = import("firebase/storage");;
-
 /***/ })
 
 };

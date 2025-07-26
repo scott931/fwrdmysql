@@ -22,15 +22,20 @@
       "static/chunks/main.js",
       "static/chunks/pages/_error.js"
     ],
-    "/admin/create-user": [
+    "/admin": [
       "static/chunks/webpack.js",
       "static/chunks/main.js",
-      "static/chunks/pages/admin/create-user.js"
+      "static/chunks/pages/admin.js"
     ],
     "/admin/manage-users": [
       "static/chunks/webpack.js",
       "static/chunks/main.js",
       "static/chunks/pages/admin/manage-users.js"
+    ],
+    "/admin/security-center": [
+      "static/chunks/webpack.js",
+      "static/chunks/main.js",
+      "static/chunks/pages/admin/security-center.js"
     ]
   },
   "ampFirstPages": []
