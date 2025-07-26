@@ -77,10 +77,13 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     }
   }
 
-  // Onboarding check for regular users - Disabled to go directly to home
-  // if (requireOnboarding && user && !user.onboarding_completed && !requiredRole) {
-  //   return <Navigate to="/onboarding" replace />;
-  // }
+  // Onboarding check for regular users - Progressive profiling approach
+  // Users can access the app but will be prompted to complete profile later
+  if (requireOnboarding && user && !user.onboarding_completed && !requiredRole) {
+    // Instead of redirecting, we'll allow access but track that onboarding is incomplete
+    // This enables progressive profiling - users can use the app but will be prompted later
+    console.log("User has incomplete onboarding - progressive profiling enabled");
+  }
 
   return <>{children || <Outlet />}</>;
 };

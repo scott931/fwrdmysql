@@ -4,6 +4,7 @@ import Layout from '../components/layout/Layout';
 import HeroBanner from '../components/ui/HeroBanner';
 import CategoryRow from '../components/ui/CategoryRow';
 import ContinueLearningRow from '../components/ui/ContinueLearningRow';
+import ProfileCompletionPrompt from '../components/ui/ProfileCompletionPrompt';
 import { CourseProgress, Course } from '../types';
 import { Award, Users, Star, BookOpen } from 'lucide-react';
 import { useCourses, useUserProgress, useAnalytics } from '../hooks/useDatabase';
@@ -138,6 +139,11 @@ const HomePage: React.FC = () => {
       <div className="pb-10">
         {/* Hero Banner - Always show with fallback data */}
         <HeroBanner course={featuredCourse} onPlay={handlePlayCourse} />
+
+        {/* Profile Completion Prompt - Show for users with incomplete profiles */}
+        <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8">
+          <ProfileCompletionPrompt user={user} variant="banner" />
+        </div>
 
         {/* Stats Section */}
         <div className="bg-gradient-to-b from-black to-gray-900">

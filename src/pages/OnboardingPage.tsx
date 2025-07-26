@@ -4,10 +4,12 @@ import { ChevronRight, ChevronLeft, GraduationCap, Briefcase, BookOpen, Star, Ch
 import Button from '../components/ui/Button';
 import { useAuth } from '../contexts/AuthContext';
 import { updateUserProfile } from '../lib/supabase';
+import { useProfileCompletion } from '../hooks/useProfileCompletion';
 
 const OnboardingPage: React.FC = () => {
   const navigate = useNavigate();
   const { user, updateProfile } = useAuth();
+  const { resetPromptCount } = useProfileCompletion();
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState({
     education_level: '',
@@ -87,9 +89,34 @@ const OnboardingPage: React.FC = () => {
         email: user.email
       });
 
+      // Reset prompt count since user completed onboarding
+      resetPromptCount();
+
       navigate('/home');
     } catch (error) {
       console.error('Error completing onboarding:', error);
+    }
+  };
+
+  const handleSkip = async () => {
+    if (!user) return;
+
+    try {
+      // Save whatever data we have so far (progressive profiling)
+      const partialData = {
+        ...formData,
+        onboarding_completed: false, // Mark as incomplete for later prompting
+        full_name: user.full_name || user.email?.split('@')[0] || '',
+        avatar_url: user.avatar_url || '',
+        email: user.email
+      };
+
+      await updateUserProfile(user.id, partialData);
+      await updateProfile(partialData);
+
+      navigate('/home');
+    } catch (error) {
+      console.error('Error skipping onboarding:', error);
     }
   };
 
@@ -361,27 +388,38 @@ const OnboardingPage: React.FC = () => {
                 </div>
               </div>
 
-              {currentStep < 3 ? (
+              <div className="flex items-center space-x-3">
+                {/* Skip button - always visible */}
                 <Button
-                  variant="primary"
-                  onClick={handleNext}
-                  disabled={!canProceed()}
-                  className="flex items-center bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 shadow-lg shadow-red-500/25"
+                  variant="ghost"
+                  onClick={handleSkip}
+                  className="flex items-center text-gray-400 hover:text-white border border-gray-600 hover:border-gray-500"
                 >
-                  Continue
-                  <ArrowRight className="h-4 w-4 ml-2" />
+                  Skip for now
                 </Button>
-              ) : (
-                <Button
-                  variant="primary"
-                  onClick={handleComplete}
-                  disabled={!canProceed()}
-                  className="flex items-center bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 shadow-lg shadow-green-500/25"
-                >
-                  Complete Setup
-                  <Star className="h-4 w-4 ml-2" />
-                </Button>
-              )}
+
+                {currentStep < 3 ? (
+                  <Button
+                    variant="primary"
+                    onClick={handleNext}
+                    disabled={!canProceed()}
+                    className="flex items-center bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 shadow-lg shadow-red-500/25"
+                  >
+                    Continue
+                    <ArrowRight className="h-4 w-4 ml-2" />
+                  </Button>
+                ) : (
+                  <Button
+                    variant="primary"
+                    onClick={handleComplete}
+                    disabled={!canProceed()}
+                    className="flex items-center bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 shadow-lg shadow-green-500/25"
+                  >
+                    Complete Setup
+                    <Star className="h-4 w-4 ml-2" />
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         </div>

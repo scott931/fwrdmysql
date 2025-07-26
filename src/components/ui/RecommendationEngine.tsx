@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { TrendingUp, Users, Star, Clock, BookOpen, Target, Zap } from 'lucide-react';
+import { TrendingUp, Users, Star, Clock, BookOpen, Target, Zap, Brain, BarChart3, Eye, Heart } from 'lucide-react';
 import { Course, UserProgress, User } from '../../types';
 import CourseCard from './CourseCard';
+import { personalizationEngine, PersonalizationScore } from '../../lib/personalizationEngine';
+import { useUserBehavior } from '../../hooks/useUserBehavior';
+import { useProfileCompletion } from '../../hooks/useProfileCompletion';
 
 interface RecommendationEngineProps {
   courses: Course[];
@@ -29,9 +32,14 @@ const RecommendationEngine: React.FC<RecommendationEngineProps> = ({
   currentUser,
   onCourseSelect
 }) => {
-  const [recommendations, setRecommendations] = useState<RecommendationScore[]>([]);
-  const [activeTab, setActiveTab] = useState<'personalized' | 'trending' | 'popular' | 'similar'>('personalized');
+  const [recommendations, setRecommendations] = useState<PersonalizationScore[]>([]);
+  const [activeTab, setActiveTab] = useState<'personalized' | 'trending' | 'popular' | 'similar' | 'advanced'>('personalized');
   const [isLoading, setIsLoading] = useState(false);
+  const [showInsights, setShowInsights] = useState(false);
+
+  // Enhanced hooks
+  const { behavior, context, trackCourseView } = useUserBehavior();
+  const { completionPercentage } = useProfileCompletion();
 
   // Mock user data for collaborative filtering (in real app, this would come from backend)
   const mockUsers = useMemo(() => [
@@ -83,6 +91,20 @@ const RecommendationEngine: React.FC<RecommendationEngineProps> = ({
     return ratings;
   }, [courses]);
 
+  // Generate advanced personalized recommendations
+  const generateAdvancedRecommendations = async (): Promise<PersonalizationScore[]> => {
+    if (!currentUser) return [];
+
+    return personalizationEngine.generateRecommendations(
+      currentUser,
+      courses,
+      userProgress,
+      behavior,
+      context,
+      12
+    );
+  };
+
   // Collaborative filtering: Find similar users
   const findSimilarUsers = (userId: string): UserSimilarity[] => {
     if (!currentUser) return [];
@@ -118,7 +140,7 @@ const RecommendationEngine: React.FC<RecommendationEngineProps> = ({
       .map(p => courses.find(c => c.id === p.courseId))
       .filter(Boolean) as Course[];
 
-    const userInterests = currentUser.topics_of_interest || [];
+    const userInterests = (currentUser as any).topics_of_interest || [];
 
     return courses
       .filter(course => !userProgress.some(p => p.courseId === course.id && p.completed))
@@ -145,7 +167,7 @@ const RecommendationEngine: React.FC<RecommendationEngineProps> = ({
         }
 
         // Score based on user interests
-        const interestMatch = userInterests.some(interest =>
+        const interestMatch = userInterests.some((interest: string) =>
           course.description.toLowerCase().includes(interest.toLowerCase()) ||
           course.title.toLowerCase().includes(interest.toLowerCase())
         );
@@ -266,51 +288,96 @@ const RecommendationEngine: React.FC<RecommendationEngineProps> = ({
   useEffect(() => {
     setIsLoading(true);
 
-    setTimeout(() => {
-      let newRecommendations: RecommendationScore[] = [];
+    const generateRecommendations = async () => {
+      let newRecommendations: PersonalizationScore[] = [];
 
       switch (activeTab) {
         case 'personalized':
-          const contentBased = getContentBasedRecommendations();
-          const collaborative = getCollaborativeRecommendations();
+          if (completionPercentage >= 50) {
+            // Use advanced personalization for users with good profile completion
+            newRecommendations = await generateAdvancedRecommendations();
+          } else {
+            // Fall back to basic content-based recommendations
+            const contentBased = getContentBasedRecommendations();
+            newRecommendations = contentBased.map(rec => ({
+              course: rec.course,
+              score: rec.score,
+              confidence: 0.6,
+              factors: [{
+                name: 'Basic Recommendation',
+                weight: 1.0,
+                score: rec.score,
+                description: rec.reason
+              }],
+              type: 'profile_based' as const
+            }));
+          }
+          break;
 
-          // Combine and deduplicate recommendations
-          const allPersonalized = [...contentBased, ...collaborative];
-          const courseMap = new Map();
-
-          allPersonalized.forEach(rec => {
-            const existing = courseMap.get(rec.course.id);
-            if (!existing || rec.score > existing.score) {
-              courseMap.set(rec.course.id, rec);
-            }
-          });
-
-          newRecommendations = Array.from(courseMap.values())
-            .sort((a, b) => b.score - a.score)
-            .slice(0, 12);
+        case 'advanced':
+          newRecommendations = await generateAdvancedRecommendations();
           break;
 
         case 'trending':
-          newRecommendations = getTrendingRecommendations();
+          const trending = getTrendingRecommendations();
+          newRecommendations = trending.map(rec => ({
+            course: rec.course,
+            score: rec.score,
+            confidence: 0.7,
+            factors: [{
+              name: 'Trending',
+              weight: 1.0,
+              score: rec.score,
+              description: rec.reason
+            }],
+            type: 'contextual' as const
+          }));
           break;
 
         case 'popular':
-          newRecommendations = getPopularRecommendations();
+          const popular = getPopularRecommendations();
+          newRecommendations = popular.map(rec => ({
+            course: rec.course,
+            score: rec.score,
+            confidence: 0.8,
+            factors: [{
+              name: 'Popularity',
+              weight: 1.0,
+              score: rec.score,
+              description: rec.reason
+            }],
+            type: 'collaborative' as const
+          }));
           break;
 
         case 'similar':
-          newRecommendations = getCollaborativeRecommendations();
+          const collaborative = getCollaborativeRecommendations();
+          newRecommendations = collaborative.map(rec => ({
+            course: rec.course,
+            score: rec.score,
+            confidence: 0.6,
+            factors: [{
+              name: 'Similar Users',
+              weight: 1.0,
+              score: rec.score,
+              description: rec.reason
+            }],
+            type: 'collaborative' as const
+          }));
           break;
       }
 
       setRecommendations(newRecommendations);
       setIsLoading(false);
-    }, 500);
-  }, [activeTab, courses, userProgress, currentUser]);
+    };
+
+    generateRecommendations();
+  }, [activeTab, courses, userProgress, currentUser, behavior, context, completionPercentage]);
 
   const getTabIcon = (tab: string) => {
     switch (tab) {
       case 'personalized': return <Target className="h-4 w-4" />;
+      case 'advanced': return <Brain className="h-4 w-4" />;
       case 'trending': return <TrendingUp className="h-4 w-4" />;
       case 'popular': return <Star className="h-4 w-4" />;
       case 'similar': return <Users className="h-4 w-4" />;
@@ -320,11 +387,42 @@ const RecommendationEngine: React.FC<RecommendationEngineProps> = ({
 
   const getTabDescription = (tab: string) => {
     switch (tab) {
-      case 'personalized': return 'Based on your interests and learning history';
+      case 'personalized':
+        return completionPercentage >= 50
+          ? 'AI-powered recommendations based on your profile and behavior'
+          : 'Complete your profile for better recommendations';
+      case 'advanced': return 'Advanced AI analysis using multiple algorithms';
       case 'trending': return 'Courses gaining popularity this week';
       case 'popular': return 'Most popular courses among all students';
       case 'similar': return 'Liked by users similar to you';
       default: return '';
+    }
+  };
+
+  const handleCourseClick = (course: Course) => {
+    trackCourseView(course.id);
+    onCourseSelect(course);
+  };
+
+  const getRecommendationTypeColor = (type: PersonalizationScore['type']) => {
+    switch (type) {
+      case 'profile_based': return 'bg-blue-600';
+      case 'behavior_based': return 'bg-green-600';
+      case 'collaborative': return 'bg-purple-600';
+      case 'contextual': return 'bg-orange-600';
+      case 'hybrid': return 'bg-gradient-to-r from-blue-600 to-purple-600';
+      default: return 'bg-gray-600';
+    }
+  };
+
+  const getRecommendationTypeLabel = (type: PersonalizationScore['type']) => {
+    switch (type) {
+      case 'profile_based': return 'Profile';
+      case 'behavior_based': return 'Behavior';
+      case 'collaborative': return 'Collaborative';
+      case 'contextual': return 'Contextual';
+      case 'hybrid': return 'Hybrid AI';
+      default: return 'Basic';
     }
   };
 
@@ -335,6 +433,7 @@ const RecommendationEngine: React.FC<RecommendationEngineProps> = ({
         <div className="flex space-x-1 bg-gray-800 p-1 rounded-lg">
           {[
             { key: 'personalized', label: 'For You' },
+            { key: 'advanced', label: 'Advanced AI' },
             { key: 'trending', label: 'Trending' },
             { key: 'popular', label: 'Popular' },
             { key: 'similar', label: 'Similar Users' }
@@ -354,9 +453,20 @@ const RecommendationEngine: React.FC<RecommendationEngineProps> = ({
           ))}
         </div>
 
-        <p className="mt-2 text-sm text-gray-400 text-center">
-          {getTabDescription(activeTab)}
-        </p>
+        <div className="flex items-center justify-between mt-2">
+          <p className="text-sm text-gray-400 text-center flex-1">
+            {getTabDescription(activeTab)}
+          </p>
+          {activeTab === 'advanced' && (
+            <button
+              onClick={() => setShowInsights(!showInsights)}
+              className="text-sm text-gray-400 hover:text-white flex items-center space-x-1"
+            >
+              <BarChart3 className="h-4 w-4" />
+              <span>{showInsights ? 'Hide' : 'Show'} Insights</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Loading State */}
@@ -368,7 +478,7 @@ const RecommendationEngine: React.FC<RecommendationEngineProps> = ({
       )}
 
       {/* Recommendations Grid */}
-      {!isLoading && recommendations.length > 0 && (
+      {!isLoading && (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {recommendations.map((recommendation, index) => (
             <div key={recommendation.course.id} className="relative group">
@@ -376,18 +486,49 @@ const RecommendationEngine: React.FC<RecommendationEngineProps> = ({
 
               {/* Recommendation Badge */}
               <div className="absolute top-2 left-2 z-10">
-                <div className="bg-red-600 text-white text-xs px-2 py-1 rounded-full flex items-center space-x-1">
+                <div className={`${getRecommendationTypeColor(recommendation.type)} text-white text-xs px-2 py-1 rounded-full flex items-center space-x-1`}>
                   <Zap className="h-3 w-3" />
                   <span>#{index + 1}</span>
+                </div>
+              </div>
+
+              {/* Confidence Badge */}
+              <div className="absolute top-2 right-2 z-10">
+                <div className="bg-black/80 text-white text-xs px-2 py-1 rounded-full flex items-center space-x-1">
+                  <Eye className="h-3 w-3" />
+                  <span>{Math.round(recommendation.confidence * 100)}%</span>
+                </div>
+              </div>
+
+              {/* Recommendation Type Badge */}
+              <div className="absolute top-10 left-2 z-10">
+                <div className="bg-gray-800/90 text-white text-xs px-2 py-1 rounded-full">
+                  {getRecommendationTypeLabel(recommendation.type)}
                 </div>
               </div>
 
               {/* Recommendation Reason */}
               <div className="absolute bottom-2 left-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
                 <div className="bg-black/80 text-white text-xs p-2 rounded">
-                  {recommendation.reason}
+                  {recommendation.factors[0]?.description || 'Recommended for you'}
                 </div>
               </div>
+
+              {/* Advanced Insights (for advanced tab) */}
+              {activeTab === 'advanced' && showInsights && (
+                <div className="absolute inset-0 bg-black/90 text-white p-3 rounded opacity-0 group-hover:opacity-100 transition-opacity overflow-y-auto">
+                  <h4 className="font-semibold text-sm mb-2">Personalization Factors:</h4>
+                  {recommendation.factors.map((factor, idx) => (
+                    <div key={idx} className="text-xs mb-1">
+                      <div className="flex justify-between">
+                        <span>{factor.name}:</span>
+                        <span>{Math.round(factor.score * 100)}%</span>
+                      </div>
+                      <div className="text-gray-300 text-xs">{factor.description}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -399,7 +540,10 @@ const RecommendationEngine: React.FC<RecommendationEngineProps> = ({
           <BookOpen className="h-12 w-12 text-gray-500 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-white mb-2">No recommendations found</h3>
           <p className="text-gray-400">
-            Try completing more courses to get personalized recommendations.
+            {completionPercentage < 50
+              ? 'Complete your profile to get personalized recommendations.'
+              : 'Try completing more courses to get better recommendations.'
+            }
           </p>
         </div>
       )}
@@ -415,9 +559,9 @@ const RecommendationEngine: React.FC<RecommendationEngineProps> = ({
             </div>
             <div className="text-center">
               <div className="text-white font-semibold">
-                {Math.round(recommendations.reduce((sum, r) => sum + r.score, 0) / recommendations.length * 100) / 100}
+                {Math.round(recommendations.reduce((sum, r) => sum + r.confidence, 0) / recommendations.length * 100)}%
               </div>
-              <div className="text-gray-400">Average Score</div>
+              <div className="text-gray-400">Average Confidence</div>
             </div>
             <div className="text-center">
               <div className="text-white font-semibold">
@@ -427,9 +571,9 @@ const RecommendationEngine: React.FC<RecommendationEngineProps> = ({
             </div>
             <div className="text-center">
               <div className="text-white font-semibold">
-                {new Set(recommendations.map(r => r.course.instructor.id)).size}
+                {new Set(recommendations.map(r => r.type)).size}
               </div>
-              <div className="text-gray-400">Instructors</div>
+              <div className="text-gray-400">AI Types</div>
             </div>
           </div>
         </div>

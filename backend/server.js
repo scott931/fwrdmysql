@@ -2880,3 +2880,51 @@ async function getSearchAnalytics(query) {
     return {};
   }
 }
+
+// Import video content management routes
+const videoContentManagementRoutes = require('./routes/videoContentManagement');
+
+// Mount video content management routes
+app.use('/api/video-content', videoContentManagementRoutes);
+
+// Initialize job processor service
+const jobProcessorService = require('./services/jobProcessorService');
+
+// Graceful shutdown
+process.on('SIGTERM', async () => {
+  console.log('SIGTERM received, shutting down gracefully...');
+
+  try {
+    // Close job processor
+    await jobProcessorService.shutdown();
+
+    // Close database connections
+    const { closeConnections } = require('./lib/database');
+    await closeConnections();
+
+    console.log('Graceful shutdown completed');
+    process.exit(0);
+  } catch (error) {
+    console.error('Error during shutdown:', error);
+    process.exit(1);
+  }
+});
+
+process.on('SIGINT', async () => {
+  console.log('SIGINT received, shutting down gracefully...');
+
+  try {
+    // Close job processor
+    await jobProcessorService.shutdown();
+
+    // Close database connections
+    const { closeConnections } = require('./lib/database');
+    await closeConnections();
+
+    console.log('Graceful shutdown completed');
+    process.exit(0);
+  } catch (error) {
+    console.error('Error during shutdown:', error);
+    process.exit(1);
+  }
+});

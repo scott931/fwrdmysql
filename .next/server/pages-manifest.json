@@ -2,10 +2,5 @@
   "/_app": "pages/_app.js",
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
-  "/courses": "pages/courses.js",
-  "/home": "pages/home.js",
-  "/community": "pages/community.js",
-  "/search": "pages/search.js",
-  "/login": "pages/login.js",
-  "/admin": "pages/admin.js"
+  "/home": "pages/home.js"
 }

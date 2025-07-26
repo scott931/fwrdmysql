@@ -29,7 +29,18 @@
     "mysql2": "^3.6.5",
     "node-fetch": "^3.3.2",
     "uuid": "^9.0.1",
-    "ws": "^8.16.0"
+    "ws": "^8.16.0",
+    "fluent-ffmpeg": "^2.1.2",
+    "aws-sdk": "^2.1574.0",
+    "google-cloud-speech": "^6.0.0",
+    "google-cloud-storage": "^7.10.0",
+    "bull": "^4.12.2",
+    "redis": "^4.6.13",
+    "sharp": "^0.33.2",
+    "exif-parser": "^0.1.12",
+    "mediainfo": "^0.1.4",
+    "node-cron": "^3.0.3",
+    "formidable": "^3.5.1"
   },
   "devDependencies": {
     "nodemon": "^3.0.2"

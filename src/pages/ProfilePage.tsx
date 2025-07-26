@@ -5,6 +5,7 @@ import { useNavigate } from '../lib/router';
 import { useAuth } from '../contexts/AuthContext';
 import { useUserProgress, useCertificates } from '../hooks/useDatabase';
 import ImageUpload from '../components/ui/ImageUpload';
+import ProfileCompletionPrompt from '../components/ui/ProfileCompletionPrompt';
 import Layout from '../components/layout/Layout';
 
 const ProfilePage: React.FC = () => {
@@ -369,6 +370,11 @@ const ProfilePage: React.FC = () => {
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-white mb-2">Profile & Settings</h1>
             <p className="text-gray-400">Manage your account and preferences</p>
+          </div>
+
+          {/* Profile Completion Prompt - Show for users with incomplete profiles */}
+          <div className="mb-8">
+            <ProfileCompletionPrompt user={user} variant="card" />
           </div>
 
           {/* Navigation Tabs */}
