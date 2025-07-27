@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
-import { Button } from './ui/Button';
-import { ErrorMessage } from './ui/ErrorMessage';
+import Button from './ui/Button';
+import ErrorMessage from './ui/ErrorMessage';
 import { SuccessMessage } from './ui/SuccessMessage';
 
 interface VideoUploadProps {

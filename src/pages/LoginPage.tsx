@@ -1,8 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
 import Button from '../components/ui/Button';
-import { Eye, EyeOff, Mail, Lock, ArrowRight } from 'lucide-react';
+import ErrorDisplay from '../components/ui/ErrorDisplay';
+import ValidationMessage from '../components/ui/ValidationMessage';
+import { validateEmail, getAuthErrorMessage, extractErrorCode } from '../utils/validation';
+import { Eye, EyeOff, Mail, Lock, ArrowRight, HelpCircle, ExternalLink } from 'lucide-react';
 
 const LoginPage: React.FC = () => {
   const router = useRouter();
@@ -12,17 +15,54 @@ const LoginPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [showHelp, setShowHelp] = useState(false);
+
+  // Enhanced error handling
+  useEffect(() => {
+    if (error) {
+      const errorCode = extractErrorCode(error);
+      const enhancedMessage = getAuthErrorMessage(errorCode, error);
+      setError(enhancedMessage);
+    }
+  }, [error]);
+
+  // Real-time validation
+  const validateField = (field: string, value: string) => {
+    if (field === 'email') {
+      const validationResult = validateEmail(value);
+      if (!validationResult.isValid) {
+        setValidationErrors(prev => ({ ...prev, [field]: validationResult.message }));
+      } else {
+        setValidationErrors(prev => {
+          const newErrors = { ...prev };
+          delete newErrors[field];
+          return newErrors;
+        });
+      }
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setError('');
+    setValidationErrors({});
+
+    // Validate fields
+    validateField('email', email);
+
+    if (Object.keys(validationErrors).length > 0) {
+      return;
+    }
+
+    setLoading(true);
 
     try {
       await signIn({ email, password });
       router.push('/home');
     } catch (error) {
-      setError('Invalid email or password');
+      // Error is already handled in AuthContext
+      console.log('Login error caught in component:', error);
     } finally {
       setLoading(false);
     }
@@ -62,12 +102,25 @@ const LoginPage: React.FC = () => {
                   type="email"
                   autoComplete="email"
                   required
-                  className="block w-full pl-10 pr-4 py-3 bg-gray-700/50 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200"
+                  className={`block w-full pl-10 pr-4 py-3 bg-gray-700/50 border rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200 ${
+                    validationErrors.email ? 'border-red-500' : 'border-gray-600'
+                  }`}
                   placeholder="Enter your email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    validateField('email', e.target.value);
+                  }}
+                  onBlur={(e) => validateField('email', e.target.value)}
                 />
               </div>
+              {validationErrors.email && (
+                <ValidationMessage
+                  message={validationErrors.email}
+                  type="error"
+                  className="mt-1"
+                />
+              )}
             </div>
 
             {/* Password Field */}
@@ -105,13 +158,12 @@ const LoginPage: React.FC = () => {
             </div>
 
             {/* Error Message */}
-            {error && (
-              <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3">
-                <p className="text-red-400 text-sm text-center">
-                  {error}
-                </p>
-              </div>
-            )}
+            <ErrorDisplay
+              error={error}
+              type="error"
+              onClose={() => setError('')}
+              className="mb-4"
+            />
 
             {/* Submit Button */}
             <Button
@@ -156,17 +208,57 @@ const LoginPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Register Link */}
-          <div className="mt-6 text-center">
-            <p className="text-gray-400">
-              Don't have an account?{' '}
+          {/* Helpful Links */}
+          <div className="mt-6 space-y-4">
+            {/* Register Link */}
+            <div className="text-center">
+              <p className="text-gray-400">
+                Don't have an account?{' '}
+                <button
+                  onClick={() => router.push('/register')}
+                  className="text-red-400 hover:text-red-300 font-medium transition-colors duration-200"
+                >
+                  Create one now
+                </button>
+              </p>
+            </div>
+
+            {/* Forgot Password Link */}
+            <div className="text-center">
+              <p className="text-gray-400">
+                Forgot your password?{' '}
+                <button
+                  onClick={() => router.push('/login')}
+                  className="text-red-400 hover:text-red-300 font-medium transition-colors duration-200"
+                >
+                  Reset it here
+                </button>
+              </p>
+            </div>
+
+            {/* Help Section */}
+            <div className="text-center">
               <button
-                onClick={() => router.push('/register')}
-                className="text-red-400 hover:text-red-300 font-medium transition-colors duration-200"
+                onClick={() => setShowHelp(!showHelp)}
+                className="inline-flex items-center space-x-1 text-gray-400 hover:text-gray-300 transition-colors duration-200"
               >
-                Create one now
+                <HelpCircle className="h-4 w-4" />
+                <span className="text-sm">Need help?</span>
               </button>
-            </p>
+            </div>
+
+            {/* Help Content */}
+            {showHelp && (
+              <div className="bg-gray-700/30 rounded-xl p-4 border border-gray-600/30">
+                <h4 className="text-sm font-medium text-gray-300 mb-2">Login Tips:</h4>
+                <ul className="text-xs text-gray-400 space-y-1">
+                  <li>• Make sure your email address is correct</li>
+                  <li>• Check that your password is entered correctly</li>
+                  <li>• If you forgot your password, use the reset link above</li>
+                  <li>• If you don't have an account, create one using the link above</li>
+                </ul>
+              </div>
+            )}
           </div>
         </div>
       </div>

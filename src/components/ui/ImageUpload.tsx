@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
-import { Upload, X, Image as ImageIcon } from 'lucide-react';
+import { Upload, X } from 'lucide-react';
 import Button from './Button';
+import Image from 'next/image';
 
 interface ImageUploadProps {
   onImageUpload: (url: string) => void;
@@ -139,9 +140,11 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
         {/* Preview */}
         {preview && (
           <div className={`relative ${getPreviewSizeClasses()}`}>
-            <img
+            <Image
               src={preview}
               alt="Preview"
+              width={200}
+              height={200}
               className={`w-full h-full object-cover rounded-lg border-2 border-gray-600`}
             />
             <button

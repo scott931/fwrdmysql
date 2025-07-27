@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { Play, Clock, ChevronLeft, ChevronRight, BookOpen, CheckCircle } from 'lucide-react';
-import Button from '../../../../src/components/ui/Button';
 import VideoPlayer from '../../../../src/components/ui/VideoPlayer';
 import { Course, Lesson } from '../../../../src/types';
 
@@ -124,29 +123,9 @@ export default function LessonPage() {
     fetchCourseData();
   }, [courseId, lessonId, router]);
 
-  const updateProgress = (lessonId: string) => {
-    if (!course || !courseId || typeof courseId !== 'string') return;
 
-    const lessonIndex = course.lessons.findIndex((l: Lesson) => l.id === lessonId);
-    const progressValue = ((lessonIndex + 1) / course.lessons.length) * 100;
 
-    // Save progress to localStorage
-    const storedProgress = localStorage.getItem('userProgress');
-    const progressData = storedProgress ? JSON.parse(storedProgress) : {};
 
-    progressData[courseId] = {
-      lessonId,
-      progress: progressValue,
-      lastWatched: new Date().toISOString()
-    };
-
-    localStorage.setItem('userProgress', JSON.stringify(progressData));
-    setProgress(progressValue);
-  };
-
-  const handleLessonSelect = (lessonId: string) => {
-    router.push(`/course/${courseId}/lesson/${lessonId}`);
-  };
 
   const goToPreviousLesson = () => {
     if (currentLessonIndex > 0) {

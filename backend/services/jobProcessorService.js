@@ -6,6 +6,17 @@ const contentWorkflowService = require('./contentWorkflowService');
 
 class JobProcessorService {
     constructor() {
+        // Check if Redis is enabled via environment variable first
+        if (process.env.REDIS_ENABLED === 'false') {
+            console.log('⚠️ Redis disabled via environment variable, running in fallback mode');
+            this.redisAvailable = false;
+            this.videoTranscodingQueue = null;
+            this.subtitleGenerationQueue = null;
+            this.metadataExtractionQueue = null;
+            this.thumbnailGenerationQueue = null;
+            return;
+        }
+
         // Initialize Redis connection for job queues
         this.redisConfig = {
             host: process.env.REDIS_HOST || 'localhost',
@@ -13,64 +24,98 @@ class JobProcessorService {
             password: process.env.REDIS_PASSWORD || null
         };
 
-        // Create job queues
-        this.videoTranscodingQueue = new Bull('video-transcoding', {
-            redis: this.redisConfig,
-            defaultJobOptions: {
-                attempts: 3,
-                backoff: {
-                    type: 'exponential',
-                    delay: 2000
-                },
-                removeOnComplete: 100,
-                removeOnFail: 50
-            }
-        });
+        // Initialize queues as null
+        this.videoTranscodingQueue = null;
+        this.subtitleGenerationQueue = null;
+        this.metadataExtractionQueue = null;
+        this.thumbnailGenerationQueue = null;
+        this.redisAvailable = false;
 
-        this.subtitleGenerationQueue = new Bull('subtitle-generation', {
-            redis: this.redisConfig,
-            defaultJobOptions: {
-                attempts: 2,
-                backoff: {
-                    type: 'exponential',
-                    delay: 5000
-                },
-                removeOnComplete: 100,
-                removeOnFail: 50
-            }
-        });
+        // Try to initialize Redis queues
+        this.initializeQueues();
+    }
 
-        this.metadataExtractionQueue = new Bull('metadata-extraction', {
-            redis: this.redisConfig,
-            defaultJobOptions: {
-                attempts: 2,
-                backoff: {
-                    type: 'exponential',
-                    delay: 3000
-                },
-                removeOnComplete: 100,
-                removeOnFail: 50
-            }
-        });
+    initializeQueues() {
+        // Check if Redis is enabled via environment variable
+        if (process.env.REDIS_ENABLED === 'false') {
+            console.log('⚠️ Redis disabled via environment variable, running in fallback mode');
+            this.redisAvailable = false;
+            return;
+        }
 
-        this.thumbnailGenerationQueue = new Bull('thumbnail-generation', {
-            redis: this.redisConfig,
-            defaultJobOptions: {
-                attempts: 2,
-                backoff: {
-                    type: 'exponential',
-                    delay: 2000
-                },
-                removeOnComplete: 100,
-                removeOnFail: 50
-            }
-        });
+        // Check if we should skip Redis initialization
+        if (!this.redisAvailable) {
+            return;
+        }
 
-        this.setupQueueProcessors();
+        try {
+            // Create job queues
+            this.videoTranscodingQueue = new Bull('video-transcoding', {
+                redis: this.redisConfig,
+                defaultJobOptions: {
+                    attempts: 3,
+                    backoff: {
+                        type: 'exponential',
+                        delay: 2000
+                    },
+                    removeOnComplete: 100,
+                    removeOnFail: 50
+                }
+            });
+
+            this.subtitleGenerationQueue = new Bull('subtitle-generation', {
+                redis: this.redisConfig,
+                defaultJobOptions: {
+                    attempts: 2,
+                    backoff: {
+                        type: 'exponential',
+                        delay: 5000
+                    },
+                    removeOnComplete: 100,
+                    removeOnFail: 50
+                }
+            });
+
+            this.metadataExtractionQueue = new Bull('metadata-extraction', {
+                redis: this.redisConfig,
+                defaultJobOptions: {
+                    attempts: 2,
+                    backoff: {
+                        type: 'exponential',
+                        delay: 3000
+                    },
+                    removeOnComplete: 100,
+                    removeOnFail: 50
+                }
+            });
+
+            this.thumbnailGenerationQueue = new Bull('thumbnail-generation', {
+                redis: this.redisConfig,
+                defaultJobOptions: {
+                    attempts: 2,
+                    backoff: {
+                        type: 'exponential',
+                        delay: 2000
+                    },
+                    removeOnComplete: 100,
+                    removeOnFail: 50
+                }
+            });
+
+            this.redisAvailable = true;
+            this.setupQueueProcessors();
+            this.setupQueueEventListeners();
+            console.log('✅ Redis queues initialized successfully');
+        } catch (error) {
+            console.warn('⚠️ Redis not available, running in fallback mode:', error.message);
+            this.redisAvailable = false;
+        }
     }
 
     // Setup queue processors
     setupQueueProcessors() {
+        if (!this.redisAvailable) return;
+
         // Video transcoding processor
         this.videoTranscodingQueue.process(async (job) => {
             try {
@@ -192,6 +237,8 @@ class JobProcessorService {
 
     // Setup queue event listeners
     setupQueueEventListeners() {
+        if (!this.redisAvailable) return;
+
         const queues = [
             this.videoTranscodingQueue,
             this.subtitleGenerationQueue,
@@ -228,6 +275,25 @@ class JobProcessorService {
              VALUES (?, 'video_transcoding', ?, ?, 'pending', ?)`,
             [jobId, videoAssetId, priority, JSON.stringify({ resolutions })]
         );
+
+        if (!this.redisAvailable) {
+            console.log('Redis not available, processing video transcoding synchronously');
+            // Process synchronously as fallback
+            try {
+                await this.updateJobStatus(jobId, 'processing', 0);
+                const transcodingJobIds = await videoProcessingService.transcodeVideo(
+                    videoAssetId,
+                    originalPath,
+                    resolutions
+                );
+                await this.updateJobStatus(jobId, 'completed', 100, { transcodingJobIds });
+                return { jobId, queueJobId: null, processed: true };
+            } catch (error) {
+                console.error('Synchronous video transcoding failed:', error);
+                await this.updateJobStatus(jobId, 'failed', 0, null, error.message);
+                throw error;
+            }
+        }
 
         // Add job to queue
         const job = await this.videoTranscodingQueue.add(

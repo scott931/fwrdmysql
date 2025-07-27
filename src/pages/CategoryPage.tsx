@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import CourseCard from '../components/ui/CourseCard';
-import { getCoursesByCategory, getAllCategories } from '../data/mockData';
+import { courseAPI, categoryAPI } from '../lib/api';
 import { Course, Category } from '../types';
 import Layout from '../components/layout/Layout';
 
@@ -11,30 +11,32 @@ const CategoryPage: React.FC = () => {
   const [courses, setCourses] = useState<Course[]>([]);
   const [category, setCategory] = useState<Category | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (categoryId && typeof categoryId === 'string') {
-      const allCategories = getAllCategories();
-      const foundCategory = allCategories.find(cat => cat.id === categoryId);
-      if (foundCategory) {
-        setCategory(foundCategory);
-        const categoryCourses = getCoursesByCategory(categoryId);
-        setCourses(categoryCourses);
-      } else {
-        // Try to find by name if not found by ID
-        const foundByName = allCategories.find(cat => cat.name.toLowerCase() === categoryId.toLowerCase());
-        if (foundByName) {
-          setCategory(foundByName);
-          const categoryCourses = getCoursesByCategory(foundByName.id);
-          setCourses(categoryCourses);
-        } else {
-          // Redirect to courses page if category not found
-          router.push('/courses');
+    const loadCategoryData = async () => {
+      if (categoryId && typeof categoryId === 'string') {
+        setLoading(true);
+        setError(null);
+        try {
+          // Get category details
+          const categoryData = await categoryAPI.getCategory(categoryId);
+          setCategory(categoryData);
+
+          // Get courses for this category
+          const coursesData = await courseAPI.getCoursesByCategory(categoryId);
+          setCourses(coursesData);
+        } catch (error) {
+          console.error('Failed to load category data:', error);
+          setError('Failed to load category data. Please try again.');
+        } finally {
+          setLoading(false);
         }
       }
-      setLoading(false);
-    }
-  }, [categoryId, router]);
+    };
+
+    loadCategoryData();
+  }, [categoryId]);
 
   // Scroll to top on component mount
   useEffect(() => {
@@ -43,23 +45,45 @@ const CategoryPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 px-4">
-        <h1 className="text-white text-3xl font-bold mb-6">Loading...</h1>
-      </div>
+      <Layout>
+        <div className="flex flex-col items-center justify-center py-20 px-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div>
+          <span className="ml-4 text-white text-lg">Loading category...</span>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (error) {
+    return (
+      <Layout>
+        <div className="flex flex-col items-center justify-center py-20 px-4">
+          <h1 className="text-white text-3xl font-bold mb-6">Error Loading Category</h1>
+          <p className="text-gray-400 mb-8">{error}</p>
+          <button
+            onClick={() => router.push('/courses')}
+            className="bg-red-600 text-white px-6 py-3 rounded-md hover:bg-red-700 transition-colors"
+          >
+            Return to Courses
+          </button>
+        </div>
+      </Layout>
     );
   }
 
   if (!category) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 px-4">
-        <h1 className="text-white text-3xl font-bold mb-6">Category Not Found</h1>
-        <button
-          onClick={() => router.push('/')}
-          className="bg-red-600 text-white px-6 py-3 rounded-md hover:bg-red-700 transition-colors"
-        >
-          Return Home
-        </button>
-      </div>
+      <Layout>
+        <div className="flex flex-col items-center justify-center py-20 px-4">
+          <h1 className="text-white text-3xl font-bold mb-6">Category Not Found</h1>
+          <button
+            onClick={() => router.push('/courses')}
+            className="bg-red-600 text-white px-6 py-3 rounded-md hover:bg-red-700 transition-colors"
+          >
+            Return to Courses
+          </button>
+        </div>
+      </Layout>
     );
   }
 

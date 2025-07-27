@@ -181,7 +181,7 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
   };
 
   // Handle filter changes
-  const handleFilterChange = (key: keyof SearchFilters, value: any) => {
+  const handleFilterChange = (key: keyof SearchFilters, value: string | number | string[]) => {
     const newFilters = { ...filters, [key]: value };
     setFilters(newFilters);
 

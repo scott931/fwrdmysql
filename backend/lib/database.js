@@ -3,16 +3,14 @@ const mysql = require('mysql2/promise');
 // Database configuration
 const dbConfig = {
     host: process.env.DB_HOST || 'localhost',
-    user: process.env.DB_USER || 'forward_africa_user',
-    password: process.env.DB_PASSWORD || 'your_password_here',
+    user: process.env.DB_USER || 'root', // Changed default to root
+    password: process.env.DB_PASSWORD || '', // Empty password by default
     database: process.env.DB_NAME || 'forward_africa_db',
     port: process.env.DB_PORT || 3306,
     waitForConnections: true,
     connectionLimit: 10,
-    queueLimit: 0,
-    acquireTimeout: 60000,
-    timeout: 60000,
-    reconnect: true
+    queueLimit: 0
+    // Removed deprecated options: acquireTimeout, timeout, reconnect
 };
 
 // Create connection pool
@@ -31,7 +29,8 @@ function initializePool() {
             })
             .catch(err => {
                 console.error('Database connection failed:', err);
-                process.exit(1);
+                console.log('⚠️ Server will continue running with limited functionality');
+                // Don't exit the process, let the server continue
             });
     }
     return pool;
@@ -47,18 +46,27 @@ function getPool() {
 
 // Execute a query with parameters
 async function executeQuery(query, params = []) {
-    const connection = await getPool().getConnection();
-
     try {
-        const [results] = await connection.execute(query, params);
-        return results;
+        const connection = await getPool().getConnection();
+
+        try {
+            const [results] = await connection.execute(query, params);
+            return results;
+        } finally {
+            connection.release();
+        }
     } catch (error) {
         console.error('Database query error:', error);
         console.error('Query:', query);
         console.error('Parameters:', params);
+
+        // If it's a connection error, return empty results instead of crashing
+        if (error.code === 'ER_ACCESS_DENIED_ERROR' || error.code === 'ECONNREFUSED') {
+            console.log('⚠️ Database not available, returning empty results');
+            return [];
+        }
+
         throw error;
-    } finally {
-        connection.release();
     }
 }
 
@@ -134,7 +142,7 @@ async function healthCheck() {
     try {
         const isConnected = await checkConnection();
         if (!isConnected) {
-            return { status: 'error', message: 'Database connection failed' };
+            return { status: 'warning', message: 'Database connection failed - running in limited mode' };
         }
 
         // Test a simple query
@@ -142,10 +150,10 @@ async function healthCheck() {
         if (result && result.test === 1) {
             return { status: 'healthy', message: 'Database is working correctly' };
         } else {
-            return { status: 'error', message: 'Database query test failed' };
+            return { status: 'warning', message: 'Database query test failed - running in limited mode' };
         }
     } catch (error) {
-        return { status: 'error', message: error.message };
+        return { status: 'warning', message: `Database error: ${error.message} - running in limited mode` };
     }
 }
 

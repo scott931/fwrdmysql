@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Upload, ArrowLeft, Plus, X, Star, User, Info } from 'lucide-react';
 import Button from '../components/ui/Button';
 import { useNavigate, useSearchParams } from '../lib/router';
-import { courses as mockCourses, categories } from '../data/mockData';
-import { Instructor } from '../types';
+import { categoryAPI } from '../lib/api';
+import { Instructor, Category } from '../types';
 import ImageUpload from '../components/ui/ImageUpload';
 
 interface LessonForm {
@@ -37,25 +37,30 @@ const UploadCoursePage: React.FC = () => {
   const [lessons, setLessons] = useState<LessonForm[]>([]);
   const [showCreateCategory, setShowCreateCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
-  const [availableCategories, setAvailableCategories] = useState(categories);
+  const [availableCategories, setAvailableCategories] = useState<Category[]>([]);
   const [instructors, setInstructors] = useState<Instructor[]>([]);
 
-  // Load instructors from backend
+  // Load instructors and categories from backend
   useEffect(() => {
-    const loadInstructors = async () => {
+    const loadData = async () => {
       try {
-        const response = await fetch('http://localhost:3002/api/instructors');
-        if (response.ok) {
-          const data = await response.json();
-          setInstructors(data);
+        // Load instructors
+        const instructorsResponse = await fetch('http://localhost:3002/api/instructors');
+        if (instructorsResponse.ok) {
+          const instructorsData = await instructorsResponse.json();
+          setInstructors(instructorsData);
         } else {
           console.error('Failed to load instructors');
         }
+
+        // Load categories
+        const categoriesData = await categoryAPI.getAllCategories();
+        setAvailableCategories(categoriesData);
       } catch (error) {
-        console.error('Error loading instructors:', error);
+        console.error('Error loading data:', error);
       }
     };
-    loadInstructors();
+    loadData();
   }, []);
 
   // Load existing course data if editing

@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { BookOpen, Users, Brain, Globe, Award, TrendingUp } from 'lucide-react';
+import { BookOpen, Users, Brain, Globe } from 'lucide-react';
 import Layout from '../components/layout/Layout';
 
 const AboutPage: React.FC = () => {
@@ -41,10 +41,10 @@ const AboutPage: React.FC = () => {
               Empowering Africa's Entrepreneurs
             </h1>
             <div className="text-2xl md:text-3xl text-red-500 font-bold mb-8">
-              We don't train entrepreneurs, We build Systems
+              We don&apos;t train entrepreneurs, We build Systems
             </div>
             <p className="text-xl text-gray-300 max-w-3xl mx-auto">
-              At FWD App, we believe in the boundless potential of African entrepreneurs. We're bridging the gap between brilliant ideas and thriving businesses through quality education and market insights.
+              At FWD App, we believe in the boundless potential of African entrepreneurs. We&apos;re bridging the gap between brilliant ideas and thriving businesses through quality education and market insights.
             </p>
           </div>
 
@@ -102,7 +102,7 @@ const AboutPage: React.FC = () => {
               Join Us in Shaping Africa's Future
             </h2>
             <p className="text-gray-300 text-lg mb-8 max-w-2xl mx-auto">
-              Be part of a movement that's empowering entrepreneurs to build thriving, sustainable businesses that contribute to a prosperous African future.
+              Be part of a movement that&apos;s empowering entrepreneurs to build thriving, sustainable businesses that contribute to a prosperous African future.
             </p>
             <button className="bg-red-600 text-white px-8 py-4 rounded-lg hover:bg-red-700 transition-colors text-lg font-medium">
               Start Learning Today

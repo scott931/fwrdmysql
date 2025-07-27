@@ -1,8 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
 import Button from '../components/ui/Button';
-import { Eye, EyeOff, Mail, Lock, User, GraduationCap, Briefcase, ArrowLeft, Check, X, Building2, MapPin, Globe, BookOpen, ChevronDown } from 'lucide-react';
+import ErrorDisplay from '../components/ui/ErrorDisplay';
+import ValidationMessage from '../components/ui/ValidationMessage';
+import { validateEmail, validatePassword, validatePasswordMatch, validateFullName, validateTopicsOfInterest, getAuthErrorMessage, extractErrorCode } from '../utils/validation';
+import { Eye, EyeOff, Mail, Lock, User, GraduationCap, Briefcase, ArrowLeft, Check, X, Building2, MapPin, Globe, BookOpen, ChevronDown, HelpCircle, ExternalLink } from 'lucide-react';
 
 const RegisterPage: React.FC = () => {
   const router = useRouter();
@@ -28,6 +31,8 @@ const RegisterPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [passwordStrength, setPasswordStrength] = useState(0);
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [showHelp, setShowHelp] = useState(false);
 
   const educationLevels = [
     'High School',
@@ -116,13 +121,62 @@ const RegisterPage: React.FC = () => {
     setPasswordStrength(calculatePasswordStrength(password));
   };
 
+  // Real-time validation
+  const validateField = (field: string, value: any) => {
+    let validationResult;
+
+    switch (field) {
+      case 'email':
+        validationResult = validateEmail(value);
+        break;
+      case 'password':
+        validationResult = validatePassword(value);
+        break;
+      case 'confirmPassword':
+        validationResult = validatePasswordMatch(formData.password, value);
+        break;
+      case 'full_name':
+        validationResult = validateFullName(value);
+        break;
+      case 'topics_of_interest':
+        validationResult = validateTopicsOfInterest(value);
+        break;
+      default:
+        return;
+    }
+
+    if (!validationResult.isValid) {
+      setValidationErrors(prev => ({ ...prev, [field]: validationResult.message }));
+    } else {
+      setValidationErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
+      });
+    }
+  };
+
+  // Enhanced error handling
+  useEffect(() => {
+    if (error) {
+      const errorCode = extractErrorCode(error);
+      const enhancedMessage = getAuthErrorMessage(errorCode, error);
+      setError(enhancedMessage);
+    }
+  }, [error]);
+
   const handleTopicToggle = (topic: string) => {
+    const newTopics = formData.topics_of_interest.includes(topic)
+      ? formData.topics_of_interest.filter(t => t !== topic)
+      : [...formData.topics_of_interest, topic];
+
     setFormData(prev => ({
       ...prev,
-      topics_of_interest: prev.topics_of_interest.includes(topic)
-        ? prev.topics_of_interest.filter(t => t !== topic)
-        : [...prev.topics_of_interest, topic]
+      topics_of_interest: newTopics
     }));
+
+    // Validate topics after change
+    validateField('topics_of_interest', newTopics);
   };
 
   const getPasswordStrengthColor = () => {
@@ -140,22 +194,30 @@ const RegisterPage: React.FC = () => {
   };
 
   const validateForm = () => {
-    if (!formData.email || !formData.password || !formData.confirmPassword || !formData.full_name) {
-      setError('Please fill in all required fields');
+    // Clear previous errors
+    setError('');
+    setValidationErrors({});
+
+    // Validate all fields
+    validateField('email', formData.email);
+    validateField('password', formData.password);
+    validateField('confirmPassword', formData.confirmPassword);
+    validateField('full_name', formData.full_name);
+    validateField('topics_of_interest', formData.topics_of_interest);
+
+    // Check if there are any validation errors
+    const hasErrors = Object.keys(validationErrors).length > 0;
+
+    if (hasErrors) {
       return false;
     }
-    if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
+
+    // Additional checks
+    if (passwordStrength < 2) {
+      setError('Password is too weak. Please choose a stronger password.');
       return false;
     }
-    if (passwordStrength < 3) {
-      setError('Password is too weak');
-      return false;
-    }
-    if (formData.topics_of_interest.length === 0) {
-      setError('Please select at least one topic of interest');
-      return false;
-    }
+
     return true;
   };
 
@@ -172,7 +234,8 @@ const RegisterPage: React.FC = () => {
       await signUp(registerData);
       router.push('/home');
     } catch (error: any) {
-      setError(error.message || 'Registration failed');
+      // Error is already handled in AuthContext, but we can add additional handling here
+      console.log('Registration error caught in component:', error);
     } finally {
       setLoading(false);
     }
@@ -220,12 +283,25 @@ const RegisterPage: React.FC = () => {
                     name="full_name"
                     type="text"
                     required
-                    className="block w-full pl-10 pr-4 py-2.5 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200"
+                    className={`block w-full pl-10 pr-4 py-2.5 bg-gray-700/50 border rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200 ${
+                      validationErrors.full_name ? 'border-red-500' : 'border-gray-600'
+                    }`}
                     placeholder="Enter your full name"
                     value={formData.full_name}
-                    onChange={(e) => setFormData(prev => ({ ...prev, full_name: e.target.value }))}
+                    onChange={(e) => {
+                      setFormData(prev => ({ ...prev, full_name: e.target.value }));
+                      validateField('full_name', e.target.value);
+                    }}
+                    onBlur={(e) => validateField('full_name', e.target.value)}
                   />
                 </div>
+                {validationErrors.full_name && (
+                  <ValidationMessage
+                    message={validationErrors.full_name}
+                    type="error"
+                    className="mt-1"
+                  />
+                )}
               </div>
 
               {/* Email */}
@@ -243,12 +319,25 @@ const RegisterPage: React.FC = () => {
                     type="email"
                     autoComplete="email"
                     required
-                    className="block w-full pl-10 pr-4 py-2.5 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200"
+                    className={`block w-full pl-10 pr-4 py-2.5 bg-gray-700/50 border rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200 ${
+                      validationErrors.email ? 'border-red-500' : 'border-gray-600'
+                    }`}
                     placeholder="Enter your email"
                     value={formData.email}
-                    onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                    onChange={(e) => {
+                      setFormData(prev => ({ ...prev, email: e.target.value }));
+                      validateField('email', e.target.value);
+                    }}
+                    onBlur={(e) => validateField('email', e.target.value)}
                   />
                 </div>
+                {validationErrors.email && (
+                  <ValidationMessage
+                    message={validationErrors.email}
+                    type="error"
+                    className="mt-1"
+                  />
+                )}
               </div>
             </div>
 
@@ -268,10 +357,16 @@ const RegisterPage: React.FC = () => {
                     name="password"
                     type={showPassword ? 'text' : 'password'}
                     required
-                    className="block w-full pl-10 pr-12 py-2.5 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200"
+                    className={`block w-full pl-10 pr-12 py-2.5 bg-gray-700/50 border rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200 ${
+                      validationErrors.password ? 'border-red-500' : 'border-gray-600'
+                    }`}
                     placeholder="Create a strong password"
                     value={formData.password}
-                    onChange={(e) => handlePasswordChange(e.target.value)}
+                    onChange={(e) => {
+                      handlePasswordChange(e.target.value);
+                      validateField('password', e.target.value);
+                    }}
+                    onBlur={(e) => validateField('password', e.target.value)}
                   />
                   <button
                     type="button"
@@ -323,15 +418,16 @@ const RegisterPage: React.FC = () => {
                     type={showConfirmPassword ? 'text' : 'password'}
                     required
                     className={`block w-full pl-10 pr-12 py-2.5 bg-gray-700/50 border rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200 ${
-                      formData.confirmPassword && formData.password !== formData.confirmPassword
-                        ? 'border-red-500'
-                        : formData.confirmPassword && formData.password === formData.confirmPassword
-                        ? 'border-green-500'
-                        : 'border-gray-600'
+                      validationErrors.confirmPassword ? 'border-red-500' :
+                      formData.confirmPassword && formData.password === formData.confirmPassword ? 'border-green-500' : 'border-gray-600'
                     }`}
                     placeholder="Confirm your password"
                     value={formData.confirmPassword}
-                    onChange={(e) => setFormData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                    onChange={(e) => {
+                      setFormData(prev => ({ ...prev, confirmPassword: e.target.value }));
+                      validateField('confirmPassword', e.target.value);
+                    }}
+                    onBlur={(e) => validateField('confirmPassword', e.target.value)}
                   />
                   <button
                     type="button"
@@ -345,20 +441,19 @@ const RegisterPage: React.FC = () => {
                     )}
                   </button>
                 </div>
-                {formData.confirmPassword && (
-                  <div className="flex items-center space-x-2 text-xs">
-                    {formData.password === formData.confirmPassword ? (
-                      <>
-                        <Check className="h-4 w-4 text-green-400" />
-                        <span className="text-green-400">Passwords match</span>
-                      </>
-                    ) : (
-                      <>
-                        <X className="h-4 w-4 text-red-400" />
-                        <span className="text-red-400">Passwords do not match</span>
-                      </>
-                    )}
-                  </div>
+                {validationErrors.confirmPassword && (
+                  <ValidationMessage
+                    message={validationErrors.confirmPassword}
+                    type="error"
+                    className="mt-1"
+                  />
+                )}
+                {!validationErrors.confirmPassword && formData.confirmPassword && (
+                  <ValidationMessage
+                    message={formData.password === formData.confirmPassword ? "Passwords match" : "Passwords do not match"}
+                    type={formData.password === formData.confirmPassword ? "success" : "error"}
+                    className="mt-1"
+                  />
                 )}
               </div>
             </div>
@@ -628,16 +723,24 @@ const RegisterPage: React.FC = () => {
                   </div>
                 </div>
               )}
+
+              {/* Topics Validation Message */}
+              {validationErrors.topics_of_interest && (
+                <ValidationMessage
+                  message={validationErrors.topics_of_interest}
+                  type="error"
+                  className="mt-1"
+                />
+              )}
             </div>
 
             {/* Error Message */}
-            {error && (
-              <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3">
-                <p className="text-red-400 text-sm text-center">
-                  {error}
-                </p>
-              </div>
-            )}
+            <ErrorDisplay
+              error={error}
+              type="error"
+              onClose={() => setError('')}
+              className="mb-4"
+            />
 
             {/* Submit Button */}
             <Button
@@ -658,17 +761,57 @@ const RegisterPage: React.FC = () => {
             </Button>
           </form>
 
-          {/* Login Link */}
-          <div className="mt-6 text-center">
-            <p className="text-gray-400">
-              Already have an account?{' '}
+          {/* Helpful Links */}
+          <div className="mt-6 space-y-4">
+            {/* Login Link */}
+            <div className="text-center">
+              <p className="text-gray-400">
+                Already have an account?{' '}
+                <button
+                  onClick={() => router.push('/login')}
+                  className="text-red-400 hover:text-red-300 font-medium transition-colors duration-200"
+                >
+                  Sign in here
+                </button>
+              </p>
+            </div>
+
+            {/* Forgot Password Link */}
+            <div className="text-center">
+              <p className="text-gray-400">
+                Forgot your password?{' '}
+                <button
+                  onClick={() => router.push('/login')}
+                  className="text-red-400 hover:text-red-300 font-medium transition-colors duration-200"
+                >
+                  Reset it here
+                </button>
+              </p>
+            </div>
+
+            {/* Help Section */}
+            <div className="text-center">
               <button
-                onClick={() => router.push('/login')}
-                className="text-red-400 hover:text-red-300 font-medium transition-colors duration-200"
+                onClick={() => setShowHelp(!showHelp)}
+                className="inline-flex items-center space-x-1 text-gray-400 hover:text-gray-300 transition-colors duration-200"
               >
-                Sign in here
+                <HelpCircle className="h-4 w-4" />
+                <span className="text-sm">Need help?</span>
               </button>
-            </p>
+            </div>
+
+            {/* Help Content */}
+            {showHelp && (
+              <div className="bg-gray-700/30 rounded-xl p-4 border border-gray-600/30">
+                <h4 className="text-sm font-medium text-gray-300 mb-2">Registration Tips:</h4>
+                <ul className="text-xs text-gray-400 space-y-1">
+                  <li>• Use a strong password with at least 6 characters</li>
+                  <li>• Select topics that interest you for personalized content</li>
+                  <li>• All fields marked with * are required</li>
+                  <li>• If you already have an account, try logging in instead</li>
+                </ul>
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -1,8 +1,11 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from '../lib/router';
-import { Smile, Paperclip, Send, Image, Link as LinkIcon, FileText } from 'lucide-react';
-import data from '@emoji-mart/data';
+import { Send, Smile, Paperclip, Image as ImageIcon, FileText, Link as LinkIcon, Mic, MoreHorizontal, Search, Phone, Video, Users, Settings, LogOut, ArrowLeft, Plus, X, Check, AlertTriangle, Info, ExternalLink, Download, Share2, Heart, MessageCircle, Eye, EyeOff, Lock, Unlock, Shield, Crown, Medal, Trophy, Badge, Flag, Rocket, Star } from 'lucide-react';
 import Picker from '@emoji-mart/react';
+import data from '@emoji-mart/data';
+import Layout from '../components/layout/Layout';
+import Button from '../components/ui/Button';
+import Image from 'next/image';
 
 interface Message {
   id: string;
@@ -207,9 +210,11 @@ const ChatPage: React.FC = () => {
               className={`flex ${message.userId === currentUser.id ? 'justify-end' : 'justify-start'}`}
             >
               <div className={`flex ${message.userId === currentUser.id ? 'flex-row-reverse' : 'flex-row'} items-end max-w-[80%]`}>
-                <img
+                <Image
                   src={message.userAvatar}
                   alt={message.userName}
+                  width={32}
+                  height={32}
                   className="w-8 h-8 rounded-full mx-2 flex-shrink-0"
                 />
                 <div className={`flex flex-col ${message.userId === currentUser.id ? 'items-end' : 'items-start'}`}>
@@ -224,9 +229,11 @@ const ChatPage: React.FC = () => {
                     {message.attachments?.map((attachment, index) => (
                       <div key={index} className="mt-2">
                         {attachment.type === 'image' && (
-                          <img
+                          <Image
                             src={attachment.url}
                             alt="attachment"
+                            width={300}
+                            height={200}
                             className="max-w-full rounded-lg"
                           />
                         )}
@@ -290,7 +297,7 @@ const ChatPage: React.FC = () => {
                     onClick={() => fileInputRef.current?.click()}
                     className="flex items-center space-x-2 text-white hover:bg-gray-600 px-4 py-2 rounded w-full"
                   >
-                    <Image className="h-5 w-5 flex-shrink-0" />
+                    <ImageIcon className="h-5 w-5 flex-shrink-0" />
                     <span>Image</span>
                   </button>
                   <button

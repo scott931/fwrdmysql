@@ -44,28 +44,6 @@ const SecuritySettingsPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [permissionError, setPermissionError] = useState<string | null>(null);
-
-  // Scroll to top on component mount
-  useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'instant' });
-  }, []);
-
-  // Check if user has permission to access this page
-  const canManageSettings = hasPermission('system:configuration');
-  const canAccessAuditLogs = hasPermission('audit:view_logs');
-
-  // Redirect if user doesn't have permission
-  if (!canManageSettings) {
-    return (
-      <div className="max-w-screen-xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-white mb-4">Access Denied</h2>
-          <p className="text-gray-400">You do not have permission to access security settings.</p>
-        </div>
-      </div>
-    );
-  }
-
   const [settings, setSettings] = useState<SecuritySettings>({
     passwordPolicy: {
       minLength: 8,
@@ -138,6 +116,27 @@ const SecuritySettingsPage: React.FC = () => {
   });
 
   const [newIpAddress, setNewIpAddress] = useState('');
+
+  // Scroll to top on component mount
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }, []);
+
+  // Check if user has permission to access this page
+  const canManageSettings = hasPermission('system:configuration');
+  const canAccessAuditLogs = hasPermission('audit:view_logs');
+
+  // Redirect if user doesn't have permission
+  if (!canManageSettings) {
+    return (
+      <div className="max-w-screen-xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-white mb-4">Access Denied</h2>
+          <p className="text-gray-400">You do not have permission to access security settings.</p>
+        </div>
+      </div>
+    );
+  }
 
   // Load settings from localStorage
   useEffect(() => {

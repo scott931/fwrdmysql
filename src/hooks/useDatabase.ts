@@ -129,10 +129,13 @@ export const useAuditLogs = () => {
       console.log('📋 Fetching audit logs...');
       const data = await auditLogsAPI.getAuditLogs(filters);
       console.log('📋 Audit logs received:', data);
-      setLogs(data);
+
+      // Handle both array and object responses
+      const logsArray = Array.isArray(data) ? data : (data.logs || data.data || []);
+      setLogs(logsArray);
     } catch (err) {
       console.error('Failed to fetch audit logs:', err);
-      setError('Failed to load audit logs');
+      setError('Failed to load audit logs. Please check your authentication and try again.');
       setLogs([]);
     } finally {
       setLoading(false);
@@ -452,9 +455,16 @@ export const useAnalytics = () => {
       console.log('📊 Platform stats received:', data);
       setStats(data);
     } catch (err) {
-      setError('Failed to fetch platform stats');
-      console.error('Error fetching platform stats:', err);
-      // Set fallback data
+      // Handle authentication error gracefully
+      if (err.message === 'Authentication required') {
+        console.log('📊 Platform stats require authentication - using fallback data');
+        setError(null); // Don't show error for auth requirement
+      } else {
+        setError('Failed to fetch platform stats');
+        console.error('Error fetching platform stats:', err);
+      }
+
+      // Set fallback data for unauthenticated users
       setStats({
         totalUsers: 0,
         totalCourses: 0,

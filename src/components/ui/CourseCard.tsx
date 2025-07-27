@@ -12,8 +12,9 @@
  */
 
 import React from 'react';
-import { Play, Clock } from 'lucide-react';
+import { Play, Clock, Star, User, BookOpen, Award, TrendingUp, Users, Calendar, MapPin, Globe, Building2, GraduationCap, Briefcase, Target, Zap, ChevronRight, CheckCircle, AlertTriangle, Info, ExternalLink, Download, Share2, Heart, MessageCircle, Eye, EyeOff, Lock, Unlock, Shield, Crown, Medal, Trophy, Badge, Flag, Rocket, Diamond } from 'lucide-react';
 import { Course } from '../../types';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 
@@ -130,23 +131,47 @@ const CourseCard: React.FC<CourseCardProps> = ({ course }) => {
         {/* Poster Container */}
         <div className="aspect-[2/3] relative rounded-lg overflow-hidden shadow-xl">
           {/* Thumbnail */}
-          <img
-            src={thumbnail}
-            alt={title}
-            className="w-full h-full object-cover"
-            loading="lazy"
-            onError={(e) => {
-              const target = e.target as HTMLImageElement;
-              if (target.src !== '/placeholder-course.jpg') {
-                target.src = '/placeholder-course.jpg';
-              }
-            }}
-            onLoad={(e) => {
-              const target = e.target as HTMLImageElement;
-              target.style.opacity = '1';
-            }}
-            style={{ opacity: 0, transition: 'opacity 0.3s ease-in-out' }}
-          />
+          {thumbnail.startsWith('http') ? (
+            // Use regular img tag for external URLs to avoid Next.js Image issues
+            <img
+              src={thumbnail}
+              alt={title}
+              className="w-full h-full object-cover"
+              loading="lazy"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                if (target.src !== '/placeholder-course.jpg') {
+                  target.src = '/placeholder-course.jpg';
+                }
+              }}
+              onLoad={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.style.opacity = '1';
+              }}
+              style={{ opacity: 0, transition: 'opacity 0.3s ease-in-out' }}
+            />
+          ) : (
+            // Use Next.js Image for local images
+            <Image
+              src={thumbnail}
+              alt={title}
+              width={400}
+              height={600}
+              className="w-full h-full object-cover"
+              loading="lazy"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                if (target.src !== '/placeholder-course.jpg') {
+                  target.src = '/placeholder-course.jpg';
+                }
+              }}
+              onLoad={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.style.opacity = '1';
+              }}
+              style={{ opacity: 0, transition: 'opacity 0.3s ease-in-out' }}
+            />
+          )}
 
           {/* Gradient Overlays */}
           <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent opacity-100"></div>
@@ -174,23 +199,47 @@ const CourseCard: React.FC<CourseCardProps> = ({ course }) => {
           <div className="absolute bottom-0 left-0 right-0 p-3">
             <h3 className="text-white font-bold text-base leading-tight mb-1 line-clamp-2">{title}</h3>
             <div className="flex items-center space-x-2 mb-2">
-              <img
-                src={instructorImage}
-                alt={instructorName}
-                className="w-5 h-5 rounded-full object-cover"
-                loading="lazy"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  if (target.src !== '/placeholder-avatar.jpg') {
-                    target.src = '/placeholder-avatar.jpg';
-                  }
-                }}
-                onLoad={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.style.opacity = '1';
-                }}
-                style={{ opacity: 0, transition: 'opacity 0.3s ease-in-out' }}
-              />
+              {instructorImage.startsWith('http') ? (
+                // Use regular img tag for external URLs
+                <img
+                  src={instructorImage}
+                  alt={instructorName}
+                  className="w-5 h-5 rounded-full object-cover"
+                  loading="lazy"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    if (target.src !== '/placeholder-avatar.jpg') {
+                      target.src = '/placeholder-avatar.jpg';
+                    }
+                  }}
+                  onLoad={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.opacity = '1';
+                  }}
+                  style={{ opacity: 0, transition: 'opacity 0.3s ease-in-out' }}
+                />
+              ) : (
+                // Use Next.js Image for local images
+                <Image
+                  src={instructorImage}
+                  alt={instructorName}
+                  width={20}
+                  height={20}
+                  className="w-5 h-5 rounded-full object-cover"
+                  loading="lazy"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    if (target.src !== '/placeholder-avatar.jpg') {
+                      target.src = '/placeholder-avatar.jpg';
+                    }
+                  }}
+                  onLoad={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.opacity = '1';
+                  }}
+                  style={{ opacity: 0, transition: 'opacity 0.3s ease-in-out' }}
+                />
+              )}
               <p className="text-gray-300 text-sm font-medium line-clamp-1">{instructorName}</p>
             </div>
             {/* Course Status Indicator */}

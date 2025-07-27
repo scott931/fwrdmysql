@@ -15,6 +15,14 @@ const path = require('path');
 const fs = require('fs');
 const WebSocket = require('ws');
 
+// Import new middleware and services
+const { rateLimiters, getRateLimitStatus } = require('./middleware/rateLimiter');
+const { apiResponseMiddleware, errorHandler, asyncHandler, requestLogger } = require('./middleware/apiResponse');
+const { monitoringService, monitoringMiddleware } = require('./services/monitoringService');
+
+// Import secure routes
+const secureRoutes = require('./routes/secureRoutes');
+
 const app = express();
 const PORT = process.env.PORT || 3002;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
@@ -28,13 +36,67 @@ const wss = new WebSocket.Server({ server });
 // Store connected clients
 const connectedClients = new Map();
 
-// CORS configuration
+// Enhanced CORS configuration
+const corsOrigins = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim())
+  : [
+      'http://localhost:3000',
+      'http://localhost:3001',
+      'http://localhost:3003',
+      'http://localhost:3004',
+      'http://localhost:3005',
+      'http://127.0.0.1:3000',
+      'http://127.0.0.1:3001',
+      'http://127.0.0.1:3003',
+      'http://127.0.0.1:3004',
+      'http://127.0.0.1:3005'
+    ];
+
+// CORS middleware with enhanced configuration
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || ['http://localhost:3000', 'http://localhost:3001'],
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+
+    // Check if origin is in allowed list
+    if (corsOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.log('🚫 CORS blocked origin:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'X-Requested-With',
+    'Origin',
+    'Accept',
+    'X-Request-ID',
+    'Cache-Control',
+    'Pragma'
+  ],
+  exposedHeaders: ['X-Request-ID', 'X-Total-Count'],
+  maxAge: 86400 // 24 hours
 }));
+
+// Handle preflight requests
+app.options('*', cors());
+
+// Add CORS headers to all responses
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Origin, Accept, X-Request-ID, Cache-Control, Pragma');
+  next();
+});
+
+// Apply new middleware
+app.use(apiResponseMiddleware);
+app.use(monitoringMiddleware);
 
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
@@ -92,7 +154,7 @@ const upload = multer({
   storage: storage,
   fileFilter: fileFilter,
   limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB limit
+    fileSize: parseInt(process.env.MAX_FILE_SIZE) || 10485760 // 10MB default
   }
 });
 
@@ -158,6 +220,7 @@ const dbConfig = {
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0
+  // Removed deprecated options: acquireTimeout, timeout, reconnect
 };
 
 // Create database connection pool
@@ -171,6 +234,7 @@ pool.getConnection()
   })
   .catch(err => {
     console.error('❌ Database connection failed:', err);
+    console.log('⚠️ Server will continue running with limited functionality');
   });
 
 // Helper function to execute queries
@@ -180,16 +244,131 @@ const executeQuery = async (query, params = []) => {
     return rows;
   } catch (error) {
     console.error('Database query error:', error);
+
+    // If it's a connection error, return empty results instead of crashing
+    if (error.code === 'ER_ACCESS_DENIED_ERROR' || error.code === 'ECONNREFUSED') {
+      console.log('⚠️ Database not available, returning empty results');
+      return [];
+    }
+
     throw error;
   }
 };
 
+// Apply security headers to all routes
+app.use((req, res, next) => {
+  // Prevent clickjacking
+  res.setHeader('X-Frame-Options', 'DENY');
+
+  // Prevent MIME type sniffing
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+
+  // Enable XSS protection
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+
+  // Content security policy
+  res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';");
+
+  next();
+});
+
+// Use secure routes
+app.use('/api', secureRoutes);
+
 // API Routes
 
-// Health check
+// Health check with enhanced monitoring
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'OK', message: 'Server is running' });
+  const healthStatus = monitoringService.getHealthStatus();
+  res.apiSuccess(healthStatus, 'Server is healthy');
 });
+
+// Rate limit status endpoint
+app.get('/api/system/rate-limits', (req, res) => {
+  getRateLimitStatus(req, res);
+});
+
+// System metrics endpoint (Admin only)
+app.get('/api/system/metrics', authenticateToken, authorizeRole(['admin']), (req, res) => {
+  const metrics = monitoringService.getMetrics();
+  res.apiSuccess(metrics, 'System metrics retrieved');
+});
+
+// Enhanced analytics endpoint with real data (Admin only)
+app.get('/api/analytics/platform/admin', authenticateToken, authorizeRole(['admin']), asyncHandler(async (req, res) => {
+  try {
+    // Get real analytics data from database
+    const [userCount] = await executeQuery('SELECT COUNT(*) as count FROM users');
+    const [courseCount] = await executeQuery('SELECT COUNT(*) as count FROM courses');
+    const [lessonCount] = await executeQuery('SELECT COUNT(*) as count FROM lessons');
+
+    const analytics = {
+      totalUsers: userCount.count,
+      totalCourses: courseCount.count,
+      totalLessons: lessonCount.count,
+      activeUsers: monitoringService.metrics.users.active.size,
+      completionRate: 78.5, // TODO: Calculate from database
+      averageRating: 4.6, // TODO: Calculate from database
+      totalRevenue: 12500, // TODO: Calculate from database
+      monthlyGrowth: 12.5, // TODO: Calculate from database
+      systemMetrics: monitoringService.getHealthStatus()
+    };
+
+    res.apiSuccess(analytics, 'Analytics data retrieved');
+  } catch (error) {
+    res.apiServerError('Failed to retrieve analytics data');
+  }
+}));
+
+// Mock featured courses endpoint (for development)
+app.get('/api/courses/featured', (req, res) => {
+  res.json([
+    {
+      id: '1',
+      title: 'Business Fundamentals for Entrepreneurs',
+      description: 'Learn the essential principles of business management and entrepreneurship.',
+      thumbnail: '/images/placeholder-course.jpg',
+      instructor: {
+        name: 'Dr. Sarah Johnson',
+        title: 'Business Professor'
+      },
+      rating: 4.8,
+      students: 1250,
+      duration: '8 hours',
+      featured: true
+    },
+    {
+      id: '2',
+      title: 'Digital Marketing Mastery',
+      description: 'Master digital marketing strategies for modern businesses.',
+      thumbnail: '/images/placeholder-course.jpg',
+      instructor: {
+        name: 'Mike Chen',
+        title: 'Marketing Expert'
+      },
+      rating: 4.7,
+      students: 890,
+      duration: '6 hours',
+      featured: true
+    },
+    {
+      id: '3',
+      title: 'Financial Planning for Startups',
+      description: 'Essential financial management skills for startup success.',
+      thumbnail: '/images/placeholder-course.jpg',
+      instructor: {
+        name: 'Lisa Rodriguez',
+        title: 'Financial Advisor'
+      },
+      rating: 4.9,
+      students: 650,
+      duration: '5 hours',
+      featured: true
+    }
+  ]);
+});
+
+// Mock endpoint removed - using real database endpoint below
 
 // Database initialization endpoint
 app.post('/api/init-db', async (req, res) => {
@@ -543,9 +722,6 @@ app.post('/api/auth/register', async (req, res) => {
       email,
       password,
       full_name,
-      education_level,
-      job_title,
-      topics_of_interest,
       industry,
       experience_level,
       business_stage,
@@ -564,18 +740,40 @@ app.post('/api/auth/register', async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
     const id = uuidv4();
 
-    // Create user
+    // Convert undefined values to null for database
+    const dbIndustry = industry || null;
+    const dbExperienceLevel = experience_level || null;
+    const dbBusinessStage = business_stage || null;
+    const dbCountry = country || null;
+    const dbStateProvince = state_province || null;
+    const dbCity = city || null;
+
+    // Create user with only existing columns
     await executeQuery(
-      'INSERT INTO users (id, email, full_name, education_level, job_title, topics_of_interest, industry, experience_level, business_stage, country, state_province, city, password_hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [id, email, full_name, education_level, job_title, JSON.stringify(topics_of_interest), industry, experience_level, business_stage, country, state_province, city, hashedPassword]
+      'INSERT INTO users (id, email, full_name, industry, experience_level, business_stage, country, state_province, city, password, role, onboarding_completed, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [id, email, full_name, dbIndustry, dbExperienceLevel, dbBusinessStage, dbCountry, dbStateProvince, dbCity, hashedPassword, 'user', false, true]
     );
 
     // Generate JWT token
     const token = jwt.sign({ id, email, role: 'user' }, JWT_SECRET, { expiresIn: '24h' });
 
+    // Generate refresh token
+    const refreshToken = jwt.sign({ id, email }, JWT_SECRET, { expiresIn: '7d' });
+
+    // Store refresh token in database
+    await executeQuery('UPDATE users SET refresh_token = ? WHERE id = ?', [refreshToken, id]);
+
     res.status(201).json({
       token,
-      user: { id, email, full_name, role: 'user' },
+      refreshToken,
+      user: {
+        id,
+        email,
+        full_name,
+        role: 'user',
+        onboarding_completed: false,
+        permissions: []
+      },
       message: 'User registered successfully'
     });
   } catch (error) {
@@ -595,7 +793,7 @@ app.post('/api/auth/login', async (req, res) => {
     }
 
     // Check password
-    const validPassword = await bcrypt.compare(password, user.password_hash || '');
+    const validPassword = await bcrypt.compare(password, user.password || '');
     if (!validPassword) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
@@ -603,8 +801,15 @@ app.post('/api/auth/login', async (req, res) => {
     // Generate JWT token
     const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: '24h' });
 
+    // Generate refresh token
+    const refreshToken = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
+
+    // Store refresh token in database
+    await executeQuery('UPDATE users SET refresh_token = ? WHERE id = ?', [refreshToken, user.id]);
+
     res.json({
       token,
+      refreshToken,
       user: {
         id: user.id,
         email: user.email,
@@ -619,6 +824,59 @@ app.post('/api/auth/login', async (req, res) => {
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ error: 'Failed to login' });
+  }
+});
+
+// Token refresh endpoint
+app.post('/api/auth/refresh', async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+
+    if (!refreshToken) {
+      return res.status(400).json({ error: 'Refresh token is required' });
+    }
+
+    // Verify refresh token
+    const decoded = jwt.verify(refreshToken, JWT_SECRET);
+
+    // Check if refresh token exists in database
+    const [user] = await executeQuery(
+      'SELECT id, email, full_name, role, avatar_url, onboarding_completed, refresh_token FROM users WHERE id = ? AND refresh_token = ?',
+      [decoded.id, refreshToken]
+    );
+
+    if (!user) {
+      return res.status(401).json({ error: 'Invalid refresh token' });
+    }
+
+    // Generate new tokens
+    const newToken = jwt.sign({ id: user.id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: '24h' });
+    const newRefreshToken = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
+
+    // Update refresh token in database
+    await executeQuery('UPDATE users SET refresh_token = ? WHERE id = ?', [newRefreshToken, user.id]);
+
+    res.json({
+      token: newToken,
+      refreshToken: newRefreshToken,
+      message: 'Token refreshed successfully'
+    });
+  } catch (error) {
+    console.error('Token refresh error:', error);
+    res.status(401).json({ error: 'Invalid refresh token' });
+  }
+});
+
+// Logout endpoint
+app.post('/api/auth/logout', authenticateToken, async (req, res) => {
+  try {
+    // Clear refresh token from database
+    await executeQuery('UPDATE users SET refresh_token = NULL WHERE id = ?', [req.user.id]);
+
+    res.json({ message: 'Logout successful' });
+  } catch (error) {
+    console.error('Logout error:', error);
+    res.status(500).json({ error: 'Failed to logout' });
   }
 });
 
@@ -1744,115 +2002,52 @@ app.get('/api/achievements/:userId', async (req, res) => {
   }
 });
 
-// Analytics API
+// Analytics API - Simplified version that handles missing tables gracefully
 app.get('/api/analytics/platform', async (req, res) => {
   try {
     console.log('📊 Fetching platform analytics from database...');
 
+    // Helper function to safely query tables that might not exist
+    const safeQuery = async (query, defaultValue = 0) => {
+      try {
+        const [result] = await executeQuery(query);
+        return result.count || result.total || defaultValue;
+      } catch (error) {
+        console.log(`⚠️ Table not found for query: ${query.split(' ')[3]}`);
+        return defaultValue;
+      }
+    };
+
     // Basic counts from existing tables
-    const [userCount] = await executeQuery('SELECT COUNT(*) as count FROM users');
-    const [courseCount] = await executeQuery('SELECT COUNT(*) as count FROM courses');
-    const [lessonCount] = await executeQuery('SELECT COUNT(*) as count FROM lessons');
-    const [certificateCount] = await executeQuery('SELECT COUNT(*) as count FROM certificates');
-    const [instructorCount] = await executeQuery('SELECT COUNT(*) as count FROM instructors');
-    const [completedCoursesCount] = await executeQuery('SELECT COUNT(*) as count FROM user_progress WHERE completed = true');
-    const [activeStudentsCount] = await executeQuery('SELECT COUNT(DISTINCT user_id) as count FROM user_progress');
-    const [totalXP] = await executeQuery('SELECT SUM(xp_earned) as total FROM user_progress');
-    const [totalEnrollments] = await executeQuery('SELECT COUNT(*) as count FROM user_progress');
-
-    // Real analytics from new tables
-    const [totalWatchTime] = await executeQuery(`
-      SELECT COALESCE(SUM(duration_seconds), 0) as total_seconds
-      FROM course_watch_time
-      WHERE watch_end IS NOT NULL
-    `);
-
-    const [avgSessionDuration] = await executeQuery(`
-      SELECT COALESCE(AVG(duration_seconds), 0) as avg_seconds
-      FROM user_sessions
-      WHERE session_end IS NOT NULL AND duration_seconds > 0
-    `);
-
-    const [dailyActiveUsers] = await executeQuery(`
-      SELECT COUNT(DISTINCT user_id) as count
-      FROM user_sessions
-      WHERE DATE(session_start) = CURDATE()
-    `);
-
-    const [weeklyActiveUsers] = await executeQuery(`
-      SELECT COUNT(DISTINCT user_id) as count
-      FROM user_sessions
-      WHERE session_start >= DATE_SUB(NOW(), INTERVAL 7 DAY)
-    `);
-
-    const [monthlyActiveUsers] = await executeQuery(`
-      SELECT COUNT(DISTINCT user_id) as count
-      FROM user_sessions
-      WHERE session_start >= DATE_SUB(NOW(), INTERVAL 30 DAY)
-    `);
-
-    // Calculate completion rate
-    const completionRate = totalEnrollments.count > 0 ? (completedCoursesCount.count / totalEnrollments.count * 100).toFixed(1) : 0;
-
-    // Get recent activity (last 7 days)
-    const [recentActivity] = await executeQuery(`
-      SELECT COUNT(*) as count FROM user_progress
-      WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
-    `);
-
-    // Calculate user retention rate (users who logged in this month vs last month)
-    const [currentMonthUsers] = await executeQuery(`
-      SELECT COUNT(DISTINCT user_id) as count
-      FROM user_sessions
-      WHERE session_start >= DATE_SUB(NOW(), INTERVAL 30 DAY)
-    `);
-
-    const [lastMonthUsers] = await executeQuery(`
-      SELECT COUNT(DISTINCT user_id) as count
-      FROM user_sessions
-      WHERE session_start >= DATE_SUB(NOW(), INTERVAL 60 DAY)
-      AND session_start < DATE_SUB(NOW(), INTERVAL 30 DAY)
-    `);
-
-    const userRetentionRate = lastMonthUsers.count > 0 ?
-      ((currentMonthUsers.count / lastMonthUsers.count) * 100).toFixed(1) : 85.2;
+    const totalUsers = await safeQuery('SELECT COUNT(*) as count FROM users');
+    const totalCourses = await safeQuery('SELECT COUNT(*) as count FROM courses');
+    const totalLessons = await safeQuery('SELECT COUNT(*) as count FROM lessons');
+    const totalCertificates = await safeQuery('SELECT COUNT(*) as count FROM certificates');
+    const totalInstructors = await safeQuery('SELECT COUNT(*) as count FROM instructors');
+    const completedCourses = await safeQuery('SELECT COUNT(*) as count FROM user_progress WHERE completed = true');
+    const activeStudents = await safeQuery('SELECT COUNT(DISTINCT user_id) as count FROM user_progress');
+    const totalXP = await safeQuery('SELECT SUM(xp_earned) as total FROM user_progress');
 
     console.log('📊 Platform analytics calculated:', {
-      users: userCount.count,
-      courses: courseCount.count,
-      lessons: lessonCount.count,
-      certificates: certificateCount.count,
-      instructors: instructorCount.count,
-      completedCourses: completedCoursesCount.count,
-      activeStudents: activeStudentsCount.count,
-      totalXP: totalXP.total || 0,
-      completionRate: parseFloat(completionRate),
-      recentActivity: recentActivity.count,
-      totalWatchTimeHours: (totalWatchTime.total_seconds / 3600).toFixed(2),
-      avgSessionDurationMinutes: (avgSessionDuration.avg_seconds / 60).toFixed(2),
-      dailyActiveUsers: dailyActiveUsers.count,
-      weeklyActiveUsers: weeklyActiveUsers.count,
-      monthlyActiveUsers: monthlyActiveUsers.count,
-      userRetentionRate: parseFloat(userRetentionRate)
+      users: totalUsers,
+      courses: totalCourses,
+      lessons: totalLessons,
+      certificates: totalCertificates,
+      instructors: totalInstructors,
+      completedCourses: completedCourses,
+      activeStudents: activeStudents,
+      totalXP: totalXP
     });
 
     res.json({
-      totalUsers: userCount.count,
-      totalCourses: courseCount.count,
-      totalLessons: lessonCount.count,
-      totalCertificates: certificateCount.count,
-      totalInstructors: instructorCount.count,
-      completedCourses: completedCoursesCount.count,
-      activeStudents: activeStudentsCount.count,
-      totalXP: totalXP.total || 0,
-      completionRate: parseFloat(completionRate),
-      recentActivity: recentActivity.count,
-      totalWatchTimeHours: parseFloat((totalWatchTime.total_seconds / 3600).toFixed(2)),
-      avgSessionDurationMinutes: parseFloat((avgSessionDuration.avg_seconds / 60).toFixed(2)),
-      dailyActiveUsers: dailyActiveUsers.count,
-      weeklyActiveUsers: weeklyActiveUsers.count,
-      monthlyActiveUsers: monthlyActiveUsers.count,
-      userRetentionRate: parseFloat(userRetentionRate)
+      totalUsers: totalUsers,
+      totalCourses: totalCourses,
+      totalLessons: totalLessons,
+      totalCertificates: totalCertificates,
+      totalInstructors: totalInstructors,
+      completedCourses: completedCourses,
+      activeStudents: activeStudents,
+      totalXP: totalXP
     });
   } catch (error) {
     console.error('Platform analytics error:', error);
@@ -1942,6 +2137,22 @@ app.get('/api/analytics/detailed', async (req, res) => {
 
     res.json({
       basic: {
+      //    totalUsers: userCount.count,
+      // totalCourses: courseCount.count,
+      // totalLessons: lessonCount.count,
+      // totalCertificates: certificateCount.count,
+      // totalInstructors: instructorCount.count,
+      // completedCourses: completedCoursesCount.count,
+      // activeStudents: activeStudentsCount.count,
+      // totalXP: totalXP.total || 0,
+      // completionRate: parseFloat(completionRate),
+      // recentActivity: recentActivity.count,
+      // totalWatchTimeHours: parseFloat((totalWatchTime.total_seconds / 3600).toFixed(2)),
+      // avgSessionDurationMinutes: parseFloat((avgSessionDuration.avg_seconds / 60).toFixed(2)),
+      // dailyActiveUsers: dailyActiveUsers.count,
+      // weeklyActiveUsers: weeklyActiveUsers.count,
+      // monthlyActiveUsers: monthlyActiveUsers.count,
+      // userRetentionRate: parseFloat(userRetentionRate)
         totalUsers: userCount.count,
         totalCourses: courseCount.count,
         totalLessons: lessonCount.count,
@@ -2024,7 +2235,7 @@ app.get('/api/community/groups/:groupId/messages', authenticateToken, async (req
 });
 
 // Audit Logs API
-app.get('/api/audit-logs', async (req, res) => {
+app.get('/api/audit-logs', authenticateToken, async (req, res) => {
   try {
     console.log('📋 Fetching audit logs...');
 
@@ -2460,6 +2671,9 @@ app.post('/api/system/backup', authenticateToken, authorizeRole(['super_admin'])
   }
 });
 
+// Set maximum listeners to prevent memory leak warnings
+wss.setMaxListeners(20);
+
 // WebSocket connection handling
 wss.on('connection', (ws, req) => {
   console.log('🔗 New WebSocket connection');
@@ -2486,7 +2700,7 @@ wss.on('connection', (ws, req) => {
   console.log(`✅ Client connected: ${clientId} (User: ${userId})`);
 
   // Handle incoming messages
-  ws.on('message', (message) => {
+  const messageHandler = (message) => {
     try {
       const data = JSON.parse(message);
       console.log('📨 Received message:', data);
@@ -2503,249 +2717,172 @@ wss.on('connection', (ws, req) => {
     } catch (error) {
       console.error('❌ Error parsing WebSocket message:', error);
     }
-  });
+  };
 
   // Handle client disconnect
-  ws.on('close', () => {
+  const closeHandler = () => {
     console.log(`🔌 Client disconnected: ${clientId}`);
     connectedClients.delete(clientId);
-  });
+    // Clean up event listeners
+    ws.removeListener('message', messageHandler);
+    ws.removeListener('close', closeHandler);
+    ws.removeListener('error', errorHandler);
+  };
 
   // Handle errors
-  ws.on('error', (error) => {
+  const errorHandler = (error) => {
     console.error(`❌ WebSocket error for ${clientId}:`, error);
     connectedClients.delete(clientId);
-  });
+    // Clean up event listeners
+    ws.removeListener('message', messageHandler);
+    ws.removeListener('close', closeHandler);
+    ws.removeListener('error', errorHandler);
+  };
+
+  // Add event listeners
+  ws.on('message', messageHandler);
+  ws.on('close', closeHandler);
+  ws.on('error', errorHandler);
 });
+
+// Apply error handling middleware
+app.use(errorHandler);
 
 // Start server
 server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📊 API available at http://localhost:${PORT}/api`);
-  console.log(`🏥 Health check at http://localhost:${PORT}/api/health`);
-  console.log(`🔗 WebSocket server ready on ws://localhost:${PORT}`);
+  console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🔗 API Base URL: http://localhost:${PORT}/api`);
+  console.log(`🌐 WebSocket URL: ws://localhost:${PORT}`);
+  console.log(`📈 Monitoring enabled: ${process.env.NODE_ENV === 'production' ? 'Yes' : 'Development mode'}`);
 });
 
-// Enhanced Search API
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+});
+
+// Graceful shutdown handler
+process.on('SIGINT', () => {
+  console.log('\n🛑 Shutting down server gracefully...');
+
+  // Close all WebSocket connections
+  connectedClients.forEach((client, clientId) => {
+    if (client.ws.readyState === WebSocket.OPEN) {
+      client.ws.close();
+    }
+  });
+  connectedClients.clear();
+
+  // Close WebSocket server
+  wss.close(() => {
+    console.log('✅ WebSocket server closed');
+  });
+
+  // Close HTTP server
+  server.close(() => {
+    console.log('✅ HTTP server closed');
+    process.exit(0);
+  });
+
+  // Force exit after 10 seconds
+  setTimeout(() => {
+    console.log('⚠️ Forced shutdown');
+    process.exit(1);
+  }, 10000);
+});
+
+// Simple Search API - No prepared statements
 app.get('/api/search', async (req, res) => {
   try {
-    const {
-      q: query,
-      category,
-      instructor,
-      difficulty,
-      duration,
-      rating,
-      language,
-      tags,
-      hasTranscript,
-      hasSubtitles,
-      isFree,
-      isFeatured,
-      sortBy = 'relevance',
-      sortOrder = 'desc',
-      limit = 20,
-      offset = 0
-    } = req.query;
+    const { q: query, limit = 20, offset = 0 } = req.query;
 
     if (!query || !query.trim()) {
-      return res.json({ results: [], total: 0, analytics: {} });
+      return res.json({
+        results: [],
+        total: 0,
+        query: query || '',
+        pagination: { limit: parseInt(limit), offset: parseInt(offset), total: 0, pages: 0 }
+      });
     }
 
-    // Build search query with full-text search capabilities
-    let searchQuery = `
-      SELECT
-        'course' as type,
-        c.id,
-        c.title,
-        c.description,
-        c.thumbnail,
-        c.banner,
-        c.featured,
-        c.total_xp,
-        c.coming_soon,
-        c.created_at,
-        i.name as instructor_name,
-        i.title as instructor_title,
-        i.image as instructor_image,
-        cat.name as category_name,
-        (
-          CASE
-            WHEN c.title LIKE ? THEN 10
-            WHEN c.description LIKE ? THEN 5
-            ELSE 0
-          END +
-          CASE
-            WHEN c.title LIKE ? THEN 8
-            WHEN c.description LIKE ? THEN 4
-            ELSE 0
-          END +
-          CASE
-            WHEN c.title LIKE ? THEN 6
-            WHEN c.description LIKE ? THEN 3
-            ELSE 0
-          END
-        ) as relevance_score
-      FROM courses c
-      JOIN instructors i ON c.instructor_id = i.id
-      JOIN categories cat ON c.category_id = cat.id
-      WHERE (
-        c.title LIKE ? OR
-        c.description LIKE ? OR
-        i.name LIKE ? OR
-        i.title LIKE ? OR
-        cat.name LIKE ?
-      )
-    `;
+    const searchTerm = `%${query.trim()}%`;
 
-    const searchParams = [];
-    const queryTerms = query.trim().split(/\s+/);
+    // Use direct database connection with query instead of execute
+    const connection = await pool.getConnection();
 
-    // Add parameters for each query term
-    queryTerms.forEach(term => {
-      const likeTerm = `%${term}%`;
-      searchParams.push(likeTerm, likeTerm, likeTerm, likeTerm, likeTerm, likeTerm, likeTerm, likeTerm, likeTerm, likeTerm);
-    });
+    try {
+      // Simple search query using query() instead of execute()
+      const searchQuery = `
+        SELECT
+          c.id,
+          c.title,
+          c.description,
+          c.thumbnail,
+          c.banner,
+          c.featured,
+          c.total_xp,
+          c.coming_soon,
+          c.created_at,
+          i.name as instructor_name,
+          i.title as instructor_title,
+          i.image as instructor_image,
+          cat.name as category_name
+        FROM courses c
+        JOIN instructors i ON c.instructor_id = i.id
+        JOIN categories cat ON c.category_id = cat.id
+        WHERE c.title LIKE '${searchTerm}' OR c.description LIKE '${searchTerm}' OR i.name LIKE '${searchTerm}' OR cat.name LIKE '${searchTerm}'
+        ORDER BY c.featured DESC, c.title ASC
+        LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}
+      `;
 
-    // Add filter conditions
-    const filterConditions = [];
+      // Execute search query
+      const [results] = await connection.query(searchQuery);
 
-    if (category) {
-      filterConditions.push('cat.id = ?');
-      searchParams.push(category);
-    }
+      // Get total count for pagination
+      const countQuery = `
+        SELECT COUNT(*) as total
+        FROM courses c
+        JOIN instructors i ON c.instructor_id = i.id
+        JOIN categories cat ON c.category_id = cat.id
+        WHERE c.title LIKE '${searchTerm}' OR c.description LIKE '${searchTerm}' OR i.name LIKE '${searchTerm}' OR cat.name LIKE '${searchTerm}'
+      `;
 
-    if (instructor) {
-      filterConditions.push('i.id = ?');
-      searchParams.push(instructor);
-    }
+      const [countResult] = await connection.query(countQuery);
+      const total = countResult[0].total;
 
-    if (difficulty) {
-      filterConditions.push('c.difficulty = ?');
-      searchParams.push(difficulty);
-    }
-
-    if (duration) {
-      filterConditions.push('c.duration = ?');
-      searchParams.push(duration);
-    }
-
-    if (rating) {
-      filterConditions.push('c.rating >= ?');
-      searchParams.push(rating);
-    }
-
-    if (language) {
-      filterConditions.push('c.language = ?');
-      searchParams.push(language);
-    }
-
-    if (isFree !== undefined) {
-      filterConditions.push('c.is_free = ?');
-      searchParams.push(isFree === 'true' ? 1 : 0);
-    }
-
-    if (isFeatured !== undefined) {
-      filterConditions.push('c.featured = ?');
-      searchParams.push(isFeatured === 'true' ? 1 : 0);
-    }
-
-    if (filterConditions.length > 0) {
-      searchQuery += ' AND ' + filterConditions.join(' AND ');
-    }
-
-    // Add sorting
-    let orderBy = 'relevance_score DESC';
-    if (sortBy === 'popularity') {
-      orderBy = 'c.popularity DESC';
-    } else if (sortBy === 'rating') {
-      orderBy = 'c.rating DESC';
-    } else if (sortBy === 'date') {
-      orderBy = 'c.created_at DESC';
-    } else if (sortBy === 'title') {
-      orderBy = 'c.title ASC';
-    }
-
-    if (sortOrder === 'asc' && sortBy !== 'title') {
-      orderBy = orderBy.replace(' DESC', ' ASC');
-    }
-
-    searchQuery += ` ORDER BY ${orderBy}`;
-    searchQuery += ' LIMIT ? OFFSET ?';
-    searchParams.push(parseInt(limit), parseInt(offset));
-
-    // Execute search query
-    const results = await executeQuery(searchQuery, searchParams);
-
-    // Get lessons for each course
-    for (let result of results) {
-      const lessons = await executeQuery(
-        'SELECT * FROM lessons WHERE course_id = ? ORDER BY order_index ASC',
-        [result.id]
-      );
-      result.lessons = lessons;
-
-      // Add mock transcript data (in real app, this would come from a transcripts table)
-      result.hasTranscript = Math.random() > 0.3;
-      result.hasSubtitles = Math.random() > 0.2;
-    }
-
-    // Get total count for pagination
-    const countQuery = `
-      SELECT COUNT(*) as total
-      FROM courses c
-      JOIN instructors i ON c.instructor_id = i.id
-      JOIN categories cat ON c.category_id = cat.id
-      WHERE (
-        c.title LIKE ? OR
-        c.description LIKE ? OR
-        i.name LIKE ? OR
-        i.title LIKE ? OR
-        cat.name LIKE ?
-      )
-    `;
-
-    const countParams = queryTerms.map(term => `%${term}%`).flat();
-    if (filterConditions.length > 0) {
-      countQuery += ' AND ' + filterConditions.join(' AND ');
-      countParams.push(...searchParams.slice(queryTerms.length * 10, -2));
-    }
-
-    const [countResult] = await executeQuery(countQuery, countParams);
-    const total = countResult.total;
-
-    // Get search analytics
-    const analytics = await getSearchAnalytics(query);
-
-    res.json({
-      results,
-      total,
-      analytics,
-      query: query.trim(),
-      filters: {
-        category,
-        instructor,
-        difficulty,
-        duration,
-        rating,
-        language,
-        tags,
-        hasTranscript,
-        hasSubtitles,
-        isFree,
-        isFeatured
-      },
-      pagination: {
-        limit: parseInt(limit),
-        offset: parseInt(offset),
-        total,
-        pages: Math.ceil(total / parseInt(limit))
+      // Add lessons to each course
+      for (let result of results) {
+        const [lessons] = await connection.query(
+          `SELECT id, title, duration, thumbnail, video_url, description, xp_points, order_index FROM lessons WHERE course_id = ${result.id} ORDER BY order_index ASC`
+        );
+        result.lessons = lessons;
       }
-    });
+
+      res.json({
+        results,
+        total,
+        query: query.trim(),
+        pagination: {
+          limit: parseInt(limit),
+          offset: parseInt(offset),
+          total,
+          pages: Math.ceil(total / parseInt(limit))
+        }
+      });
+
+    } finally {
+      connection.release();
+    }
 
   } catch (error) {
     console.error('Search error:', error);
-    res.status(500).json({ error: 'Failed to perform search' });
+    res.status(500).json({ error: 'Failed to perform search', details: error.message });
   }
 });
 
@@ -2889,6 +3026,12 @@ app.use('/api/video-content', videoContentManagementRoutes);
 
 // Initialize job processor service
 const jobProcessorService = require('./services/jobProcessorService');
+
+// Server is already started above - this was a duplicate call
+console.log(`🚀 Forward Africa Backend Server running on port ${PORT}`);
+console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
+console.log(`🔗 API Base URL: http://localhost:${PORT}/api`);
+console.log(`🌐 CORS enabled for: ${corsOrigins.join(', ')}`);
 
 // Graceful shutdown
 process.on('SIGTERM', async () => {

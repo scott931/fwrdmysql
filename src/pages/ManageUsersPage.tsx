@@ -6,6 +6,7 @@ import { usePermissions } from '../contexts/PermissionContext';
 import PermissionGuard from '../components/ui/PermissionGuard';
 import ErrorMessage from '../components/ui/ErrorMessage';
 import { useUsers } from '../hooks/useDatabase';
+import Image from 'next/image';
 
 interface UserData {
   id: string;
@@ -439,7 +440,33 @@ const ManageUsersPage: React.FC = () => {
                       <div className="flex items-center">
                         <div className="h-10 w-10 rounded-full bg-gray-600 flex items-center justify-center mr-4">
                           {user.avatar ? (
-                            <img src={user.avatar} alt={user.name} className="h-10 w-10 rounded-full object-cover" />
+                            user.avatar.startsWith('http') ? (
+                              <img
+                                src={user.avatar}
+                                alt={user.name}
+                                className="h-10 w-10 rounded-full object-cover"
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement;
+                                  if (target.src !== '/placeholder-avatar.jpg') {
+                                    target.src = '/placeholder-avatar.jpg';
+                                  }
+                                }}
+                              />
+                            ) : (
+                              <Image
+                                src={user.avatar}
+                                alt={user.name}
+                                width={40}
+                                height={40}
+                                className="h-10 w-10 rounded-full object-cover"
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement;
+                                  if (target.src !== '/placeholder-avatar.jpg') {
+                                    target.src = '/placeholder-avatar.jpg';
+                                  }
+                                }}
+                              />
+                            )
                           ) : (
                             <User className="h-5 w-5 text-gray-300" />
                           )}
@@ -621,7 +648,33 @@ const ManageUsersPage: React.FC = () => {
                 <div className="flex items-center space-x-4">
                   <div className="h-16 w-16 rounded-full bg-gray-600 flex items-center justify-center">
                     {selectedUser.avatar ? (
-                      <img src={selectedUser.avatar} alt={selectedUser.name} className="h-16 w-16 rounded-full object-cover" />
+                      selectedUser.avatar.startsWith('http') ? (
+                        <img
+                          src={selectedUser.avatar}
+                          alt={selectedUser.name}
+                          className="h-16 w-16 rounded-full object-cover"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            if (target.src !== '/placeholder-avatar.jpg') {
+                              target.src = '/placeholder-avatar.jpg';
+                            }
+                          }}
+                        />
+                      ) : (
+                        <Image
+                          src={selectedUser.avatar}
+                          alt={selectedUser.name}
+                          width={64}
+                          height={64}
+                          className="h-16 w-16 rounded-full object-cover"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            if (target.src !== '/placeholder-avatar.jpg') {
+                              target.src = '/placeholder-avatar.jpg';
+                            }
+                          }}
+                        />
+                      )
                     ) : (
                       <User className="h-8 w-8 text-gray-300" />
                     )}

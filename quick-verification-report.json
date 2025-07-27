@@ -1,0 +1,10 @@
+{
+  "timestamp": "2025-07-27T14:13:34.616Z",
+  "summary": {
+    "total": 20,
+    "passed": 17,
+    "failed": 3,
+    "successRate": "85.0"
+  },
+  "details": []
+}

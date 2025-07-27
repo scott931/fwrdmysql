@@ -2,19 +2,31 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from '../lib/router';
 import { ArrowLeft, Settings, Database, Server, Shield, Globe, Zap, Save, AlertTriangle, CheckCircle, RefreshCw, Power, Monitor, HardDrive, Network, Cpu, Download } from 'lucide-react';
 import Button from '../components/ui/Button';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuthEnhanced } from '../hooks/useAuthEnhanced';
 import { usePermissions } from '../contexts/PermissionContext';
 import PermissionGuard from '../components/ui/PermissionGuard';
+import { apiClient } from '../lib/authInterceptor';
+import { tokenDebugger } from '../utils/tokenDebugger';
+
+// Helper function to safely access auth token
+const getAuthToken = () => {
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem('forward_africa_token');
+  }
+  return null;
+};
 
 const SystemConfigurationPage: React.FC = () => {
   const navigate = useNavigate();
-  const { user, profile } = useAuth();
+  const { user, loading: authLoading, isSuperAdmin } = useAuthEnhanced();
   const { userRole, hasPermission } = usePermissions();
   const [activeTab, setActiveTab] = useState<'general' | 'database' | 'security' | 'performance' | 'backup' | 'monitoring'>('general');
   const [isLoading, setIsLoading] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
   const [systemStatus, setSystemStatus] = useState<any>(null);
   const [backupStatus, setBackupStatus] = useState<'idle' | 'creating' | 'success' | 'error'>('idle');
+  const [isClient, setIsClient] = useState(false);
+  const [dataLoaded, setDataLoaded] = useState(false);
 
   // System configuration state
   const [systemConfig, setSystemConfig] = useState({
@@ -39,76 +51,134 @@ const SystemConfigurationPage: React.FC = () => {
     allowedOrigins: ['https://forwardafrica.com', 'https://www.forwardafrica.com']
   });
 
-  // Check if user is super admin
-  const isSuperAdmin = userRole === 'super_admin';
+  // Check if user is super admin (using enhanced auth)
+  const isSuperAdminUser = isSuperAdmin;
 
-  // Load system configuration and status from API
+  // Set client-side flag
   useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  // Wait for authentication to complete before proceeding
+  const isReady = isClient && !authLoading;
+
+  // Add debugging for authentication state
+  useEffect(() => {
+    console.log('🔍 SystemConfigurationPage: Authentication Debug', {
+      isClient,
+      authLoading,
+      isReady,
+      user: user ? { id: user.id, email: user.email, role: user.role } : null,
+      userRole,
+      isSuperAdmin,
+      isSuperAdminUser,
+      isAuthenticated: !!user
+    });
+  }, [isClient, authLoading, isReady, user, userRole, isSuperAdmin, isSuperAdminUser]);
+
+    // Load system configuration and status from API
+  useEffect(() => {
+    console.log('🔄 SystemConfigurationPage: useEffect triggered', { isReady, isSuperAdminUser, userRole });
+
+    if (!isReady || !isSuperAdminUser) {
+      console.log('⏸️ SystemConfigurationPage: Skipping data load', { isReady, isSuperAdminUser });
+      return;
+    }
+
     const loadData = async () => {
       try {
-        // Load configuration
-        const configResponse = await fetch('http://localhost:3002/api/system/config', {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-          }
-        });
-
-        if (configResponse.ok) {
-          const config = await configResponse.json();
-          setSystemConfig(config);
+        const token = getAuthToken();
+        if (!token) {
+          console.error('No auth token available');
+          setDataLoaded(true);
+          return;
         }
 
-        // Load system status
-        const statusResponse = await fetch('http://localhost:3002/api/system/status', {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        // Check if backend server is running
+        try {
+          const healthResponse = await fetch('http://localhost:3002/api/health');
+          if (!healthResponse.ok) {
+            console.warn('Backend server may not be running');
+            setDataLoaded(true);
+            return;
           }
-        });
-
-        if (statusResponse.ok) {
-          const status = await statusResponse.json();
-          setSystemStatus(status);
+        } catch (error) {
+          console.warn('Backend server is not accessible:', error);
+          setDataLoaded(true);
+          return;
         }
-      } catch (error) {
-        console.error('Error loading data:', error);
+
+                // Load configuration
+        try {
+          const response = await apiClient.get('http://localhost:3002/api/system/config');
+          setSystemConfig(response.data);
+        } catch (error) {
+          console.warn('Failed to load system config, using defaults:', error);
+        } finally {
+          setDataLoaded(true);
+        }
+
+                // Load system status
+        try {
+          const response = await apiClient.get('http://localhost:3002/api/system/status');
+          setSystemStatus(response.data);
+        } catch (error) {
+          console.warn('Failed to load system status, using defaults:', error);
+          // Set default status data
+          setSystemStatus({
+            database: { status: 'operational', size: 'Unknown', connectionPool: 'Unknown' },
+            systemResources: {
+              cpuUsage: 0,
+              memoryUsage: 0,
+              diskUsage: 0,
+              responseTime: 0,
+              uptime: 100,
+              activeUsers: 0,
+              errorRate: 0
+            },
+            lastBackup: new Date().toISOString(),
+            backupSize: 'Unknown'
+          });
+        }
+       } catch (error) {
+         console.error('Error loading data:', error);
+             } finally {
+        console.log('✅ SystemConfigurationPage: Data loading completed');
+        setDataLoaded(true);
       }
     };
 
-    if (isSuperAdmin) {
-      loadData();
-    }
-  }, [isSuperAdmin]);
+    console.log('🚀 SystemConfigurationPage: Starting data load');
+    loadData();
+  }, [isReady, isSuperAdminUser]);
 
-  // Redirect if not super admin
-  useEffect(() => {
-    if (!isSuperAdmin) {
-      navigate('/admin');
-    }
-  }, [isSuperAdmin, navigate]);
+
 
   const handleSave = async () => {
     setIsLoading(true);
     setSaveStatus('saving');
 
     try {
-      const response = await fetch('http://localhost:3002/api/system/config', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-        },
-        body: JSON.stringify(systemConfig)
-      });
+      console.log('🔐 Checking authentication...');
 
-      if (!response.ok) {
-        throw new Error('Failed to save configuration');
+      // Debug token information
+      tokenDebugger.checkToken();
+
+      const token = getAuthToken();
+      console.log('🔑 Token available:', !!token);
+
+      if (!token) {
+        console.error('❌ No auth token available');
+        throw new Error('No auth token available. Please log in again.');
       }
 
-      const result = await response.json();
+            console.log('💾 Saving configuration...');
+      const response = await apiClient.put('http://localhost:3002/api/system/config', systemConfig);
+      console.log('✅ Configuration saved successfully:', response.data);
       setSaveStatus('success');
       setTimeout(() => setSaveStatus('idle'), 3000);
     } catch (error) {
-      console.error('Error saving configuration:', error);
+      console.error('❌ Error saving configuration:', error);
       setSaveStatus('error');
       setTimeout(() => setSaveStatus('idle'), 3000);
     } finally {
@@ -126,22 +196,22 @@ const SystemConfigurationPage: React.FC = () => {
   const handleCreateBackup = async () => {
     setBackupStatus('creating');
     try {
-      const response = await fetch('http://localhost:3002/api/system/backup', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-        }
-      });
+      console.log('🔐 Checking authentication for backup...');
+      const token = getAuthToken();
+      console.log('🔑 Token available for backup:', !!token);
 
-      if (!response.ok) {
-        throw new Error('Failed to create backup');
+      if (!token) {
+        console.error('❌ No auth token available for backup');
+        throw new Error('No auth token available. Please log in again.');
       }
 
-      const result = await response.json();
+            console.log('💾 Creating backup...');
+      const response = await apiClient.post('http://localhost:3002/api/system/backup');
+      console.log('✅ Backup created successfully:', response.data);
       setBackupStatus('success');
       setTimeout(() => setBackupStatus('idle'), 3000);
     } catch (error) {
-      console.error('Error creating backup:', error);
+      console.error('❌ Error creating backup:', error);
       setBackupStatus('error');
       setTimeout(() => setBackupStatus('idle'), 3000);
     }
@@ -165,8 +235,14 @@ const SystemConfigurationPage: React.FC = () => {
     }
   };
 
-  if (!isSuperAdmin) {
-    return null;
+  // Show loading state while data is being fetched
+  if (!dataLoaded) {
+    return <div className="min-h-screen bg-gray-900 text-white pt-20 flex items-center justify-center">
+      <div className="text-center">
+        <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4" />
+        <p>Loading system configuration...</p>
+      </div>
+    </div>;
   }
 
   return (

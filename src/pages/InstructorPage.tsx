@@ -4,6 +4,7 @@ import CourseCard from '../components/ui/CourseCard';
 import { instructorAPI } from '../lib/api';
 import Layout from '../components/layout/Layout';
 import { API_BASE_URL } from '../lib/mysql';
+import Image from 'next/image';
 
 interface Instructor {
   id: string;
@@ -197,14 +198,33 @@ const InstructorPage: React.FC = () => {
           {/* Sidebar */}
           <aside className="w-full md:w-1/3 lg:w-1/4 flex-shrink-0">
             <div className="bg-gray-900 rounded-2xl shadow-lg p-6 flex flex-col items-center">
-              <img
-                src={instructor.image || '/placeholder-avatar.jpg'}
-                alt={instructor.name}
-                className="w-40 h-40 rounded-full object-cover border-4 border-red-600 mb-4"
-                onError={(e) => {
-                  e.currentTarget.src = '/placeholder-avatar.jpg';
-                }}
-              />
+              {(instructor.image || '/placeholder-avatar.jpg').startsWith('http') ? (
+                <img
+                  src={instructor.image || '/placeholder-avatar.jpg'}
+                  alt={instructor.name}
+                  className="w-40 h-40 rounded-full object-cover border-4 border-red-600 mb-4"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    if (target.src !== '/placeholder-avatar.jpg') {
+                      target.src = '/placeholder-avatar.jpg';
+                    }
+                  }}
+                />
+              ) : (
+                <Image
+                  src={instructor.image || '/placeholder-avatar.jpg'}
+                  alt={instructor.name}
+                  width={160}
+                  height={160}
+                  className="w-40 h-40 rounded-full object-cover border-4 border-red-600 mb-4"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    if (target.src !== '/placeholder-avatar.jpg') {
+                      target.src = '/placeholder-avatar.jpg';
+                    }
+                  }}
+                />
+              )}
               <h2 className="text-2xl font-bold mb-1 text-center">{instructor.name}</h2>
               <p className="text-red-500 text-lg mb-2 text-center">{instructor.title}</p>
               <div className="flex gap-4 mb-4">

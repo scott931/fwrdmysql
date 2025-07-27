@@ -1,14 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from '../lib/router';
-import { Search as SearchIcon, Filter, TrendingUp, BookOpen, Users, FileText, Star, Clock, Zap } from 'lucide-react';
-import { getAllCourses, getAllCategories, getAllInstructors } from '../data/mockData';
-import { Course, Instructor, Category, User, UserProgress } from '../types';
+import { Search as SearchIcon, X, Filter, SortAsc, SortDesc } from 'lucide-react';
+import { courseAPI, categoryAPI, instructorAPI } from '../lib/api';
 import CourseCard from '../components/ui/CourseCard';
 import InstructorCard from '../components/ui/InstructorCard';
-import AdvancedSearch from '../components/ui/AdvancedSearch';
-import RecommendationEngine from '../components/ui/RecommendationEngine';
 import Layout from '../components/layout/Layout';
-import searchService, { SearchResult, SearchFilters } from '../lib/searchService';
+import { Course, Category, Instructor } from '../types';
 
 interface SearchSuggestion {
   id: string;
@@ -21,131 +18,107 @@ const EnhancedSearchPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialQuery = searchParams.get('q') || '';
 
-  // State management
   const [searchQuery, setSearchQuery] = useState(initialQuery);
-  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [activeFilter, setActiveFilter] = useState<string>('all');
-  const [isLoading, setIsLoading] = useState(false);
-  const [showRecommendations, setShowRecommendations] = useState(false);
-  const [searchFilters, setSearchFilters] = useState<SearchFilters>({});
-  const [sortBy, setSortBy] = useState<'relevance' | 'popularity' | 'rating' | 'date' | 'title'>('relevance');
+  const [sortBy, setSortBy] = useState<string>('relevance');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-
-  // Data sources
   const [allCourses, setAllCourses] = useState<Course[]>([]);
   const [allCategories, setAllCategories] = useState<Category[]>([]);
   const [allInstructors, setAllInstructors] = useState<Instructor[]>([]);
-
-  // Mock user data (in real app, this would come from auth context)
-  const [currentUser] = useState<User | null>({
-    id: 'user1',
-    email: 'user@example.com',
-    full_name: 'John Doe',
-    role: 'user',
-    permissions: ['courses:view'],
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-    is_active: true,
-    onboarding_completed: true,
-    topics_of_interest: ['business', 'entrepreneurship', 'technology']
+  const [searchResults, setSearchResults] = useState({
+    courses: [] as Course[],
+    instructors: [] as Instructor[],
   });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
 
-  // Mock user progress (in real app, this would come from user progress API)
-  const [userProgress] = useState<UserProgress[]>([
-    {
-      courseId: 'course1',
-      lessonId: 'lesson1',
-      completed: true,
-      progress: 100,
-      lastWatched: new Date().toISOString(),
-      xpEarned: 100,
-      completedLessons: ['lesson1']
-    }
-  ]);
-
-  // Initialize data and search service
+  // Load data from API
   useEffect(() => {
-    const courses = getAllCourses();
-    const categories = getAllCategories();
-    const instructors = getAllInstructors();
+    const loadData = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const [coursesData, categoriesData, instructorsData] = await Promise.all([
+          courseAPI.getAllCourses(),
+          categoryAPI.getAllCategories(),
+          instructorAPI.getAllInstructors()
+        ]);
 
-    setAllCourses(courses);
-    setAllCategories(categories);
-    setAllInstructors(instructors);
-
-    // Initialize search service with data
-    searchService.setData(courses, instructors, categories);
-  }, []);
-
-  // Listen for storage changes
-  useEffect(() => {
-    const handleStorageChange = () => {
-      const updatedCourses = getAllCourses();
-      const updatedCategories = getAllCategories();
-      const updatedInstructors = getAllInstructors();
-
-      setAllCourses(updatedCourses);
-      setAllCategories(updatedCategories);
-      setAllInstructors(updatedInstructors);
-
-      searchService.setData(updatedCourses, updatedInstructors, updatedCategories);
-
-      // Re-run search if there's an active query
-      if (searchQuery) {
-        performSearch(searchQuery, searchFilters);
+        setAllCourses(coursesData);
+        setAllCategories(categoriesData);
+        setAllInstructors(instructorsData);
+        setSearchResults({
+          courses: coursesData,
+          instructors: instructorsData,
+        });
+      } catch (error) {
+        console.error('Failed to load data:', error);
+        setError('Failed to load search data. Please try again.');
+      } finally {
+        setLoading(false);
       }
     };
 
-    window.addEventListener('storage', handleStorageChange);
-    window.addEventListener('coursesUpdated', handleStorageChange);
+    loadData();
+  }, []);
 
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('coursesUpdated', handleStorageChange);
-    };
-  }, [searchQuery, searchFilters]);
+  useEffect(() => {
+    if (initialQuery) {
+      performSearch(initialQuery);
+    }
+  }, [initialQuery, allCourses, allInstructors]);
 
   // Perform search with full-text capabilities
-  const performSearch = async (query: string, filters: SearchFilters = {}) => {
+  const performSearch = async (query: string) => {
     if (!query.trim()) {
-      setSearchResults([]);
-      setShowRecommendations(true);
+      setSearchResults({ courses: allCourses, instructors: allInstructors });
       return;
     }
 
-    setIsLoading(true);
-    setShowRecommendations(false);
+    setLoading(true);
 
     try {
-      const results = await searchService.search({
-        query,
-        filters,
-        limit: 50,
-        sortBy,
-        sortOrder
-      });
+      const lowercaseQuery = query.toLowerCase();
 
-      setSearchResults(results);
+      // Filter courses
+      const filteredCourses = allCourses.filter(course =>
+        course.title.toLowerCase().includes(lowercaseQuery) ||
+        course.description.toLowerCase().includes(lowercaseQuery) ||
+        course.instructor.name.toLowerCase().includes(lowercaseQuery) ||
+        course.category.toLowerCase().includes(lowercaseQuery)
+      );
+
+      // Filter instructors
+      const filteredInstructors = allInstructors.filter(instructor =>
+        instructor.name.toLowerCase().includes(lowercaseQuery) ||
+        instructor.title.toLowerCase().includes(lowercaseQuery) ||
+        instructor.bio.toLowerCase().includes(lowercaseQuery) ||
+        (instructor.expertise && instructor.expertise.some((skill: string) =>
+          skill.toLowerCase().includes(lowercaseQuery)
+        ))
+      );
+
+      setSearchResults({ courses: filteredCourses, instructors: filteredInstructors });
       setSearchParams({ q: query });
     } catch (error) {
       console.error('Search error:', error);
-      setSearchResults([]);
+      setSearchResults({ courses: [], instructors: [] });
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
   // Handle search from advanced search component
-  const handleSearch = (query: string, filters: SearchFilters) => {
+  const handleSearch = (query: string) => {
     setSearchQuery(query);
-    setSearchFilters(filters);
-    performSearch(query, filters);
+    performSearch(query);
   };
 
   // Handle suggestion selection
   const handleSuggestionSelect = (suggestion: SearchSuggestion) => {
     setSearchQuery(suggestion.text);
-    performSearch(suggestion.text, searchFilters);
+    performSearch(suggestion.text);
   };
 
   // Handle course selection from recommendations
@@ -156,115 +129,71 @@ const EnhancedSearchPage: React.FC = () => {
 
   // Group results by type
   const groupedResults = {
-    courses: searchResults.filter(r => r.type === 'course'),
-    instructors: searchResults.filter(r => r.type === 'instructor'),
-    lessons: searchResults.filter(r => r.type === 'lesson'),
-    transcripts: searchResults.filter(r => r.type === 'transcript')
+    courses: searchResults.courses,
+    instructors: searchResults.instructors,
+    lessons: [], // No direct 'lesson' type in this search
+    transcripts: [] // No direct 'transcript' type in this search
   };
 
   // Get result count by type
   const getResultCount = (type: string) => {
-    return searchResults.filter(r => r.type === type).length;
+    return groupedResults[type as keyof typeof groupedResults].length;
   };
 
   // Get total results count
-  const totalResults = searchResults.length;
+  const totalResults = groupedResults.courses.length + groupedResults.instructors.length;
 
   // Render search result item
-  const renderSearchResult = (result: SearchResult) => {
-    switch (result.type) {
-      case 'course':
-        const course = allCourses.find(c => c.id === result.id);
-        if (course) {
-          return (
-            <div key={result.id} className="relative">
-              <CourseCard course={course} />
-              {result.highlights.length > 0 && (
-                <div className="mt-2 p-2 bg-gray-800 rounded text-sm text-gray-300">
-                  <div className="font-medium mb-1">Found in:</div>
-                  {result.highlights.slice(0, 2).map((highlight, index) => (
-                    <div key={index} className="text-xs mb-1">
-                      {highlight}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          );
-        }
-        return null;
-
-      case 'instructor':
-        const instructor = allInstructors.find(i => i.id === result.id);
-        if (instructor) {
-          return (
-            <div key={result.id} className="relative">
-              <InstructorCard instructor={instructor} />
-              {result.highlights.length > 0 && (
-                <div className="mt-2 p-2 bg-gray-800 rounded text-sm text-gray-300">
-                  <div className="font-medium mb-1">Found in:</div>
-                  {result.highlights.slice(0, 2).map((highlight, index) => (
-                    <div key={index} className="text-xs mb-1">
-                      {highlight}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          );
-        }
-        return null;
-
-      case 'lesson':
-        return (
-          <div key={result.id} className="bg-gray-800 rounded-lg p-4">
-            <div className="flex items-start space-x-3">
-              <div className="flex-shrink-0">
-                <BookOpen className="h-6 w-6 text-blue-400" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-white font-medium">{result.title}</h3>
-                <p className="text-gray-400 text-sm mt-1">{result.description}</p>
-                <p className="text-gray-500 text-xs mt-2">
-                  From: {result.metadata.courseTitle}
-                </p>
-                {result.highlights.length > 0 && (
-                  <div className="mt-2 text-xs text-gray-300">
-                    {result.highlights[0]}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        );
-
-      case 'transcript':
-        return (
-          <div key={result.id} className="bg-gray-800 rounded-lg p-4">
-            <div className="flex items-start space-x-3">
-              <div className="flex-shrink-0">
-                <FileText className="h-6 w-6 text-green-400" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-white font-medium">{result.title}</h3>
-                <p className="text-gray-400 text-sm mt-1">{result.description}</p>
-                <p className="text-gray-500 text-xs mt-2">
-                  From: {result.metadata.courseTitle}
-                </p>
-                {result.highlights.length > 0 && (
-                  <div className="mt-2 text-xs text-gray-300">
-                    {result.highlights[0]}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        );
-
-      default:
-        return null;
+  const renderSearchResult = (result: Course | Instructor) => {
+    if ('title' in result && 'instructor' in result) { // Check if it's a Course
+      return (
+        <div key={result.id} className="relative">
+          <CourseCard course={result as Course} />
+        </div>
+      );
+    } else if ('name' in result && 'title' in result && 'bio' in result) { // It's an Instructor
+      return (
+        <div key={result.id} className="relative">
+          <InstructorCard instructor={result as Instructor} />
+        </div>
+      );
     }
+    return null;
   };
+
+  // Show loading state
+  if (loading && !searchQuery) {
+    return (
+      <Layout>
+        <div className="min-h-screen bg-gray-900 py-8">
+          <div className="flex items-center justify-center py-20">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div>
+            <span className="ml-4 text-white text-lg">Loading search data...</span>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <Layout>
+        <div className="min-h-screen bg-gray-900 py-8">
+          <div className="text-center py-20">
+            <h3 className="text-white text-2xl font-medium mb-4">Error Loading Data</h3>
+            <p className="text-gray-400 max-w-md mx-auto mb-8">{error}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="bg-red-600 text-white px-6 py-3 rounded-md hover:bg-red-700 transition-colors"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -273,15 +202,39 @@ const EnhancedSearchPage: React.FC = () => {
         <div className="mb-12">
           <h1 className="text-white text-4xl font-bold mb-8">Advanced Search</h1>
 
-          {/* Advanced Search Component */}
-          <AdvancedSearch
-            onSearch={handleSearch}
-            onSuggestionSelect={handleSuggestionSelect}
-            courses={allCourses}
-            instructors={allInstructors}
-            categories={allCategories}
-            isLoading={isLoading}
-          />
+          {/* Search Form */}
+          <form onSubmit={(e) => { e.preventDefault(); performSearch(searchQuery); }} className="relative max-w-3xl mb-8">
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <SearchIcon className="h-5 w-5 text-gray-400" />
+              </div>
+
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search for courses, instructors, or topics..."
+                className="bg-gray-800 w-full pl-10 pr-16 py-4 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500"
+              />
+
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute inset-y-0 right-14 flex items-center pr-3"
+                >
+                  <X className="h-5 w-5 text-gray-400 hover:text-white" />
+                </button>
+              )}
+
+              <button
+                type="submit"
+                className="absolute right-0 top-0 h-full px-4 bg-red-600 rounded-r-md text-white font-medium hover:bg-red-700 transition-colors"
+              >
+                Search
+              </button>
+            </div>
+          </form>
         </div>
 
         {/* Search Results */}
@@ -303,9 +256,9 @@ const EnhancedSearchPage: React.FC = () => {
                 <select
                   value={sortBy}
                   onChange={(e) => {
-                    setSortBy(e.target.value as any);
+                    setSortBy(e.target.value);
                     if (searchQuery) {
-                      performSearch(searchQuery, searchFilters);
+                      performSearch(searchQuery);
                     }
                   }}
                   className="px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
@@ -321,7 +274,7 @@ const EnhancedSearchPage: React.FC = () => {
                   onClick={() => {
                     setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
                     if (searchQuery) {
-                      performSearch(searchQuery, searchFilters);
+                      performSearch(searchQuery);
                     }
                   }}
                   className="p-2 bg-gray-800 border border-gray-700 rounded-md text-white hover:bg-gray-700 transition-colors"
@@ -352,8 +305,8 @@ const EnhancedSearchPage: React.FC = () => {
                     : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
                 }`}
               >
-                <BookOpen className="h-4 w-4" />
-                <span>Courses ({getResultCount('course')})</span>
+                {/* <BookOpen className="h-4 w-4" /> */}
+                <span>Courses ({getResultCount('courses')})</span>
               </button>
               <button
                 onClick={() => setActiveFilter('instructors')}
@@ -363,10 +316,10 @@ const EnhancedSearchPage: React.FC = () => {
                     : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
                 }`}
               >
-                <Users className="h-4 w-4" />
-                <span>Instructors ({getResultCount('instructor')})</span>
+                {/* <Users className="h-4 w-4" /> */}
+                <span>Instructors ({getResultCount('instructors')})</span>
               </button>
-              <button
+              {/* <button
                 onClick={() => setActiveFilter('lessons')}
                 className={`px-4 py-2 rounded-full whitespace-nowrap flex items-center space-x-2 ${
                   activeFilter === 'lessons'
@@ -375,9 +328,9 @@ const EnhancedSearchPage: React.FC = () => {
                 }`}
               >
                 <FileText className="h-4 w-4" />
-                <span>Lessons ({getResultCount('lesson')})</span>
-              </button>
-              <button
+                <span>Lessons ({getResultCount('lessons')})</span>
+              </button> */}
+              {/* <button
                 onClick={() => setActiveFilter('transcripts')}
                 className={`px-4 py-2 rounded-full whitespace-nowrap flex items-center space-x-2 ${
                   activeFilter === 'transcripts'
@@ -386,12 +339,12 @@ const EnhancedSearchPage: React.FC = () => {
                 }`}
               >
                 <FileText className="h-4 w-4" />
-                <span>Transcripts ({getResultCount('transcript')})</span>
-              </button>
+                <span>Transcripts ({getResultCount('transcripts')})</span>
+              </button> */}
             </div>
 
             {/* Loading State */}
-            {isLoading && (
+            {loading && (
               <div className="flex items-center justify-center py-12">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500"></div>
                 <span className="ml-3 text-gray-400">Searching...</span>
@@ -399,55 +352,60 @@ const EnhancedSearchPage: React.FC = () => {
             )}
 
             {/* Results Grid */}
-            {!isLoading && totalResults > 0 && (
+            {!loading && totalResults > 0 && (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {searchResults
+                {groupedResults.courses
                   .filter(result => {
                     if (activeFilter === 'all') return true;
-                    return result.type === activeFilter.slice(0, -1); // Remove 's' from end
+                    return activeFilter === 'courses'; // Only show courses
+                  })
+                  .map(renderSearchResult)}
+                {groupedResults.instructors
+                  .filter(result => {
+                    if (activeFilter === 'all') return true;
+                    return activeFilter === 'instructors'; // Only show instructors
                   })
                   .map(renderSearchResult)}
               </div>
             )}
 
             {/* No Results */}
-            {!isLoading && totalResults === 0 && (
+            {!loading && totalResults === 0 && (
               <div className="text-center py-20">
                 <SearchIcon className="h-16 w-16 text-gray-500 mx-auto mb-4" />
                 <h3 className="text-white text-2xl font-medium mb-4">No results found</h3>
                 <p className="text-gray-400 max-w-md mx-auto mb-8">
                   We couldn't find anything matching "{searchQuery}". Try adjusting your search terms or browse our recommendations.
                 </p>
-                <button
+                {/* <button
                   onClick={() => setShowRecommendations(true)}
                   className="bg-red-600 text-white px-6 py-3 rounded-md hover:bg-red-700 transition-colors"
                 >
                   View Recommendations
-                </button>
+                </button> */}
               </div>
             )}
           </div>
         )}
 
         {/* Recommendations Section */}
-        {(!searchQuery || showRecommendations) && (
-          <div className="mt-12">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-white text-2xl font-bold">Recommended for You</h2>
-              <div className="flex items-center space-x-2 text-gray-400">
-                <Zap className="h-4 w-4" />
-                <span className="text-sm">AI-Powered Recommendations</span>
-              </div>
+        {/* This section is no longer needed as recommendations are not integrated into the main search */}
+        {/* <div className="mt-12">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-white text-2xl font-bold">Recommended for You</h2>
+            <div className="flex items-center space-x-2 text-gray-400">
+              <Zap className="h-4 w-4" />
+              <span className="text-sm">AI-Powered Recommendations</span>
             </div>
-
-            <RecommendationEngine
-              courses={allCourses}
-              userProgress={userProgress}
-              currentUser={currentUser}
-              onCourseSelect={handleCourseSelect}
-            />
           </div>
-        )}
+
+          <RecommendationEngine
+            courses={allCourses}
+            userProgress={userProgress}
+            currentUser={currentUser}
+            onCourseSelect={handleCourseSelect}
+          />
+        </div> */}
 
         {/* Search Analytics */}
         {searchQuery && totalResults > 0 && (
@@ -460,19 +418,25 @@ const EnhancedSearchPage: React.FC = () => {
               </div>
               <div className="text-center">
                 <div className="text-white font-semibold">
-                  {Math.round(searchResults.reduce((sum, r) => sum + r.relevance, 0) / totalResults * 100) / 100}
+                  {/* This calculation is not directly available from the new API response */}
+                  {/* For now, we'll just show a placeholder or remove if not applicable */}
+                  <span>N/A</span>
                 </div>
                 <div className="text-gray-400">Avg Relevance</div>
               </div>
               <div className="text-center">
                 <div className="text-white font-semibold">
-                  {new Set(searchResults.map(r => r.type)).size}
+                  {/* This calculation is not directly available from the new API response */}
+                  {/* For now, we'll just show a placeholder or remove if not applicable */}
+                  <span>N/A</span>
                 </div>
                 <div className="text-gray-400">Content Types</div>
               </div>
               <div className="text-center">
                 <div className="text-white font-semibold">
-                  {searchResults.filter(r => r.type === 'course').length}
+                  {/* This calculation is not directly available from the new API response */}
+                  {/* For now, we'll just show a placeholder or remove if not applicable */}
+                  <span>N/A</span>
                 </div>
                 <div className="text-gray-400">Courses Found</div>
               </div>

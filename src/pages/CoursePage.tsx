@@ -7,6 +7,7 @@ import Layout from '../components/layout/Layout';
 import { Course, UserProgress, Certificate } from '../types';
 import { useCertificates } from '../hooks/useCertificates';
 import { downloadCertificate } from '../utils/certificateGenerator';
+import Image from 'next/image';
 
 const CoursePage: React.FC = () => {
   const router = useRouter();
@@ -213,7 +214,15 @@ const CoursePage: React.FC = () => {
                     <Button
                       variant="primary"
                       size="lg"
-                      onClick={() => router.push(`/course/${courseId}/lesson/${course.lessons[0].id}`)}
+                      onClick={() => {
+                        console.log('🎯 Start Learning clicked:', {
+                          courseId,
+                          firstLessonId: course.lessons[0]?.id,
+                          lessonsCount: course.lessons.length,
+                          targetUrl: `/course/${courseId}/lesson/${course.lessons[0]?.id}`
+                        });
+                        router.push(`/course/${courseId}/lesson/${course.lessons[0].id}`);
+                      }}
                       className="group"
                     >
                       Start Learning
@@ -249,11 +258,33 @@ const CoursePage: React.FC = () => {
               <div className="md:w-1/3">
                 <div className="bg-gray-800 rounded-lg p-6">
                   <div className="flex items-center mb-4">
-                    <img
-                      src={instructorInfo.image}
-                      alt={instructorInfo.name}
-                      className="w-12 h-12 rounded-full object-cover mr-4"
-                    />
+                    {instructorInfo.image.startsWith('http') ? (
+                      <img
+                        src={instructorInfo.image}
+                        alt={instructorInfo.name}
+                        className="w-12 h-12 rounded-full object-cover mr-4"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          if (target.src !== '/placeholder-avatar.jpg') {
+                            target.src = '/placeholder-avatar.jpg';
+                          }
+                        }}
+                      />
+                    ) : (
+                      <Image
+                        src={instructorInfo.image}
+                        alt={instructorInfo.name}
+                        width={48}
+                        height={48}
+                        className="w-12 h-12 rounded-full object-cover mr-4"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          if (target.src !== '/placeholder-avatar.jpg') {
+                            target.src = '/placeholder-avatar.jpg';
+                          }
+                        }}
+                      />
+                    )}
                     <div>
                       <h3 className="text-white font-medium">{instructorInfo.name}</h3>
                       <p className="text-gray-400 text-sm">{instructorInfo.title}</p>
@@ -357,11 +388,33 @@ const CoursePage: React.FC = () => {
           <h2 className="text-white text-2xl font-bold mb-6">About {instructorInfo.name}</h2>
           <div className="flex flex-col md:flex-row md:space-x-8">
             <div className="md:w-1/3 mb-6 md:mb-0">
-              <img
-                src={instructorInfo.image}
-                alt={instructorInfo.name}
-                className="w-full h-auto rounded-lg"
-              />
+              {instructorInfo.image.startsWith('http') ? (
+                <img
+                  src={instructorInfo.image}
+                  alt={instructorInfo.name}
+                  className="w-full h-auto rounded-lg"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    if (target.src !== '/placeholder-avatar.jpg') {
+                      target.src = '/placeholder-avatar.jpg';
+                    }
+                  }}
+                />
+              ) : (
+                <Image
+                  src={instructorInfo.image}
+                  alt={instructorInfo.name}
+                  width={400}
+                  height={300}
+                  className="w-full h-auto rounded-lg"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    if (target.src !== '/placeholder-avatar.jpg') {
+                      target.src = '/placeholder-avatar.jpg';
+                    }
+                  }}
+                />
+              )}
             </div>
             <div className="md:w-2/3">
               <h3 className="text-white text-xl font-medium mb-2">{instructorInfo.name}</h3>

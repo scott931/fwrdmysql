@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Button } from './ui/Button';
-import { ErrorMessage } from './ui/ErrorMessage';
+import Button from './ui/Button';
+import ErrorMessage from './ui/ErrorMessage';
 import { SuccessMessage } from './ui/SuccessMessage';
+import { WorkflowStatus, Workflow } from '../types';
 
 interface VideoAsset {
   id: string;
@@ -49,20 +50,6 @@ interface Subtitle {
   processing_started_at: string;
   processing_completed_at: string;
   error_message: string;
-}
-
-interface Workflow {
-  id: string;
-  content_id: string;
-  content_type: 'course' | 'lesson' | 'video';
-  status: 'draft' | 'review' | 'approved' | 'published' | 'archived';
-  current_reviewer_id: string;
-  review_notes: string;
-  review_deadline: string;
-  published_at: string;
-  archived_at: string;
-  created_at: string;
-  updated_at: string;
 }
 
 interface ProcessingJob {
@@ -207,7 +194,7 @@ export const VideoContentManagement: React.FC<VideoContentManagementProps> = ({
     }
   };
 
-  const updateWorkflowStatus = async (newStatus: string, notes?: string) => {
+  const updateWorkflowStatus = async (newStatus: WorkflowStatus, notes?: string) => {
     if (!workflow) return;
 
     try {
@@ -302,7 +289,7 @@ export const VideoContentManagement: React.FC<VideoContentManagementProps> = ({
     }
   };
 
-  const getWorkflowStatusColor = (status: string) => {
+  const getWorkflowStatusColor = (status: WorkflowStatus) => {
     switch (status) {
       case 'published': return 'text-green-600';
       case 'approved': return 'text-blue-600';
@@ -497,7 +484,7 @@ export const VideoContentManagement: React.FC<VideoContentManagementProps> = ({
                   {['draft', 'review', 'approved', 'published', 'archived'].map((status) => (
                     <Button
                       key={status}
-                      onClick={() => updateWorkflowStatus(status)}
+                      onClick={() => updateWorkflowStatus(status as WorkflowStatus)}
                       disabled={workflow.status === status}
                       className={`text-sm ${workflow.status === status ? 'bg-gray-300' : 'bg-blue-600 hover:bg-blue-700'}`}
                     >

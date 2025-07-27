@@ -1,7 +1,8 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Play } from 'lucide-react';
-import Button from './Button';
 import { Course } from '../../types';
+import Button from './Button';
+import Image from 'next/image';
 
 interface HeroBannerProps {
   course: Course;
@@ -55,15 +56,29 @@ const HeroBanner: React.FC<HeroBannerProps> = ({ course, onPlay }) => {
             onError={handleVideoError}
           />
         ) : (
-          <img
-            src={course.banner || '/placeholder-course.jpg'}
-            alt={course.title || 'Course Banner'}
-            className="object-cover w-full h-full"
-            onError={(e) => {
-              const target = e.target as HTMLImageElement;
-              target.src = '/placeholder-course.jpg';
-            }}
-          />
+          (course.banner || '/placeholder-course.jpg').startsWith('http') ? (
+            <img
+              src={course.banner || '/placeholder-course.jpg'}
+              alt={course.title || 'Course Banner'}
+              className="object-cover w-full h-full"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.src = '/placeholder-course.jpg';
+              }}
+            />
+          ) : (
+            <Image
+              src={course.banner || '/placeholder-course.jpg'}
+              alt={course.title || 'Course Banner'}
+              width={1920}
+              height={1080}
+              className="object-cover w-full h-full"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.src = '/placeholder-course.jpg';
+              }}
+            />
+          )
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/70 to-transparent"></div>
       </div>
@@ -73,15 +88,29 @@ const HeroBanner: React.FC<HeroBannerProps> = ({ course, onPlay }) => {
         <h1 className="text-3xl md:text-5xl font-bold text-white mb-2">{course.title || 'Featured Course'}</h1>
         {course.instructor && (
           <div className="flex items-center mb-4">
-            <img
-              src={course.instructor.image || '/placeholder-avatar.jpg'}
-              alt={course.instructor.name || 'Instructor'}
-              className="w-10 h-10 rounded-full object-cover mr-3"
-              onError={(e) => {
-                const target = e.target as HTMLImageElement;
-                target.src = '/placeholder-avatar.jpg';
-              }}
-            />
+            {(course.instructor.image || '/placeholder-avatar.jpg').startsWith('http') ? (
+              <img
+                src={course.instructor.image || '/placeholder-avatar.jpg'}
+                alt={course.instructor.name || 'Instructor'}
+                className="w-10 h-10 rounded-full object-cover mr-3"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = '/placeholder-avatar.jpg';
+                }}
+              />
+            ) : (
+              <Image
+                src={course.instructor.image || '/placeholder-avatar.jpg'}
+                alt={course.instructor.name || 'Instructor'}
+                width={40}
+                height={40}
+                className="w-10 h-10 rounded-full object-cover mr-3"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = '/placeholder-avatar.jpg';
+                }}
+              />
+            )}
             <div>
               <p className="text-white font-medium">{course.instructor.name || 'Unknown Instructor'}</p>
               <p className="text-gray-300 text-sm">{course.instructor.title || 'Course Instructor'}</p>
