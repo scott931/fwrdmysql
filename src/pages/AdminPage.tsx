@@ -453,19 +453,20 @@ const AdminPage: React.FC = () => {
 
   return (
     <Layout>
-      {/* Permission Error Message */}
-      {permissionError && (
-        <div className="mb-6">
-          <ErrorMessage
-            title="Permission Denied"
-            message={permissionError}
-            onClose={() => setPermissionError(null)}
-          />
-        </div>
-      )}
+      <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Permission Error Message */}
+        {permissionError && (
+          <div className="mb-6">
+            <ErrorMessage
+              title="Permission Denied"
+              message={permissionError}
+              onClose={() => setPermissionError(null)}
+            />
+          </div>
+        )}
 
-      {/* Header */}
-      <div className="mb-8 flex justify-between items-start">
+        {/* Header */}
+        <div className="mb-8 flex justify-between items-start">
         <div>
           <h1 className="text-3xl font-bold text-white mb-2">Admin Dashboard</h1>
           <p className="text-gray-400">Manage courses, instructors, and platform settings</p>
@@ -1533,6 +1534,7 @@ const AdminPage: React.FC = () => {
           </div>
         </PermissionGuard>
       )}
+      </div>
     </Layout>
   );
 };

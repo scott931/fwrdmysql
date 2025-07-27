@@ -8,7 +8,7 @@ import Layout from '../components/layout/Layout';
 
 const AdminProfilePage: React.FC = () => {
   const navigate = useNavigate();
-  const { user, profile } = useAuth();
+  const { user, profile, loading: authLoading } = useAuth();
   const { userRole } = usePermissions();
   const [activeTab, setActiveTab] = useState<'profile' | 'security'>('profile');
   const [showChangePassword, setShowChangePassword] = useState(false);
@@ -30,6 +30,26 @@ const AdminProfilePage: React.FC = () => {
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' });
   }, []);
+
+  // Show loading state while authentication is being checked
+  if (authLoading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto"></div>
+            <p className="mt-4 text-gray-400">Loading profile...</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  // Check if user is authenticated
+  if (!user) {
+    navigate('/login');
+    return null;
+  }
 
   // Get admin info from Firebase Auth and profile
   const adminEmail = user?.email || profile?.email || 'admin@forwardafrica.com';

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { User, Mail, Lock, Bell, Shield, CreditCard, LogOut, Eye, EyeOff, CheckCircle, AlertTriangle, X, Save, Trash2 } from 'lucide-react';
 import Button from '../components/ui/Button';
 import { useNavigate } from '../lib/router';
@@ -8,6 +8,7 @@ import ImageUpload from '../components/ui/ImageUpload';
 import ProfileCompletionPrompt from '../components/ui/ProfileCompletionPrompt';
 import Layout from '../components/layout/Layout';
 import Image from 'next/image';
+import EditProfileForm from '../components/ui/EditProfileForm';
 
 const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
@@ -68,6 +69,7 @@ const ProfilePage: React.FC = () => {
     state_province: '',
     city: ''
   });
+  const formInitializedRef = useRef(false);
   const [profileErrors, setProfileErrors] = useState<string[]>([]);
   const [profileSuccess, setProfileSuccess] = useState(false);
   const [profileLoading, setProfileLoading] = useState(false);
@@ -98,11 +100,10 @@ const ProfilePage: React.FC = () => {
     }
   }, [user?.id, fetchUserProgress, fetchUserCertificates]);
 
-  // Initialize edit form with current user data
+  // Initialize form data only once when user data is available
   useEffect(() => {
-    console.log('🔄 ProfilePage: User data changed:', user);
-    if (user) {
-      const newFormData = {
+    if (user && !formInitializedRef.current) {
+      setEditProfileForm({
         full_name: user.full_name || '',
         avatar_url: user.avatar_url || '',
         industry: user.industry || '',
@@ -111,11 +112,12 @@ const ProfilePage: React.FC = () => {
         country: user.country || '',
         state_province: user.state_province || '',
         city: user.city || ''
-      };
-      console.log('🔄 ProfilePage: Setting edit form data:', newFormData);
-      setEditProfileForm(newFormData);
+      });
+      formInitializedRef.current = true;
     }
-  }, [user]);
+  }, [user?.id]); // Only depend on user ID, not the entire user object
+
+
 
   // Calculate user statistics from database
   const completedCourses = userProgress.filter(p => p.completed).length;
@@ -260,75 +262,398 @@ const ProfilePage: React.FC = () => {
     }
   };
 
-  const handleEditProfile = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Enhanced profile validation function
+  const validateProfileData = (data: typeof editProfileForm): string[] => {
+    const errors: string[] = [];
+
+    // Required field validation
+    if (!data.full_name?.trim()) {
+      errors.push('Full name is required');
+    }
+
+    // Length validation
+    if (data.full_name?.trim() && data.full_name.trim().length < 2) {
+      errors.push('Full name must be at least 2 characters long');
+    }
+
+    if (data.full_name?.trim() && data.full_name.trim().length > 100) {
+      errors.push('Full name must be less than 100 characters');
+    }
+
+    // URL validation for avatar
+    if (data.avatar_url && !isValidUrl(data.avatar_url)) {
+      errors.push('Avatar URL must be a valid URL');
+    }
+
+    // Industry validation
+    if (data.industry && data.industry.length > 50) {
+      errors.push('Industry must be less than 50 characters');
+    }
+
+    // Location validation
+    if (data.country && data.country.length > 50) {
+      errors.push('Country must be less than 50 characters');
+    }
+
+    if (data.state_province && data.state_province.length > 50) {
+      errors.push('State/Province must be less than 50 characters');
+    }
+
+    if (data.city && data.city.length > 50) {
+      errors.push('City must be less than 50 characters');
+    }
+
+    return errors;
+  };
+
+  // URL validation helper
+  const isValidUrl = (url: string): boolean => {
+    try {
+      new URL(url);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  // Create a completely isolated form component to prevent re-render issues
+  const EditProfileForm = React.memo(({
+    initialData,
+    onSubmit,
+    onCancel,
+    loading,
+    errors,
+    success
+  }: {
+    initialData: any;
+    onSubmit: (data: any) => void;
+    onCancel: () => void;
+    loading: boolean;
+    errors: string[];
+    success: boolean;
+  }) => {
+    const [formData, setFormData] = useState(initialData);
+
+    // Update form data when initial data changes (only when modal opens)
+    useEffect(() => {
+      setFormData(initialData);
+    }, [initialData]);
+
+    const handleSubmit = (e: React.FormEvent) => {
+      e.preventDefault();
+      onSubmit(formData);
+    };
+
+    return (
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Profile Image */}
+        <ImageUpload
+          onImageUpload={(url) => setFormData(prev => ({ ...prev, avatar_url: url }))}
+          currentImage={formData.avatar_url}
+          uploadType="avatar"
+          label="Profile Image"
+          previewSize="md"
+        />
+
+        {/* Full Name */}
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-2">
+            Full Name
+          </label>
+          <input
+            type="text"
+            value={formData.full_name}
+            onChange={(e) => setFormData(prev => ({ ...prev, full_name: e.target.value }))}
+            className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+            placeholder="Enter your full name"
+            required
+          />
+        </div>
+
+        {/* Industry */}
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-2">
+            Industry
+          </label>
+          <select
+            value={formData.industry}
+            onChange={(e) => setFormData(prev => ({ ...prev, industry: e.target.value }))}
+            className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+          >
+            <option value="">Select your industry</option>
+            <option value="Agriculture & Agribusiness">Agriculture & Agribusiness</option>
+            <option value="Technology & Digital Innovation">Technology & Digital Innovation</option>
+            <option value="Financial Services & Fintech">Financial Services & Fintech</option>
+            <option value="Healthcare & Pharmaceuticals">Healthcare & Pharmaceuticals</option>
+            <option value="Manufacturing & Industrial">Manufacturing & Industrial</option>
+            <option value="Energy & Renewable Resources">Energy & Renewable Resources</option>
+            <option value="Tourism & Hospitality">Tourism & Hospitality</option>
+            <option value="Education & Training">Education & Training</option>
+            <option value="Real Estate & Construction">Real Estate & Construction</option>
+            <option value="Transportation & Logistics">Transportation & Logistics</option>
+            <option value="Retail & E-commerce">Retail & E-commerce</option>
+            <option value="Media & Entertainment">Media & Entertainment</option>
+            <option value="Telecommunications">Telecommunications</option>
+            <option value="Mining & Natural Resources">Mining & Natural Resources</option>
+            <option value="Textiles & Fashion">Textiles & Fashion</option>
+            <option value="Food & Beverage">Food & Beverage</option>
+            <option value="Consulting & Professional Services">Consulting & Professional Services</option>
+            <option value="Non-profit & Social Enterprise">Non-profit & Social Enterprise</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+
+        {/* Experience Level */}
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-2">
+            Experience Level
+          </label>
+          <select
+            value={formData.experience_level}
+            onChange={(e) => setFormData(prev => ({ ...prev, experience_level: e.target.value }))}
+            className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+          >
+            <option value="">Select your experience level</option>
+            <option value="Entry Level (0-2 years)">Entry Level (0-2 years)</option>
+            <option value="Mid-Level (3-7 years)">Mid-Level (3-7 years)</option>
+            <option value="Senior (8+ years)">Senior (8+ years)</option>
+          </select>
+        </div>
+
+        {/* Business Stage */}
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-2">
+            Business Stage
+          </label>
+          <select
+            value={formData.business_stage}
+            onChange={(e) => setFormData(prev => ({ ...prev, business_stage: e.target.value }))}
+            className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+          >
+            <option value="">Select your business stage</option>
+            <option value="Idea Stage">Idea Stage</option>
+            <option value="Startup">Startup</option>
+            <option value="Growth Stage">Growth Stage</option>
+            <option value="Established Business">Established Business</option>
+          </select>
+        </div>
+
+        {/* Geographic Location */}
+        <div className="space-y-3">
+          <label className="block text-sm font-medium text-gray-300 mb-2">
+            Geographic Location
+          </label>
+
+          {/* Country */}
+          <div>
+            <label className="block text-sm font-medium text-gray-400 mb-1">
+              Country
+            </label>
+            <select
+              value={formData.country}
+              onChange={(e) => setFormData(prev => ({ ...prev, country: e.target.value }))}
+              className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+            >
+              <option value="">Select your country</option>
+              <option value="Nigeria">Nigeria</option>
+              <option value="Kenya">Kenya</option>
+              <option value="South Africa">South Africa</option>
+              <option value="Ghana">Ghana</option>
+              <option value="Ethiopia">Ethiopia</option>
+              <option value="Uganda">Uganda</option>
+              <option value="Tanzania">Tanzania</option>
+              <option value="Morocco">Morocco</option>
+              <option value="Egypt">Egypt</option>
+              <option value="Algeria">Algeria</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+
+          {/* State/Province */}
+          <div>
+            <label className="block text-sm font-medium text-gray-400 mb-1">
+              State/Province
+            </label>
+            <input
+              type="text"
+              value={formData.state_province}
+              onChange={(e) => setFormData(prev => ({ ...prev, state_province: e.target.value }))}
+              className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+              placeholder="Enter your state or province"
+            />
+          </div>
+
+          {/* City */}
+          <div>
+            <label className="block text-sm font-medium text-gray-400 mb-1">
+              City
+            </label>
+            <input
+              type="text"
+              value={formData.city}
+              onChange={(e) => setFormData(prev => ({ ...prev, city: e.target.value }))}
+              className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+              placeholder="Enter your city"
+            />
+          </div>
+        </div>
+
+        {/* Form Actions */}
+        <div className="flex justify-end space-x-3 pt-4 border-t border-gray-700">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onCancel}
+            disabled={loading}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            variant="primary"
+            className="flex items-center"
+            disabled={loading}
+          >
+            {loading ? (
+              <div className="flex items-center space-x-2">
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                <span>Saving...</span>
+              </div>
+            ) : (
+              <div className="flex items-center space-x-2">
+                <Save className="h-4 w-4" />
+                <span>Save Changes</span>
+              </div>
+            )}
+          </Button>
+        </div>
+      </form>
+    );
+  });
+
+  // Reset form when modal is opened/closed
+  const handleEditProfileModalToggle = useCallback((isOpen: boolean) => {
+    if (isOpen && user) {
+      // Reset form to current user data when opening
+      setEditProfileForm({
+        full_name: user.full_name || '',
+        avatar_url: user.avatar_url || '',
+        industry: user.industry || '',
+        experience_level: user.experience_level || '',
+        business_stage: user.business_stage || '',
+        country: user.country || '',
+        state_province: user.state_province || '',
+        city: user.city || ''
+      });
+    }
+    setShowEditProfile(isOpen);
+    setProfileErrors([]);
+    setProfileSuccess(false);
+  }, [user]);
+
+  // Enhanced profile update handler with comprehensive checks
+  const handleEditProfile = async (formData: any) => {
+
+    // Prevent multiple submissions
+    if (profileLoading) {
+      console.log('🔄 Profile update already in progress, ignoring duplicate submission');
+      return;
+    }
+
+    // Reset state
     setProfileErrors([]);
     setProfileSuccess(false);
     setProfileLoading(true);
 
     try {
-      // Validate form
-      if (!editProfileForm.full_name.trim()) {
-        setProfileErrors(['Full name is required']);
-        setProfileLoading(false);
+      // Authentication check
+      if (!user?.id) {
+        throw new Error('User not authenticated. Please log in again.');
+      }
+
+      // Validate form data
+      const validationErrors = validateProfileData(formData);
+      if (validationErrors.length > 0) {
+        setProfileErrors(validationErrors);
         return;
       }
 
-      // Debug: Check if user is logged in
-      console.log('Current user:', user);
-      console.log('User ID:', user?.id);
-      console.log('Update data:', {
-        full_name: editProfileForm.full_name.trim(),
-        avatar_url: editProfileForm.avatar_url
+      // Check if data has actually changed
+      const hasChanges =
+        user.full_name !== formData.full_name.trim() ||
+        user.avatar_url !== formData.avatar_url ||
+        user.industry !== formData.industry ||
+        user.experience_level !== formData.experience_level ||
+        user.business_stage !== formData.business_stage ||
+        user.country !== formData.country ||
+        user.state_province !== formData.state_province ||
+        user.city !== formData.city;
+
+      if (!hasChanges) {
+        setProfileErrors(['No changes detected. Please modify at least one field before saving.']);
+        return;
+      }
+
+      // Prepare update data with proper sanitization
+      const updateData = {
+        full_name: formData.full_name.trim(),
+        avatar_url: formData.avatar_url || undefined,
+        industry: formData.industry || undefined,
+        experience_level: formData.experience_level || undefined,
+        business_stage: formData.business_stage || undefined,
+        country: formData.country || undefined,
+        state_province: formData.state_province || undefined,
+        city: formData.city || undefined
+      };
+
+      console.log('🔄 Profile update initiated for user:', user.id);
+      console.log('📝 Update data:', updateData);
+
+      // Perform the update
+      const updatedUser = await updateProfile(updateData);
+
+      // Validate the response
+      if (!updatedUser || !updatedUser.id) {
+        throw new Error('Invalid response from server. Please try again.');
+      }
+
+      console.log('✅ Profile updated successfully:', {
+        userId: updatedUser.id,
+        email: updatedUser.email,
+        fullName: updatedUser.full_name
       });
 
-      // Update profile using auth service
-      console.log('🔄 Updating profile with data:', {
-        full_name: editProfileForm.full_name.trim(),
-        avatar_url: editProfileForm.avatar_url,
-        industry: editProfileForm.industry,
-        experience_level: editProfileForm.experience_level,
-        business_stage: editProfileForm.business_stage,
-        country: editProfileForm.country,
-        state_province: editProfileForm.state_province,
-        city: editProfileForm.city
-      });
-
-      const updatedUser = await updateProfile({
-        full_name: editProfileForm.full_name.trim(),
-        avatar_url: editProfileForm.avatar_url,
-        industry: editProfileForm.industry,
-        experience_level: editProfileForm.experience_level,
-        business_stage: editProfileForm.business_stage,
-        country: editProfileForm.country,
-        state_province: editProfileForm.state_province,
-        city: editProfileForm.city
-      });
-
-      console.log('✅ Profile updated successfully:', updatedUser);
-
-      // Update the edit form with the new data to reflect changes immediately
-      setEditProfileForm({
-        full_name: updatedUser.full_name || '',
-        avatar_url: updatedUser.avatar_url || '',
-        industry: updatedUser.industry || '',
-        experience_level: updatedUser.experience_level || '',
-        business_stage: updatedUser.business_stage || '',
-        country: updatedUser.country || '',
-        state_province: updatedUser.state_province || '',
-        city: updatedUser.city || ''
-      });
-
+      // Show success message
       setProfileSuccess(true);
+
+      // Auto-close modal after success (with delay for user feedback)
       setTimeout(() => {
-        setShowEditProfile(false);
-        setProfileSuccess(false);
+        handleEditProfileModalToggle(false);
       }, 2000);
 
     } catch (error) {
-      console.error('Profile update error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      setProfileErrors([`Failed to update profile: ${errorMessage}`]);
+      console.error('❌ Profile update error:', error);
+
+      // Enhanced error handling
+      let errorMessage = 'Failed to update profile';
+
+      if (error instanceof Error) {
+        if (error.message.includes('network') || error.message.includes('fetch')) {
+          errorMessage = 'Network error. Please check your connection and try again.';
+        } else if (error.message.includes('401') || error.message.includes('unauthorized')) {
+          errorMessage = 'Session expired. Please log in again.';
+        } else if (error.message.includes('403') || error.message.includes('forbidden')) {
+          errorMessage = 'You do not have permission to update this profile.';
+        } else if (error.message.includes('500') || error.message.includes('server')) {
+          errorMessage = 'Server error. Please try again later.';
+        } else if (error.message.includes('validation') || error.message.includes('invalid')) {
+          errorMessage = 'Invalid data provided. Please check your input.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+
+      setProfileErrors([errorMessage]);
     } finally {
       setProfileLoading(false);
     }
@@ -494,7 +819,7 @@ const ProfilePage: React.FC = () => {
                 <Button
                   variant="outline"
                   className="mt-6"
-                  onClick={() => setShowEditProfile(true)}
+                  onClick={() => handleEditProfileModalToggle(true)}
                 >
                   Edit Profile
                 </Button>
@@ -1041,7 +1366,7 @@ const ProfilePage: React.FC = () => {
           </Modal>
 
           {/* Edit Profile Modal */}
-          <Modal isOpen={showEditProfile} onClose={() => setShowEditProfile(false)} title="Edit Profile">
+          <Modal isOpen={showEditProfile} onClose={() => handleEditProfileModalToggle(false)} title="Edit Profile">
             <div className="space-y-6">
               {profileSuccess && (
                 <div className="mb-6 p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
@@ -1065,177 +1390,23 @@ const ProfilePage: React.FC = () => {
                 </div>
               )}
 
-              <form onSubmit={handleEditProfile} className="space-y-4">
-                {/* Profile Image */}
-                <ImageUpload
-                  onImageUpload={(url) => setEditProfileForm(prev => ({ ...prev, avatar_url: url }))}
-                  currentImage={editProfileForm.avatar_url}
-                  uploadType="avatar"
-                  label="Profile Image"
-                  previewSize="md"
-                />
-
-                {/* Full Name */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Full Name
-                  </label>
-                  <input
-                    type="text"
-                    value={editProfileForm.full_name}
-                    onChange={(e) => setEditProfileForm(prev => ({ ...prev, full_name: e.target.value }))}
-                    className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500"
-                    placeholder="Enter your full name"
-                    required
-                  />
-                </div>
-
-                {/* Industry */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Industry
-                  </label>
-                  <select
-                    value={editProfileForm.industry}
-                    onChange={(e) => setEditProfileForm(prev => ({ ...prev, industry: e.target.value }))}
-                    className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500"
-                  >
-                    <option value="">Select your industry</option>
-                    <option value="Agriculture & Agribusiness">Agriculture & Agribusiness</option>
-                    <option value="Technology & Digital Innovation">Technology & Digital Innovation</option>
-                    <option value="Financial Services & Fintech">Financial Services & Fintech</option>
-                    <option value="Healthcare & Pharmaceuticals">Healthcare & Pharmaceuticals</option>
-                    <option value="Manufacturing & Industrial">Manufacturing & Industrial</option>
-                    <option value="Energy & Renewable Resources">Energy & Renewable Resources</option>
-                    <option value="Tourism & Hospitality">Tourism & Hospitality</option>
-                    <option value="Education & Training">Education & Training</option>
-                    <option value="Real Estate & Construction">Real Estate & Construction</option>
-                    <option value="Transportation & Logistics">Transportation & Logistics</option>
-                    <option value="Retail & E-commerce">Retail & E-commerce</option>
-                    <option value="Media & Entertainment">Media & Entertainment</option>
-                    <option value="Telecommunications">Telecommunications</option>
-                    <option value="Mining & Natural Resources">Mining & Natural Resources</option>
-                    <option value="Textiles & Fashion">Textiles & Fashion</option>
-                    <option value="Food & Beverage">Food & Beverage</option>
-                    <option value="Consulting & Professional Services">Consulting & Professional Services</option>
-                    <option value="Non-profit & Social Enterprise">Non-profit & Social Enterprise</option>
-                    <option value="Other">Other</option>
-                  </select>
-                </div>
-
-                {/* Experience Level */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Experience Level
-                  </label>
-                  <select
-                    value={editProfileForm.experience_level}
-                    onChange={(e) => setEditProfileForm(prev => ({ ...prev, experience_level: e.target.value }))}
-                    className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500"
-                  >
-                    <option value="">Select your experience level</option>
-                    <option value="Entry Level (0-2 years)">Entry Level (0-2 years)</option>
-                    <option value="Mid-Level (3-7 years)">Mid-Level (3-7 years)</option>
-                    <option value="Senior (8+ years)">Senior (8+ years)</option>
-                  </select>
-                </div>
-
-                {/* Business Stage */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Business Stage
-                  </label>
-                  <select
-                    value={editProfileForm.business_stage}
-                    onChange={(e) => setEditProfileForm(prev => ({ ...prev, business_stage: e.target.value }))}
-                    className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500"
-                  >
-                    <option value="">Select your business stage</option>
-                    <option value="Idea Stage">Idea Stage</option>
-                    <option value="Startup">Startup</option>
-                    <option value="Growth Stage">Growth Stage</option>
-                    <option value="Established Business">Established Business</option>
-                  </select>
-                </div>
-
-                {/* Geographic Location */}
-                <div className="space-y-3">
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Geographic Location
-                  </label>
-
-                  {/* Country */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-400 mb-1">
-                      Country
-                    </label>
-                    <select
-                      value={editProfileForm.country}
-                      onChange={(e) => setEditProfileForm(prev => ({ ...prev, country: e.target.value }))}
-                      className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500"
-                    >
-                      <option value="">Select your country</option>
-                      <option value="Nigeria">Nigeria</option>
-                      <option value="Kenya">Kenya</option>
-                      <option value="South Africa">South Africa</option>
-                      <option value="Ghana">Ghana</option>
-                      <option value="Ethiopia">Ethiopia</option>
-                      <option value="Tanzania">Tanzania</option>
-                      <option value="Uganda">Uganda</option>
-                      <option value="Morocco">Morocco</option>
-                      <option value="Algeria">Algeria</option>
-                      <option value="Egypt">Egypt</option>
-                      <option value="Other">Other</option>
-                    </select>
-                  </div>
-
-                  {/* State/Province */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-400 mb-1">
-                      State/Province
-                    </label>
-                    <input
-                      type="text"
-                      value={editProfileForm.state_province}
-                      onChange={(e) => setEditProfileForm(prev => ({ ...prev, state_province: e.target.value }))}
-                      className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500"
-                      placeholder="Enter your state or province"
-                    />
-                  </div>
-
-                  {/* City */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-400 mb-1">
-                      City
-                    </label>
-                    <input
-                      type="text"
-                      value={editProfileForm.city}
-                      onChange={(e) => setEditProfileForm(prev => ({ ...prev, city: e.target.value }))}
-                      className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500"
-                      placeholder="Enter your city"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex justify-end space-x-3 pt-4 border-t border-gray-700">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setShowEditProfile(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    variant="primary"
-                    disabled={profileLoading}
-                    className="flex items-center"
-                  >
-                    {profileLoading ? 'Updating...' : 'Update Profile'}
-                  </Button>
-                </div>
-              </form>
+              <EditProfileForm
+                initialData={{
+                  full_name: user?.full_name || '',
+                  avatar_url: user?.avatar_url || '',
+                  industry: user?.industry || '',
+                  experience_level: user?.experience_level || '',
+                  business_stage: user?.business_stage || '',
+                  country: user?.country || '',
+                  state_province: user?.state_province || '',
+                  city: user?.city || ''
+                }}
+                onSubmit={handleEditProfile}
+                onCancel={() => handleEditProfileModalToggle(false)}
+                loading={profileLoading}
+                errors={profileErrors}
+                success={profileSuccess}
+              />
             </div>
           </Modal>
 
