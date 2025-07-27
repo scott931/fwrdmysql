@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from '../lib/router';
 import { Search as SearchIcon, X } from 'lucide-react';
-import { getAllCourses, getAllCategories, getAllInstructors } from '../data/mockData';
+import { courseAPI, categoryAPI, instructorAPI } from '../lib/api';
 import CourseCard from '../components/ui/CourseCard';
 import InstructorCard from '../components/ui/InstructorCard';
 import Layout from '../components/layout/Layout';
+import { Course, Category, Instructor } from '../types';
 
 /**
  * SearchPage Component
@@ -32,53 +33,51 @@ const SearchPage: React.FC = () => {
 
   const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [activeFilter, setActiveFilter] = useState<string>('all');
-  const [allCourses, setAllCourses] = useState(getAllCourses());
-  const [allCategories, setAllCategories] = useState(getAllCategories());
-  const [allInstructors, setAllInstructors] = useState(getAllInstructors());
+  const [allCourses, setAllCourses] = useState<Course[]>([]);
+  const [allCategories, setAllCategories] = useState<Category[]>([]);
+  const [allInstructors, setAllInstructors] = useState<Instructor[]>([]);
   const [searchResults, setSearchResults] = useState({
-    courses: allCourses,
-    instructors: allInstructors,
+    courses: [] as Course[],
+    instructors: [] as Instructor[],
   });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Listen for storage changes to update courses, categories, and instructors
+  // Load data from API
   useEffect(() => {
-    const handleStorageChange = () => {
-      console.log('Storage changed, updating courses, categories, and instructors...');
-      const updatedCourses = getAllCourses();
-      const updatedCategories = getAllCategories();
-      const updatedInstructors = getAllInstructors();
-      setAllCourses(updatedCourses);
-      setAllCategories(updatedCategories);
-      setAllInstructors(updatedInstructors);
+    const loadData = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const [coursesData, categoriesData, instructorsData] = await Promise.all([
+          courseAPI.getAllCourses(),
+          categoryAPI.getAllCategories(),
+          instructorAPI.getAllInstructors()
+        ]);
 
-      // Re-run search with updated data
-      if (searchQuery) {
-        performSearch(searchQuery, updatedCourses, updatedInstructors);
-      } else {
+        setAllCourses(coursesData);
+        setAllCategories(categoriesData);
+        setAllInstructors(instructorsData);
         setSearchResults({
-          courses: updatedCourses,
-          instructors: updatedInstructors,
+          courses: coursesData,
+          instructors: instructorsData,
         });
+      } catch (error) {
+        console.error('Failed to load data:', error);
+        setError('Failed to load search data. Please try again.');
+      } finally {
+        setLoading(false);
       }
     };
 
-    // Listen for storage events
-    window.addEventListener('storage', handleStorageChange);
-
-    // Also listen for custom events we dispatch
-    window.addEventListener('coursesUpdated', handleStorageChange);
-
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('coursesUpdated', handleStorageChange);
-    };
-  }, [searchQuery]);
+    loadData();
+  }, []);
 
   useEffect(() => {
     if (initialQuery) {
       performSearch(initialQuery);
     }
-  }, [initialQuery]);
+  }, [initialQuery, allCourses, allInstructors]);
 
   const performSearch = (query: string, coursesToSearch = allCourses, instructorsToSearch = allInstructors) => {
     if (!query.trim()) {
@@ -132,6 +131,40 @@ const SearchPage: React.FC = () => {
     const category = allCategories.find(c => c.id === categoryId);
     return category ? category.name : categoryId;
   };
+
+  // Show loading state
+  if (loading) {
+    return (
+      <Layout>
+        <div className="min-h-screen bg-gray-900 py-8">
+          <div className="flex items-center justify-center py-20">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div>
+            <span className="ml-4 text-white text-lg">Loading search data...</span>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <Layout>
+        <div className="min-h-screen bg-gray-900 py-8">
+          <div className="text-center py-20">
+            <h3 className="text-white text-2xl font-medium mb-4">Error Loading Data</h3>
+            <p className="text-gray-400 max-w-md mx-auto mb-8">{error}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="bg-red-600 text-white px-6 py-3 rounded-md hover:bg-red-700 transition-colors"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>

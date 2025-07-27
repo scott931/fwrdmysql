@@ -22,7 +22,11 @@ const DatabaseTest: React.FC = () => {
   useEffect(() => {
     fetchAllCourses();
     fetchFeaturedCourses();
-    fetchPlatformStats();
+    // Only fetch platform stats if user is authenticated
+    const token = localStorage.getItem('forward_africa_token');
+    if (token) {
+      fetchPlatformStats();
+    }
   }, [fetchAllCourses, fetchFeaturedCourses, fetchPlatformStats]);
 
   // Only show in development

@@ -1,8 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Navigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { UserRole, ROLE_HIERARCHY } from '../../types';
-import ErrorMessage from '../ui/ErrorMessage';
 import { AlertTriangle } from 'lucide-react';
 import Button from '../ui/Button';
 
@@ -57,7 +56,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
               </div>
               <h2 className="text-2xl font-bold text-white mb-2">Access Denied</h2>
               <p className="text-gray-400">
-                You don't have sufficient permissions to access this page.
+                You don&apos;t have sufficient permissions to access this page.
                 Required role: {requiredRole}
               </p>
             </div>

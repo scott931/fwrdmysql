@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Users, MessageCircle, Bell, Search, Settings, BookOpen, Calendar, Folder, Star, Plus, MoreHorizontal, Phone, Video, Send, Mic } from 'lucide-react';
 import Link from 'next/link';
 import Layout from '../components/layout/Layout';
+import Image from 'next/image';
 
 interface NetworkGroup {
   id: string;
@@ -310,9 +311,11 @@ const CommunityPage: React.FC = () => {
                   onClick={() => setSelectedGroup(group)}
                 >
                   <div className="flex items-start space-x-3">
-                    <img
+                    <Image
                       src={group.image}
                       alt={group.name}
+                      width={48}
+                      height={48}
                       className="w-12 h-12 rounded-lg object-cover"
                     />
                     <div className="flex-1 min-w-0">
@@ -353,9 +356,11 @@ const CommunityPage: React.FC = () => {
               {/* Group Header */}
               <div className="p-4 border-b border-gray-700">
                 <div className="flex items-center space-x-3">
-                  <img
+                  <Image
                     src={selectedGroup.image}
                     alt={selectedGroup.name}
+                    width={40}
+                    height={40}
                     className="w-10 h-10 rounded-lg object-cover"
                   />
                   <div className="flex-1">
@@ -386,9 +391,11 @@ const CommunityPage: React.FC = () => {
                 </div>
                 {sampleMessages.map((message) => (
                   <div key={message.id} className="flex space-x-3">
-                    <img
+                    <Image
                       src={message.avatar}
                       alt={message.sender}
+                      width={32}
+                      height={32}
                       className="w-8 h-8 rounded-full object-cover"
                     />
                     <div className="flex-1">

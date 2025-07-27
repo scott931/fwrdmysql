@@ -3,8 +3,9 @@ import { useRouter } from 'next/router';
 import { Play, Clock, ChevronLeft, ChevronRight, BookOpen, CheckCircle } from 'lucide-react';
 import Button from '../components/ui/Button';
 import VideoPlayer from '../components/ui/VideoPlayer';
-import { getCourseById } from '../data/mockData';
+import { courseAPI } from '../lib/api';
 import { Course, Lesson } from '../types';
+import Image from 'next/image';
 
 const LessonPage: React.FC = () => {
   const router = useRouter();
@@ -14,6 +15,8 @@ const LessonPage: React.FC = () => {
   const [currentLessonIndex, setCurrentLessonIndex] = useState<number>(0);
   const [progress, setProgress] = useState<number>(0);
   const [showNotes, setShowNotes] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Scroll to top on component mount
   useEffect(() => {
@@ -21,50 +24,63 @@ const LessonPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (courseId && typeof courseId === 'string') {
-      const foundCourse = getCourseById(courseId);
-      if (foundCourse) {
-        setCourse(foundCourse);
+    const loadCourseData = async () => {
+      if (courseId && typeof courseId === 'string') {
+        setLoading(true);
+        setError(null);
+        try {
+          const foundCourse = await courseAPI.getCourse(courseId);
+          if (foundCourse) {
+            setCourse(foundCourse);
 
-        // Find the current lesson
-        let targetLessonId = lessonId as string;
-        if (!targetLessonId && foundCourse.lessons.length > 0) {
-          // If no lessonId provided, use the first lesson or last watched
-          const storedProgress = localStorage.getItem('userProgress');
-          if (storedProgress) {
-            const progressData = JSON.parse(storedProgress);
-            if (progressData[courseId]) {
-              targetLessonId = progressData[courseId].lessonId;
+            // Find the current lesson
+            let targetLessonId = lessonId as string;
+            if (!targetLessonId && foundCourse.lessons.length > 0) {
+              // If no lessonId provided, use the first lesson or last watched
+              const storedProgress = localStorage.getItem('userProgress');
+              if (storedProgress) {
+                const progressData = JSON.parse(storedProgress);
+                if (progressData[courseId]) {
+                  targetLessonId = progressData[courseId].lessonId;
+                } else {
+                  targetLessonId = foundCourse.lessons[0].id;
+                }
+              } else {
+                targetLessonId = foundCourse.lessons[0].id;
+              }
+            }
+
+            const lessonIndex = foundCourse.lessons.findIndex((l: Lesson) => l.id === targetLessonId);
+            if (lessonIndex !== -1) {
+              setCurrentLesson(foundCourse.lessons[lessonIndex]);
+              setCurrentLessonIndex(lessonIndex);
+
+              // Calculate progress
+              const progressValue = ((lessonIndex + 1) / foundCourse.lessons.length) * 100;
+              setProgress(progressValue);
+
+              // Update URL if needed
+              if (lessonId !== targetLessonId) {
+                router.replace(`/course/${courseId}/lesson/${targetLessonId}`, undefined, { shallow: true });
+              }
             } else {
-              targetLessonId = foundCourse.lessons[0].id;
+              // Lesson not found, redirect to course page
+              router.push(`/course/${courseId}`);
             }
           } else {
-            targetLessonId = foundCourse.lessons[0].id;
+            // Course not found, redirect to courses page
+            router.push('/courses');
           }
+        } catch (error) {
+          console.error('Failed to load course data:', error);
+          setError('Failed to load course data. Please try again.');
+        } finally {
+          setLoading(false);
         }
-
-        const lessonIndex = foundCourse.lessons.findIndex((l: Lesson) => l.id === targetLessonId);
-        if (lessonIndex !== -1) {
-          setCurrentLesson(foundCourse.lessons[lessonIndex]);
-          setCurrentLessonIndex(lessonIndex);
-
-          // Calculate progress
-          const progressValue = ((lessonIndex + 1) / foundCourse.lessons.length) * 100;
-          setProgress(progressValue);
-
-          // Update URL if needed
-          if (lessonId !== targetLessonId) {
-            router.replace(`/course/${courseId}/lesson/${targetLessonId}`, undefined, { shallow: true });
-          }
-        } else {
-          // Lesson not found, redirect to course page
-          router.push(`/course/${courseId}`);
-        }
-      } else {
-        // Course not found, redirect to courses page
-        router.push('/courses');
       }
-    }
+    };
+
+    loadCourseData();
   }, [courseId, lessonId, router]);
 
   const updateProgress = (lessonId: string) => {
@@ -109,10 +125,47 @@ const LessonPage: React.FC = () => {
     router.push(`/course/${courseId}`);
   };
 
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto mb-4"></div>
+          <p className="text-white text-lg">Loading lesson...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="text-center">
+          <h3 className="text-white text-2xl font-medium mb-4">Error Loading Lesson</h3>
+          <p className="text-gray-400 mb-8">{error}</p>
+          <button
+            onClick={() => router.push('/courses')}
+            className="bg-red-600 text-white px-6 py-3 rounded-md hover:bg-red-700 transition-colors"
+          >
+            Return to Courses
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (!course || !currentLesson) {
     return (
       <div className="flex justify-center items-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-red-600"></div>
+        <div className="text-center">
+          <h3 className="text-white text-2xl font-medium mb-4">Lesson Not Found</h3>
+          <p className="text-gray-400 mb-8">The requested lesson could not be found.</p>
+          <button
+            onClick={() => router.push('/courses')}
+            className="bg-red-600 text-white px-6 py-3 rounded-md hover:bg-red-700 transition-colors"
+          >
+            Return to Courses
+          </button>
+        </div>
       </div>
     );
   }
@@ -255,11 +308,33 @@ const LessonPage: React.FC = () => {
             <div className="bg-gray-800 rounded-lg p-6 sticky top-8">
               {/* Instructor Info */}
               <div className="flex items-center mb-6">
-                <img
-                  src={instructorInfo.image}
-                  alt={instructorInfo.name}
-                  className="w-12 h-12 rounded-full object-cover mr-4"
-                />
+                {instructorInfo.image.startsWith('http') ? (
+                  <img
+                    src={instructorInfo.image}
+                    alt={instructorInfo.name}
+                    className="w-12 h-12 rounded-full object-cover mr-4"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      if (target.src !== '/placeholder-avatar.jpg') {
+                        target.src = '/placeholder-avatar.jpg';
+                      }
+                    }}
+                  />
+                ) : (
+                  <Image
+                    src={instructorInfo.image}
+                    alt={instructorInfo.name}
+                    width={48}
+                    height={48}
+                    className="w-12 h-12 rounded-full object-cover mr-4"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      if (target.src !== '/placeholder-avatar.jpg') {
+                        target.src = '/placeholder-avatar.jpg';
+                      }
+                    }}
+                  />
+                )}
                 <div>
                   <h3 className="text-white font-medium">{instructorInfo.name}</h3>
                   <p className="text-gray-400 text-sm">{instructorInfo.title}</p>

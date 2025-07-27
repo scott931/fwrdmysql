@@ -2,6 +2,7 @@ import React, { useRef } from 'react';
 import { ChevronLeft, ChevronRight, Play } from 'lucide-react';
 import { CourseProgress } from '../../types';
 import Link from 'next/link';
+import Image from 'next/image';
 
 interface ContinueLearningRowProps {
   /** Array of courses with progress information */
@@ -67,11 +68,33 @@ const ContinueLearningRow: React.FC<ContinueLearningRowProps> = ({ courses }) =>
                 {/* Poster Container */}
                 <div className="aspect-[2/3] relative rounded-lg overflow-hidden shadow-xl">
                   {/* Thumbnail */}
-                  <img
-                    src={course.thumbnail}
-                    alt={course.title}
-                    className="w-full h-full object-cover"
-                  />
+                  {course.thumbnail.startsWith('http') ? (
+                    <img
+                      src={course.thumbnail}
+                      alt={course.title}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        if (target.src !== '/placeholder-course.jpg') {
+                          target.src = '/placeholder-course.jpg';
+                        }
+                      }}
+                    />
+                  ) : (
+                    <Image
+                      src={course.thumbnail}
+                      alt={course.title}
+                      width={300}
+                      height={450}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        if (target.src !== '/placeholder-course.jpg') {
+                          target.src = '/placeholder-course.jpg';
+                        }
+                      }}
+                    />
+                  )}
 
                   {/* Gradient Overlays */}
                   <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent opacity-100"></div>

@@ -257,7 +257,7 @@ export const analyticsAPI = {
 // Audit Logs API
 export const auditLogsAPI = {
   // Get all audit logs with optional filtering
-  getAuditLogs: (filters?: {
+  getAuditLogs: async (filters?: {
     action?: string;
     resource_type?: string;
     user_id?: string;
@@ -269,24 +269,81 @@ export const auditLogsAPI = {
     if (filters) {
       Object.entries(filters).forEach(([key, value]) => {
         if (value !== undefined) {
-          params.append(key, value.toString());
+          // Map frontend parameter names to backend parameter names
+          if (key === 'user_id') {
+            params.append('userId', value.toString());
+          } else if (key === 'limit') {
+            params.append('limit', value.toString());
+          } else {
+            params.append(key, value.toString());
+          }
         }
       });
     }
-    return apiRequest(`/audit-logs?${params.toString()}`);
+
+    try {
+      const token = localStorage.getItem('forward_africa_token');
+      const response = await fetch(`${API_BASE_URL}/audit-logs?${params.toString()}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('📋 Audit logs API response:', data);
+
+      // Handle the secureRoutes response format which includes logs and pagination
+      if (data.logs && Array.isArray(data.logs)) {
+        return data.logs;
+      }
+
+      // Handle direct array response (fallback)
+      if (Array.isArray(data)) {
+        return data;
+      }
+
+      // Handle other response formats
+      return data.logs || data.data || [];
+    } catch (error) {
+      console.error('📋 Audit logs API error:', error);
+      throw error;
+    }
   },
 
   // Create audit log
-  createAuditLog: (auditData: {
+  createAuditLog: async (auditData: {
     action: string;
     resource_type: string;
     resource_id?: string;
     details?: any;
-  }) =>
-    apiRequest('/audit-logs', {
-      method: 'POST',
-      body: JSON.stringify(auditData),
-    }),
+  }) => {
+    try {
+      const token = localStorage.getItem('forward_africa_token');
+      const response = await fetch(`${API_BASE_URL}/audit-logs`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(auditData),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('📋 Create audit log API error:', error);
+      throw error;
+    }
+  },
 };
 
 // Export all APIs

@@ -7,6 +7,7 @@ import { useUserProgress, useCertificates } from '../hooks/useDatabase';
 import ImageUpload from '../components/ui/ImageUpload';
 import ProfileCompletionPrompt from '../components/ui/ProfileCompletionPrompt';
 import Layout from '../components/layout/Layout';
+import Image from 'next/image';
 
 const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
@@ -187,11 +188,25 @@ const ProfilePage: React.FC = () => {
     }
 
     try {
-      // In a real app, this would make an API call to change the password
+      // Make API call to change password
       console.log('Changing password...');
 
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002/api'}/auth/change-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('forward_africa_token')}`
+        },
+        body: JSON.stringify({
+          currentPassword: passwordForm.currentPassword,
+          newPassword: passwordForm.newPassword
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to change password');
+      }
 
       setPasswordSuccess(true);
       setPasswordForm({
@@ -206,7 +221,8 @@ const ProfilePage: React.FC = () => {
       }, 2000);
 
     } catch (error) {
-      setPasswordErrors(['Failed to change password. Please try again.']);
+      console.error('Password change error:', error);
+      setPasswordErrors([error instanceof Error ? error.message : 'Failed to change password. Please try again.']);
     }
   };
 
@@ -221,16 +237,27 @@ const ProfilePage: React.FC = () => {
     }
 
     try {
-      // In a real app, this would make an API call to delete the account
+      // Make API call to delete account
       console.log('Deleting account...');
 
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002/api'}/users/${user?.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('forward_africa_token')}`
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete account');
+      }
 
       await signOut();
       navigate('/');
     } catch (error) {
       console.error('Failed to delete account:', error);
+      alert('Failed to delete account. Please try again.');
     }
   };
 
@@ -418,11 +445,33 @@ const ProfilePage: React.FC = () => {
               <div className="bg-gray-800 rounded-lg p-6">
                 <h2 className="text-xl font-semibold text-white mb-6">Profile Information</h2>
                 <div className="flex items-center space-x-6 mb-6">
-                  <img
-                    src={userData.avatar}
-                    alt={userData.name}
-                    className="w-20 h-20 rounded-full object-cover"
-                  />
+                  {userData.avatar.startsWith('http') ? (
+                    <img
+                      src={userData.avatar}
+                      alt={userData.name}
+                      className="w-20 h-20 rounded-full object-cover"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        if (target.src !== '/placeholder-avatar.jpg') {
+                          target.src = '/placeholder-avatar.jpg';
+                        }
+                      }}
+                    />
+                  ) : (
+                    <Image
+                      src={userData.avatar}
+                      alt={userData.name}
+                      width={80}
+                      height={80}
+                      className="w-20 h-20 rounded-full object-cover"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        if (target.src !== '/placeholder-avatar.jpg') {
+                          target.src = '/placeholder-avatar.jpg';
+                        }
+                      }}
+                    />
+                  )}
                   <div>
                     <h3 className="text-xl font-semibold text-white">{userData.name}</h3>
                     <p className="text-gray-400">{userData.email}</p>

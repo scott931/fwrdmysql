@@ -1,57 +1,46 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from '../lib/router';
-import { ChevronRight, ChevronLeft, GraduationCap, Briefcase, BookOpen, Star, Check, ArrowRight } from 'lucide-react';
-import Button from '../components/ui/Button';
+import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
-import { updateUserProfile } from '../lib/supabase';
-import { useProfileCompletion } from '../hooks/useProfileCompletion';
+import { Check, GraduationCap, Briefcase, MapPin, Globe, Users, BookOpen, Target, TrendingUp, Award, Zap, ChevronLeft, ArrowRight, Star } from 'lucide-react';
 
 const OnboardingPage: React.FC = () => {
-  const navigate = useNavigate();
+  const router = useRouter();
   const { user, updateProfile } = useAuth();
-  const { resetPromptCount } = useProfileCompletion();
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState({
     education_level: '',
     job_title: '',
-    topics_of_interest: [] as string[]
+    topics_of_interest: [] as string[],
+    industry: '',
+    experience_level: '',
+    business_stage: '',
+    country: '',
+    state_province: '',
+    city: ''
   });
+  const [particleStyles, setParticleStyles] = useState<Array<{
+    left: string;
+    top: string;
+    animationDelay: string;
+    animationDuration: string;
+  }>>([]);
 
-  // Scroll to top on component mount
+  // Generate particle styles only on client side to prevent hydration issues
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'instant' });
+    const styles = [...Array(20)].map(() => ({
+      left: `${Math.random() * 100}%`,
+      top: `${Math.random() * 100}%`,
+      animationDelay: `${Math.random() * 3}s`,
+      animationDuration: `${2 + Math.random() * 2}s`
+    }));
+    setParticleStyles(styles);
   }, []);
-
-  const educationLevels = [
-    { id: 'high-school', label: 'High School', description: 'Secondary education completed' },
-    { id: 'associate', label: 'Associate Degree', description: '2-year college degree' },
-    { id: 'bachelor', label: "Bachelor's Degree", description: '4-year university degree' },
-    { id: 'master', label: "Master's Degree", description: 'Graduate level education' },
-    { id: 'phd', label: 'PhD/Doctorate', description: 'Highest academic degree' },
-    { id: 'professional', label: 'Professional Certification', description: 'Industry certifications' },
-    { id: 'other', label: 'Other', description: 'Alternative education path' }
-  ];
-
-  const topicsOfInterest = [
-    { id: 'business-strategy', label: 'Business Strategy', icon: '📊', color: 'from-blue-500 to-blue-600' },
-    { id: 'entrepreneurship', label: 'Entrepreneurship', icon: '🚀', color: 'from-purple-500 to-purple-600' },
-    { id: 'finance', label: 'Finance & Investment', icon: '💰', color: 'from-green-500 to-green-600' },
-    { id: 'marketing', label: 'Marketing & Sales', icon: '📈', color: 'from-pink-500 to-pink-600' },
-    { id: 'leadership', label: 'Leadership & Management', icon: '👥', color: 'from-indigo-500 to-indigo-600' },
-    { id: 'technology', label: 'Technology & Innovation', icon: '💻', color: 'from-cyan-500 to-cyan-600' },
-    { id: 'operations', label: 'Operations & Supply Chain', icon: '⚙️', color: 'from-orange-500 to-orange-600' },
-    { id: 'hr', label: 'Human Resources', icon: '🤝', color: 'from-teal-500 to-teal-600' },
-    { id: 'legal', label: 'Legal & Compliance', icon: '⚖️', color: 'from-gray-500 to-gray-600' },
-    { id: 'personal-dev', label: 'Personal Development', icon: '🌟', color: 'from-yellow-500 to-yellow-600' },
-    { id: 'industry', label: 'Industry-Specific Knowledge', icon: '🏭', color: 'from-red-500 to-red-600' },
-    { id: 'digital', label: 'Digital Transformation', icon: '🔄', color: 'from-violet-500 to-violet-600' }
-  ];
 
   const handleTopicToggle = (topicId: string) => {
     setFormData(prev => ({
       ...prev,
       topics_of_interest: prev.topics_of_interest.includes(topicId)
-        ? prev.topics_of_interest.filter(t => t !== topicId)
+        ? prev.topics_of_interest.filter(id => id !== topicId)
         : [...prev.topics_of_interest, topicId]
     }));
   };
@@ -69,54 +58,25 @@ const OnboardingPage: React.FC = () => {
   };
 
   const handleComplete = async () => {
-    if (!user) return;
-
     try {
-      await updateUserProfile(user.id, {
-        ...formData,
-        onboarding_completed: true,
-        full_name: user.full_name || user.email?.split('@')[0] || '',
-        avatar_url: user.avatar_url || '',
-        email: user.email
-      });
-
-      // Refresh the user profile by calling updateProfile
       await updateProfile({
         ...formData,
-        onboarding_completed: true,
-        full_name: user.full_name || user.email?.split('@')[0] || '',
-        avatar_url: user.avatar_url || '',
-        email: user.email
+        onboarding_completed: true
       });
-
-      // Reset prompt count since user completed onboarding
-      resetPromptCount();
-
-      navigate('/home');
+      router.push('/home');
     } catch (error) {
-      console.error('Error completing onboarding:', error);
+      console.error('Failed to complete onboarding:', error);
     }
   };
 
   const handleSkip = async () => {
-    if (!user) return;
-
     try {
-      // Save whatever data we have so far (progressive profiling)
-      const partialData = {
-        ...formData,
-        onboarding_completed: false, // Mark as incomplete for later prompting
-        full_name: user.full_name || user.email?.split('@')[0] || '',
-        avatar_url: user.avatar_url || '',
-        email: user.email
-      };
-
-      await updateUserProfile(user.id, partialData);
-      await updateProfile(partialData);
-
-      navigate('/home');
+      await updateProfile({
+        onboarding_completed: true
+      });
+      router.push('/home');
     } catch (error) {
-      console.error('Error skipping onboarding:', error);
+      console.error('Failed to skip onboarding:', error);
     }
   };
 
@@ -125,9 +85,9 @@ const OnboardingPage: React.FC = () => {
       case 1:
         return formData.education_level !== '';
       case 2:
-        return formData.job_title.trim() !== '';
+        return formData.job_title !== '' && formData.topics_of_interest.length > 0;
       case 3:
-        return formData.topics_of_interest.length > 0;
+        return formData.industry !== '' && formData.experience_level !== '';
       default:
         return false;
     }
@@ -137,51 +97,119 @@ const OnboardingPage: React.FC = () => {
     switch (step) {
       case 1: return GraduationCap;
       case 2: return Briefcase;
-      case 3: return BookOpen;
+      case 3: return Target;
       default: return GraduationCap;
     }
   };
 
   const getStepTitle = (step: number) => {
     switch (step) {
-      case 1: return "What's your education background?";
-      case 2: return "What's your current role?";
-      case 3: return "What interests you most?";
-      default: return "";
+      case 1: return 'Tell us about your education';
+      case 2: return 'What do you do?';
+      case 3: return 'What are your goals?';
+      default: return '';
     }
   };
 
   const getStepSubtitle = (step: number) => {
     switch (step) {
-      case 1: return "Help us understand your learning foundation";
-      case 2: return "We'll personalize your experience based on your role";
-      case 3: return "Choose topics that align with your goals";
-      default: return "";
+      case 1: return 'Help us personalize your learning experience';
+      case 2: return 'We\'ll recommend relevant courses and content';
+      case 3: return 'Let\'s tailor your learning journey';
+      default: return '';
     }
   };
 
-  return (
-    <div className="min-h-screen bg-black relative overflow-hidden">
-      {/* Background Elements */}
-      <div className="absolute inset-0">
-        {/* Gradient Background */}
-        <div className="absolute inset-0 bg-gradient-to-br from-red-900/20 via-black to-purple-900/20"></div>
+  // Education levels
+  const educationLevels = [
+    { id: 'high_school', label: 'High School', description: 'Currently in or completed high school' },
+    { id: 'bachelor', label: 'Bachelor\'s Degree', description: 'Currently pursuing or completed bachelor\'s degree' },
+    { id: 'master', label: 'Master\'s Degree', description: 'Currently pursuing or completed master\'s degree' },
+    { id: 'phd', label: 'PhD/Doctorate', description: 'Currently pursuing or completed doctoral degree' },
+    { id: 'other', label: 'Other', description: 'Other educational background' }
+  ];
 
-        {/* Animated Particles */}
-        <div className="absolute inset-0">
-          {[...Array(20)].map((_, i) => (
-            <div
-              key={i}
-              className="absolute w-1 h-1 bg-red-500/30 rounded-full animate-pulse"
-              style={{
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`,
-                animationDelay: `${Math.random() * 3}s`,
-                animationDuration: `${2 + Math.random() * 2}s`
-              }}
-            />
-          ))}
-        </div>
+  // Job titles
+  const jobTitles = [
+    { id: 'student', label: 'Student', description: 'Currently studying' },
+    { id: 'entry_level', label: 'Entry Level', description: 'Just starting my career' },
+    { id: 'mid_level', label: 'Mid Level', description: 'Some experience in my field' },
+    { id: 'senior', label: 'Senior Level', description: 'Experienced professional' },
+    { id: 'manager', label: 'Manager', description: 'Managing teams or projects' },
+    { id: 'executive', label: 'Executive', description: 'C-level or senior leadership' },
+    { id: 'entrepreneur', label: 'Entrepreneur', description: 'Running my own business' },
+    { id: 'freelancer', label: 'Freelancer', description: 'Working independently' }
+  ];
+
+  // Topics of interest
+  const topicsOfInterest = [
+    { id: 'business', label: 'Business & Entrepreneurship', icon: Briefcase },
+    { id: 'technology', label: 'Technology & Innovation', icon: Zap },
+    { id: 'leadership', label: 'Leadership & Management', icon: Users },
+    { id: 'marketing', label: 'Marketing & Sales', icon: TrendingUp },
+    { id: 'finance', label: 'Finance & Investment', icon: Award },
+    { id: 'education', label: 'Education & Training', icon: BookOpen },
+    { id: 'healthcare', label: 'Healthcare & Wellness', icon: Target },
+    { id: 'sustainability', label: 'Sustainability & Environment', icon: Globe }
+  ];
+
+  // Industries
+  const industries = [
+    { id: 'technology', label: 'Technology' },
+    { id: 'healthcare', label: 'Healthcare' },
+    { id: 'finance', label: 'Finance' },
+    { id: 'education', label: 'Education' },
+    { id: 'retail', label: 'Retail' },
+    { id: 'manufacturing', label: 'Manufacturing' },
+    { id: 'consulting', label: 'Consulting' },
+    { id: 'non_profit', label: 'Non-Profit' },
+    { id: 'government', label: 'Government' },
+    { id: 'other', label: 'Other' }
+  ];
+
+  // Experience levels
+  const experienceLevels = [
+    { id: 'beginner', label: 'Beginner (0-2 years)' },
+    { id: 'intermediate', label: 'Intermediate (3-5 years)' },
+    { id: 'advanced', label: 'Advanced (6-10 years)' },
+    { id: 'expert', label: 'Expert (10+ years)' }
+  ];
+
+  // Business stages
+  const businessStages = [
+    { id: 'idea', label: 'Just an idea' },
+    { id: 'startup', label: 'Early startup' },
+    { id: 'growing', label: 'Growing business' },
+    { id: 'established', label: 'Established business' },
+    { id: 'scaling', label: 'Scaling up' }
+  ];
+
+  // Countries
+  const countries = [
+    { id: 'nigeria', label: 'Nigeria' },
+    { id: 'ghana', label: 'Ghana' },
+    { id: 'kenya', label: 'Kenya' },
+    { id: 'south_africa', label: 'South Africa' },
+    { id: 'ethiopia', label: 'Ethiopia' },
+    { id: 'tanzania', label: 'Tanzania' },
+    { id: 'uganda', label: 'Uganda' },
+    { id: 'other', label: 'Other' }
+  ];
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-gray-800 text-white relative overflow-hidden">
+      {/* Background Pattern */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(239,68,68,0.1),transparent_50%)]" />
+
+      {/* Animated Particles */}
+      <div className="absolute inset-0">
+        {particleStyles.map((style, i) => (
+          <div
+            key={i}
+            className="absolute w-1 h-1 bg-red-500/30 rounded-full animate-pulse"
+            style={style}
+          />
+        ))}
       </div>
 
       {/* Onboarding Header */}
@@ -282,94 +310,200 @@ const OnboardingPage: React.FC = () => {
             )}
 
             {currentStep === 2 && (
-              <div className="max-w-2xl mx-auto">
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={formData.job_title}
-                    onChange={(e) => setFormData(prev => ({ ...prev, job_title: e.target.value }))}
-                    placeholder="e.g., Marketing Manager, Entrepreneur, Student, CEO"
-                    className="w-full px-6 py-6 bg-gray-800/50 border-2 border-gray-700 rounded-xl text-white text-lg placeholder-gray-400 focus:outline-none focus:border-red-500 focus:bg-gray-800 transition-all duration-300"
-                  />
-                  <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-red-500/20 to-purple-500/20 opacity-0 transition-opacity duration-300 pointer-events-none focus-within:opacity-100" />
+              <div className="space-y-8">
+                {/* Job Title Selection */}
+                <div>
+                  <h3 className="text-lg font-semibold text-white mb-4">What's your current role?</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {jobTitles.map((job) => (
+                      <button
+                        key={job.id}
+                        onClick={() => setFormData(prev => ({ ...prev, job_title: job.id }))}
+                        className={`p-4 rounded-xl border-2 transition-all duration-300 text-left group hover:scale-[1.02] ${
+                          formData.job_title === job.id
+                            ? 'border-red-500 bg-red-500/10 shadow-lg shadow-red-500/20'
+                            : 'border-gray-700 bg-gray-800/50 hover:border-gray-600 hover:bg-gray-800'
+                        }`}
+                      >
+                        <h4 className={`font-semibold mb-1 transition-colors ${
+                          formData.job_title === job.id ? 'text-white' : 'text-gray-200 group-hover:text-white'
+                        }`}>
+                          {job.label}
+                        </h4>
+                        <p className="text-gray-400 text-sm">{job.description}</p>
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
-                <div className="mt-8 grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {[
-                    'CEO', 'Entrepreneur', 'Manager', 'Director', 'Consultant', 'Student',
-                    'Analyst', 'Coordinator', 'Specialist', 'Executive', 'Founder', 'Other'
-                  ].map((suggestion) => (
-                    <button
-                      key={suggestion}
-                      onClick={() => setFormData(prev => ({ ...prev, job_title: suggestion }))}
-                      className="px-4 py-2 bg-gray-800/50 border border-gray-700 rounded-lg text-gray-300 hover:text-white hover:border-gray-600 hover:bg-gray-800 transition-all duration-200 text-sm"
-                    >
-                      {suggestion}
-                    </button>
-                  ))}
+                {/* Topics of Interest */}
+                <div>
+                  <h3 className="text-lg font-semibold text-white mb-4">What interests you most?</h3>
+                  <p className="text-gray-400 text-sm mb-6">Select all that apply</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {topicsOfInterest.map((topic) => {
+                      const isSelected = formData.topics_of_interest.includes(topic.id);
+                      const Icon = topic.icon;
+
+                      return (
+                        <button
+                          key={topic.id}
+                          onClick={() => handleTopicToggle(topic.id)}
+                          className={`p-6 rounded-xl border-2 transition-all duration-300 text-left group hover:scale-[1.02] ${
+                            isSelected
+                              ? 'border-red-500 bg-gradient-to-br from-red-500/20 to-red-600/20 shadow-lg shadow-red-500/20'
+                              : 'border-gray-700 bg-gray-800/50 hover:border-gray-600 hover:bg-gray-800'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-3">
+                            <Icon className="h-6 w-6 text-red-500" />
+                            <div className={`w-5 h-5 rounded-full border-2 transition-all ${
+                              isSelected
+                                ? 'border-red-500 bg-red-500'
+                                : 'border-gray-600 group-hover:border-gray-500'
+                            }`}>
+                              {isSelected && (
+                                <Check className="h-3 w-3 text-white m-0.5" />
+                              )}
+                            </div>
+                          </div>
+                          <h3 className={`font-semibold transition-colors ${
+                            isSelected ? 'text-white' : 'text-gray-200 group-hover:text-white'
+                          }`}>
+                            {topic.label}
+                          </h3>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {formData.topics_of_interest.length > 0 && (
+                    <div className="text-center">
+                      <p className="text-gray-400 text-sm">
+                        {formData.topics_of_interest.length} topic{formData.topics_of_interest.length !== 1 ? 's' : ''} selected
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
 
             {currentStep === 3 && (
-              <div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-                  {topicsOfInterest.map((topic) => {
-                    const isSelected = formData.topics_of_interest.includes(topic.id);
-
-                    return (
+              <div className="space-y-8">
+                {/* Industry Selection */}
+                <div>
+                  <h3 className="text-lg font-semibold text-white mb-4">What industry are you in?</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {industries.map((industry) => (
                       <button
-                        key={topic.id}
-                        onClick={() => handleTopicToggle(topic.id)}
-                        className={`p-6 rounded-xl border-2 transition-all duration-300 text-left group hover:scale-[1.02] ${
-                          isSelected
-                            ? 'border-red-500 bg-gradient-to-br from-red-500/20 to-red-600/20 shadow-lg shadow-red-500/20'
+                        key={industry.id}
+                        onClick={() => setFormData(prev => ({ ...prev, industry: industry.id }))}
+                        className={`p-4 rounded-xl border-2 transition-all duration-300 text-left group hover:scale-[1.02] ${
+                          formData.industry === industry.id
+                            ? 'border-red-500 bg-red-500/10 shadow-lg shadow-red-500/20'
                             : 'border-gray-700 bg-gray-800/50 hover:border-gray-600 hover:bg-gray-800'
                         }`}
                       >
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="text-2xl">{topic.icon}</div>
-                          <div className={`w-5 h-5 rounded-full border-2 transition-all ${
-                            isSelected
-                              ? 'border-red-500 bg-red-500'
-                              : 'border-gray-600 group-hover:border-gray-500'
-                          }`}>
-                            {isSelected && (
-                              <Check className="h-3 w-3 text-white m-0.5" />
-                            )}
-                          </div>
-                        </div>
-                        <h3 className={`font-semibold transition-colors ${
-                          isSelected ? 'text-white' : 'text-gray-200 group-hover:text-white'
+                        <h4 className={`font-semibold transition-colors ${
+                          formData.industry === industry.id ? 'text-white' : 'text-gray-200 group-hover:text-white'
                         }`}>
-                          {topic.label}
-                        </h3>
+                          {industry.label}
+                        </h4>
                       </button>
-                    );
-                  })}
+                    ))}
+                  </div>
                 </div>
 
-                {formData.topics_of_interest.length > 0 && (
-                  <div className="text-center">
-                    <p className="text-gray-400 text-sm">
-                      {formData.topics_of_interest.length} topic{formData.topics_of_interest.length !== 1 ? 's' : ''} selected
-                    </p>
+                {/* Experience Level */}
+                <div>
+                  <h3 className="text-lg font-semibold text-white mb-4">What's your experience level?</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {experienceLevels.map((level) => (
+                      <button
+                        key={level.id}
+                        onClick={() => setFormData(prev => ({ ...prev, experience_level: level.id }))}
+                        className={`p-4 rounded-xl border-2 transition-all duration-300 text-left group hover:scale-[1.02] ${
+                          formData.experience_level === level.id
+                            ? 'border-red-500 bg-red-500/10 shadow-lg shadow-red-500/20'
+                            : 'border-gray-700 bg-gray-800/50 hover:border-gray-600 hover:bg-gray-800'
+                        }`}
+                      >
+                        <h4 className={`font-semibold transition-colors ${
+                          formData.experience_level === level.id ? 'text-white' : 'text-gray-200 group-hover:text-white'
+                        }`}>
+                          {level.label}
+                        </h4>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Business Stage (if applicable) */}
+                {formData.job_title === 'entrepreneur' && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-white mb-4">What stage is your business in?</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {businessStages.map((stage) => (
+                        <button
+                          key={stage.id}
+                          onClick={() => setFormData(prev => ({ ...prev, business_stage: stage.id }))}
+                          className={`p-4 rounded-xl border-2 transition-all duration-300 text-left group hover:scale-[1.02] ${
+                            formData.business_stage === stage.id
+                              ? 'border-red-500 bg-red-500/10 shadow-lg shadow-red-500/20'
+                              : 'border-gray-700 bg-gray-800/50 hover:border-gray-600 hover:bg-gray-800'
+                          }`}
+                        >
+                          <h4 className={`font-semibold transition-colors ${
+                            formData.business_stage === stage.id ? 'text-white' : 'text-gray-200 group-hover:text-white'
+                          }`}>
+                            {stage.label}
+                          </h4>
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
+
+                {/* Location */}
+                <div>
+                  <h3 className="text-lg font-semibold text-white mb-4">Where are you located?</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {countries.map((country) => (
+                      <button
+                        key={country.id}
+                        onClick={() => setFormData(prev => ({ ...prev, country: country.id }))}
+                        className={`p-4 rounded-xl border-2 transition-all duration-300 text-left group hover:scale-[1.02] ${
+                          formData.country === country.id
+                            ? 'border-red-500 bg-red-500/10 shadow-lg shadow-red-500/20'
+                            : 'border-gray-700 bg-gray-800/50 hover:border-gray-600 hover:bg-gray-800'
+                        }`}
+                      >
+                        <h4 className={`font-semibold transition-colors ${
+                          formData.country === country.id ? 'text-white' : 'text-gray-200 group-hover:text-white'
+                        }`}>
+                          {country.label}
+                        </h4>
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
             )}
 
             {/* Navigation */}
             <div className="flex justify-between items-center mt-12">
-              <Button
-                variant="ghost"
+              <button
                 onClick={handleBack}
                 disabled={currentStep === 1}
-                className={`flex items-center ${currentStep === 1 ? 'invisible' : ''}`}
+                className={`flex items-center px-4 py-2 rounded-lg transition-all ${
+                  currentStep === 1
+                    ? 'invisible'
+                    : 'text-gray-400 hover:text-white border border-gray-600 hover:border-gray-500'
+                }`}
               >
                 <ChevronLeft className="h-4 w-4 mr-2" />
                 Back
-              </Button>
+              </button>
 
               <div className="flex-1 flex justify-center">
                 <div className="flex space-x-2">
@@ -390,34 +524,39 @@ const OnboardingPage: React.FC = () => {
 
               <div className="flex items-center space-x-3">
                 {/* Skip button - always visible */}
-                <Button
-                  variant="ghost"
+                <button
                   onClick={handleSkip}
-                  className="flex items-center text-gray-400 hover:text-white border border-gray-600 hover:border-gray-500"
+                  className="flex items-center px-4 py-2 rounded-lg text-gray-400 hover:text-white border border-gray-600 hover:border-gray-500 transition-all"
                 >
                   Skip for now
-                </Button>
+                </button>
 
                 {currentStep < 3 ? (
-                  <Button
-                    variant="primary"
+                  <button
                     onClick={handleNext}
                     disabled={!canProceed()}
-                    className="flex items-center bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 shadow-lg shadow-red-500/25"
+                    className={`flex items-center px-6 py-2 rounded-lg transition-all ${
+                      canProceed()
+                        ? 'bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 shadow-lg shadow-red-500/25'
+                        : 'bg-gray-600 cursor-not-allowed'
+                    }`}
                   >
                     Continue
                     <ArrowRight className="h-4 w-4 ml-2" />
-                  </Button>
+                  </button>
                 ) : (
-                  <Button
-                    variant="primary"
+                  <button
                     onClick={handleComplete}
                     disabled={!canProceed()}
-                    className="flex items-center bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 shadow-lg shadow-green-500/25"
+                    className={`flex items-center px-6 py-2 rounded-lg transition-all ${
+                      canProceed()
+                        ? 'bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 shadow-lg shadow-green-500/25'
+                        : 'bg-gray-600 cursor-not-allowed'
+                    }`}
                   >
                     Complete Setup
                     <Star className="h-4 w-4 ml-2" />
-                  </Button>
+                  </button>
                 )}
               </div>
             </div>

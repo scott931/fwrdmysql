@@ -137,60 +137,34 @@ class PersonalizationEngine {
   private calculateProfileBasedFactors(user: User, course: Course): PersonalizationFactor[] {
     const factors: PersonalizationFactor[] = [];
 
-    // Interest match
-    if (user.topics_of_interest && user.topics_of_interest.length > 0) {
-      const interestMatch = this.calculateInterestMatch(user.topics_of_interest, course);
+    // Interest match - using role as a proxy for interests
+    if (user.role) {
+      const interestMatch = this.calculateInterestMatch([user.role], course);
       factors.push({
-        name: 'Interest Match',
+        name: 'Role Match',
         weight: this.WEIGHTS.INTEREST_MATCH,
         score: interestMatch,
-        description: `Matches ${Math.round(interestMatch * 100)}% of your interests`
+        description: `Matches your ${user.role} role`
       });
     }
 
-    // Education level compatibility
-    if (user.education_level) {
-      const educationScore = this.calculateEducationCompatibility(user.education_level, course);
-      factors.push({
-        name: 'Education Level',
-        weight: this.WEIGHTS.EDUCATION_LEVEL,
-        score: educationScore,
-        description: `Appropriate for your ${user.education_level} background`
-      });
-    }
+    // Basic profile completion score
+    const profileCompletion = this.calculateProfileCompletion(user);
+    factors.push({
+      name: 'Profile Completion',
+      weight: this.WEIGHTS.EDUCATION_LEVEL,
+      score: profileCompletion,
+      description: `Based on your profile completeness`
+    });
 
-    // Experience level compatibility
-    if (user.experience_level) {
-      const experienceScore = this.calculateExperienceCompatibility(user.experience_level, course);
-      factors.push({
-        name: 'Experience Level',
-        weight: this.WEIGHTS.EXPERIENCE_LEVEL,
-        score: experienceScore,
-        description: `Matches your ${user.experience_level} experience`
-      });
-    }
-
-    // Industry relevance
-    if (user.industry) {
-      const industryScore = this.calculateIndustryRelevance(user.industry, course);
-      factors.push({
-        name: 'Industry Relevance',
-        weight: this.WEIGHTS.INDUSTRY_MATCH,
-        score: industryScore,
-        description: `Relevant to your ${user.industry} industry`
-      });
-    }
-
-    // Geographic relevance
-    if (user.country || user.city) {
-      const geoScore = this.calculateGeographicRelevance(user, course);
-      factors.push({
-        name: 'Geographic Relevance',
-        weight: this.WEIGHTS.GEOGRAPHIC_RELEVANCE,
-        score: geoScore,
-        description: 'Relevant to your location'
-      });
-    }
+    // User activity score
+    const activityScore = this.calculateUserActivity(user);
+    factors.push({
+      name: 'User Activity',
+      weight: this.WEIGHTS.EXPERIENCE_LEVEL,
+      score: activityScore,
+      description: `Based on your account activity`
+    });
 
     return factors;
   }
@@ -368,13 +342,28 @@ class PersonalizationEngine {
 
   private calculateGeographicRelevance(user: User, course: Course): number {
     // Simplified geographic relevance - in a real system, you'd have location-specific content
-    if (user.country && course.description.toLowerCase().includes(user.country.toLowerCase())) {
-      return 0.8;
-    }
-    if (user.city && course.description.toLowerCase().includes(user.city.toLowerCase())) {
-      return 0.9;
-    }
-    return 0.3; // Default relevance
+    // For now, return a default relevance score
+    return 0.5; // Default relevance
+  }
+
+  private calculateProfileCompletion(user: User): number {
+    // Calculate profile completion based on available user data
+    let completion = 0;
+    if (user.full_name) completion += 0.2;
+    if (user.email) completion += 0.2;
+    if (user.role) completion += 0.2;
+    if (user.permissions && user.permissions.length > 0) completion += 0.2;
+    if (user.onboarding_completed) completion += 0.2;
+    return completion;
+  }
+
+  private calculateUserActivity(user: User): number {
+    // Calculate user activity score based on account age and activity
+    const accountAge = Date.now() - new Date(user.created_at).getTime();
+    const daysSinceCreation = accountAge / (1000 * 60 * 60 * 24);
+
+    // Higher score for older accounts (more established)
+    return Math.min(daysSinceCreation / 365, 1.0);
   }
 
   private analyzeCompletionPattern(userProgress: UserProgress[], course: Course): number {
@@ -472,7 +461,7 @@ class PersonalizationEngine {
 
   private calculateConfidence(factors: PersonalizationFactor[], user: User): number {
     // Higher confidence when we have more user data
-    const hasProfileData = user.topics_of_interest && user.topics_of_interest.length > 0;
+    const hasProfileData = user.role && user.permissions && user.permissions.length > 0;
     const hasBehaviorData = factors.some(f => f.name.includes('Pattern') || f.name.includes('Behavior'));
 
     let confidence = 0.5; // Base confidence

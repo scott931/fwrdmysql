@@ -1,16 +1,10 @@
 import React from 'react';
 import Header from './Header';
-import { NavLink, Outlet } from 'react-router-dom';
-import { LayoutDashboard, Users, FileUp, UserPlus, Settings } from 'lucide-react';
+import { Outlet } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 
 const AdminLayout: React.FC = () => {
   const { signOut } = useAuth();
-
-  const handleSignOut = async () => {
-    await signOut();
-    // The user will be redirected automatically by the auth state listener
-  };
 
   return (
     <>

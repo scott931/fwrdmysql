@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { TrendingUp, Users, Star, Clock, BookOpen, Target, Zap, Brain, BarChart3, Eye, Heart } from 'lucide-react';
+import { TrendingUp, Users, Star, BookOpen, Target, Zap, Brain, BarChart3, Eye } from 'lucide-react';
 import { Course, UserProgress, User } from '../../types';
 import CourseCard from './CourseCard';
 import { personalizationEngine, PersonalizationScore } from '../../lib/personalizationEngine';
@@ -26,12 +26,12 @@ interface UserSimilarity {
   commonCourses: string[];
 }
 
-const RecommendationEngine: React.FC<RecommendationEngineProps> = ({
+const RecommendationEngine = ({
   courses,
   userProgress,
   currentUser,
   onCourseSelect
-}) => {
+}: RecommendationEngineProps) => {
   const [recommendations, setRecommendations] = useState<PersonalizationScore[]>([]);
   const [activeTab, setActiveTab] = useState<'personalized' | 'trending' | 'popular' | 'similar' | 'advanced'>('personalized');
   const [isLoading, setIsLoading] = useState(false);
@@ -221,7 +221,7 @@ const RecommendationEngine: React.FC<RecommendationEngineProps> = ({
       });
     });
 
-    return Object.entries(recommendations)
+    const collaborativeResults = Object.entries(recommendations)
       .map(([courseId, data]) => {
         const course = courses.find(c => c.id === courseId);
         if (!course) return null;
@@ -233,7 +233,9 @@ const RecommendationEngine: React.FC<RecommendationEngineProps> = ({
           type: 'collaborative' as const
         };
       })
-      .filter(Boolean) as RecommendationScore[]
+      .filter(Boolean) as RecommendationScore[];
+
+    return collaborativeResults
       .sort((a, b) => b.score - a.score)
       .slice(0, 10);
   };
@@ -241,7 +243,6 @@ const RecommendationEngine: React.FC<RecommendationEngineProps> = ({
   // Trending courses based on recent activity
   const getTrendingRecommendations = (): RecommendationScore[] => {
     const now = Date.now();
-    const oneWeekAgo = now - (7 * 24 * 60 * 60 * 1000);
 
     // Mock trending data (in real app, this would be based on recent enrollments/views)
     const trendingScores = courses.map(course => {
@@ -286,41 +287,20 @@ const RecommendationEngine: React.FC<RecommendationEngineProps> = ({
 
   // Generate recommendations based on active tab
   useEffect(() => {
-    setIsLoading(true);
-
     const generateRecommendations = async () => {
+      setIsLoading(true);
+
       let newRecommendations: PersonalizationScore[] = [];
 
       switch (activeTab) {
         case 'personalized':
-          if (completionPercentage >= 50) {
-            // Use advanced personalization for users with good profile completion
-            newRecommendations = await generateAdvancedRecommendations();
-          } else {
-            // Fall back to basic content-based recommendations
-            const contentBased = getContentBasedRecommendations();
-            newRecommendations = contentBased.map(rec => ({
-              course: rec.course,
-              score: rec.score,
-              confidence: 0.6,
-              factors: [{
-                name: 'Basic Recommendation',
-                weight: 1.0,
-                score: rec.score,
-                description: rec.reason
-              }],
-              type: 'profile_based' as const
-            }));
-          }
+          newRecommendations = await generateAdvancedRecommendations();
           break;
-
         case 'advanced':
           newRecommendations = await generateAdvancedRecommendations();
           break;
-
         case 'trending':
-          const trending = getTrendingRecommendations();
-          newRecommendations = trending.map(rec => ({
+          newRecommendations = getTrendingRecommendations().map(rec => ({
             course: rec.course,
             score: rec.score,
             confidence: 0.7,
@@ -333,10 +313,8 @@ const RecommendationEngine: React.FC<RecommendationEngineProps> = ({
             type: 'contextual' as const
           }));
           break;
-
         case 'popular':
-          const popular = getPopularRecommendations();
-          newRecommendations = popular.map(rec => ({
+          newRecommendations = getPopularRecommendations().map(rec => ({
             course: rec.course,
             score: rec.score,
             confidence: 0.8,
@@ -349,10 +327,8 @@ const RecommendationEngine: React.FC<RecommendationEngineProps> = ({
             type: 'collaborative' as const
           }));
           break;
-
         case 'similar':
-          const collaborative = getCollaborativeRecommendations();
-          newRecommendations = collaborative.map(rec => ({
+          newRecommendations = getCollaborativeRecommendations().map(rec => ({
             course: rec.course,
             score: rec.score,
             confidence: 0.6,
@@ -365,6 +341,19 @@ const RecommendationEngine: React.FC<RecommendationEngineProps> = ({
             type: 'collaborative' as const
           }));
           break;
+        default:
+          newRecommendations = getContentBasedRecommendations().map(rec => ({
+            course: rec.course,
+            score: rec.score,
+            confidence: 0.6,
+            factors: [{
+              name: 'Content Based',
+              weight: 1.0,
+              score: rec.score,
+              description: rec.reason
+            }],
+            type: 'profile_based' as const
+          }));
       }
 
       setRecommendations(newRecommendations);
@@ -372,7 +361,20 @@ const RecommendationEngine: React.FC<RecommendationEngineProps> = ({
     };
 
     generateRecommendations();
-  }, [activeTab, courses, userProgress, currentUser, behavior, context, completionPercentage]);
+  }, [
+    activeTab,
+    courses,
+    userProgress,
+    currentUser,
+    behavior,
+    context,
+    completionPercentage,
+    generateAdvancedRecommendations,
+    getTrendingRecommendations,
+    getPopularRecommendations,
+    getCollaborativeRecommendations,
+    getContentBasedRecommendations
+  ]);
 
   const getTabIcon = (tab: string) => {
     switch (tab) {
@@ -397,11 +399,6 @@ const RecommendationEngine: React.FC<RecommendationEngineProps> = ({
       case 'similar': return 'Liked by users similar to you';
       default: return '';
     }
-  };
-
-  const handleCourseClick = (course: Course) => {
-    trackCourseView(course.id);
-    onCourseSelect(course);
   };
 
   const getRecommendationTypeColor = (type: PersonalizationScore['type']) => {

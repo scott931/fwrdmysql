@@ -20,6 +20,34 @@ export interface User {
 // Role Definitions
 export type UserRole = 'super_admin' | 'content_manager' | 'community_manager' | 'user_support' | 'user';
 
+// Workflow Types
+export type WorkflowStatus = 'draft' | 'review' | 'approved' | 'published' | 'archived';
+
+export interface Workflow {
+  id: string;
+  content_id: string;
+  content_type: 'course' | 'lesson' | 'video';
+  status: WorkflowStatus;
+  current_reviewer_id: string;
+  review_notes: string;
+  review_deadline: string;
+  published_at: string;
+  archived_at: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WorkflowHistory {
+  id: string;
+  workflow_id: string;
+  from_status?: WorkflowStatus;
+  to_status: WorkflowStatus;
+  changed_by: string;
+  changed_by_name?: string;
+  notes?: string;
+  created_at: string;
+}
+
 // Permission Types
 export type Permission =
   // System Management

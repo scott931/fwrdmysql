@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/router';
 import { Search, Menu, X, Bell, User, ChevronDown, LogOut, Settings } from 'lucide-react';
 import NotificationsDropdown from '../ui/NotificationsDropdown';
@@ -56,7 +57,7 @@ const Header: React.FC = () => {
           {/* Logo */}
           <Link href="/home" className="flex items-center flex-shrink-0">
             <div className="flex items-center">
-              <img src="/images/logo/logo2.png" alt="Forward Africa Logo" className="h-8 w-auto mr-3" />
+              <Image src="/images/logo/logo2.png" alt="Forward Africa Logo" width={32} height={32} className="mr-3" />
               <span className="text-red-600 font-bold text-xl lg:text-2xl tracking-tight">FORWARD</span>
               <span className="text-white font-bold text-xl lg:text-2xl tracking-tight">AFRICA</span>
             </div>
@@ -156,10 +157,12 @@ const Header: React.FC = () => {
                     aria-haspopup="true"
                   >
                     {profile?.avatar_url ? (
-                      <img
+                      <Image
                         src={profile.avatar_url}
                         alt={profile.full_name || 'User'}
-                        className="h-6 w-6 rounded-full object-cover border border-gray-600"
+                        width={24}
+                        height={24}
+                        className="rounded-full object-cover border border-gray-600"
                       />
                     ) : (
                       <User className="h-5 w-5" />

@@ -1435,7 +1435,7 @@ const AdminPage: React.FC = () => {
                             <div className="w-full bg-gray-600 rounded-full h-2">
                               <div
                                 className="bg-green-500 h-2 rounded-full"
-                                style={{ width: `${Math.random() * 40 + 60}%` }}
+                                style={{ width: `${(course.revenue || 0) > 0 ? Math.min(100, Math.max(60, (course.revenue / 10000) * 100)) : 60}%` }}
                               ></div>
                             </div>
                           </td>

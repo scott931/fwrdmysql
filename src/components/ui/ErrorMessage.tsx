@@ -1,6 +1,5 @@
 ﻿import React from 'react';
 import { AlertTriangle, X, CheckCircle, Info } from 'lucide-react';
-import Button from './Button';
 
 interface ErrorMessageProps {
   title?: string;

@@ -19,28 +19,27 @@ export const dbConfig: DatabaseConfig = {
 };
 
 // API Base URL for backend communication
-export const API_BASE_URL = 'http://localhost:3002/api'; // Your backend server URL
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002/api';
 
 // Database connection string (for reference)
 export const getConnectionString = () => {
   return `mysql://${dbConfig.user}:${dbConfig.password}@${dbConfig.host}:${dbConfig.port}/${dbConfig.database}`;
 };
 
-// Environment variables (create a .env file in your project root)
-// REACT_APP_DB_HOST=localhost
-// REACT_APP_DB_PORT=3306
-// REACT_APP_DB_USER=root
-// REACT_APP_DB_PASSWORD=your_password
-// REACT_APP_DB_NAME=forward_africa_db
-// REACT_APP_API_URL=http://localhost:3001/api
+// Environment variables (create a .env.local file in your project root)
+// NEXT_PUBLIC_API_URL=http://localhost:3002/api
+// NEXT_PUBLIC_APP_URL=http://localhost:3000
+// NEXT_PUBLIC_DB_HOST=localhost
+// NEXT_PUBLIC_DB_PORT=3306
+// NEXT_PUBLIC_DB_NAME=forward_africa_db
 
 export const getEnvConfig = () => {
   return {
-    host: process.env.REACT_APP_DB_HOST || 'localhost',
-    port: parseInt(process.env.REACT_APP_DB_PORT || '3306'),
-    user: process.env.REACT_APP_DB_USER || 'root',
-    password: process.env.REACT_APP_DB_PASSWORD || '',
-    database: process.env.REACT_APP_DB_NAME || 'forward_africa_db',
-    apiUrl: process.env.REACT_APP_API_URL || 'http://localhost:3001/api'
+    host: process.env.NEXT_PUBLIC_DB_HOST || 'localhost',
+    port: parseInt(process.env.NEXT_PUBLIC_DB_PORT || '3306'),
+    user: 'root', // Database user should not be exposed to frontend
+    password: '', // Database password should not be exposed to frontend
+    database: process.env.NEXT_PUBLIC_DB_NAME || 'forward_africa_db',
+    apiUrl: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002/api'
   };
 };

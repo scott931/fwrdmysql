@@ -5,7 +5,6 @@ const { v4: uuidv4 } = require('uuid');
 const mysql = require('mysql2/promise');
 const { executeQuery } = require('../lib/database');
 const sharp = require('sharp');
-const MediaInfo = require('mediainfo');
 
 // Configure ffmpeg path (you may need to install ffmpeg on your system)
 // ffmpeg.setFfmpegPath('/usr/bin/ffmpeg');

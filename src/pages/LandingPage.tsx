@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/router';
 import { ChevronRight, Brain, Users, TrendingUp, Globe } from 'lucide-react';
 import Button from '../components/ui/Button';
+import Image from 'next/image';
 
 import { useAuth } from '../contexts/AuthContext';
 

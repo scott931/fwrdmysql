@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { User, Shield, Edit, Trash2, Plus, Save, X, Check, AlertTriangle } from 'lucide-react';
+import { User, Shield, Edit, Trash2, Plus, X, Check, AlertTriangle } from 'lucide-react';
 import Button from '../ui/Button';
-import { UserRole, Permission, ROLE_PERMISSIONS, ROLE_HIERARCHY } from '../../types';
-import { hasPermission, canManageRole, getManageableRoles, getPermissionDisplayName, getPermissionCategory, groupPermissionsByCategory, getRoleDisplayName, getRoleDescription } from '../../utils/permissions';
+import { UserRole, Permission, ROLE_PERMISSIONS } from '../../types';
+import { hasPermission, canManageRole, getManageableRoles, getPermissionDisplayName, groupPermissionsByCategory, getRoleDisplayName, getRoleDescription } from '../../utils/permissions';
+import { userAPI } from '../../lib/api';
 
 interface User {
   id: string;
@@ -26,48 +27,25 @@ const RoleManagement: React.FC<RoleManagementProps> = ({ currentUserRole, curren
   const [showPermissionModal, setShowPermissionModal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
-  // Mock data - replace with API calls
+  // Load users from API
   useEffect(() => {
-    const mockUsers: User[] = [
-      {
-        id: '1',
-        email: 'admin@forwardafrica.com',
-        full_name: 'System Administrator',
-        role: 'super_admin',
-        permissions: ROLE_PERMISSIONS.super_admin,
-        is_active: true,
-        created_at: '2024-01-01'
-      },
-      {
-        id: '2',
-        email: 'content@forwardafrica.com',
-        full_name: 'Content Manager',
-        role: 'content_manager',
-        permissions: ROLE_PERMISSIONS.content_manager,
-        is_active: true,
-        created_at: '2024-01-15'
-      },
-      {
-        id: '3',
-        email: 'community@forwardafrica.com',
-        full_name: 'Community Manager',
-        role: 'community_manager',
-        permissions: ROLE_PERMISSIONS.community_manager,
-        is_active: true,
-        created_at: '2024-02-01'
-      },
-      {
-        id: '4',
-        email: 'support@forwardafrica.com',
-        full_name: 'User Support',
-        role: 'user_support',
-        permissions: ROLE_PERMISSIONS.user_support,
-        is_active: true,
-        created_at: '2024-02-15'
+    const loadUsers = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const usersData = await userAPI.getUsers();
+        setUsers(usersData);
+      } catch (error) {
+        console.error('Failed to load users:', error);
+        setError('Failed to load users. Please try again.');
+      } finally {
+        setLoading(false);
       }
-    ];
-    setUsers(mockUsers);
+    };
+
+    loadUsers();
   }, []);
 
   const manageableRoles = getManageableRoles(currentUserRole);
@@ -89,10 +67,15 @@ const RoleManagement: React.FC<RoleManagementProps> = ({ currentUserRole, curren
     }
 
     setLoading(true);
+    setError(null);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Update user role via API
+      await userAPI.updateUser(userId, {
+        role: newRole,
+        permissions: ROLE_PERMISSIONS[newRole]
+      });
 
+      // Update local state
       setUsers(prev => prev.map(user =>
         user.id === userId
           ? { ...user, role: newRole, permissions: ROLE_PERMISSIONS[newRole] }
@@ -103,6 +86,7 @@ const RoleManagement: React.FC<RoleManagementProps> = ({ currentUserRole, curren
       setSelectedUser(null);
     } catch (error) {
       console.error('Failed to update user role:', error);
+      setError('Failed to update user role. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -116,15 +100,18 @@ const RoleManagement: React.FC<RoleManagementProps> = ({ currentUserRole, curren
     }
 
     setLoading(true);
+    setError(null);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Update user status via API
+      await userAPI.updateUser(userId, { is_active: isActive });
 
+      // Update local state
       setUsers(prev => prev.map(user =>
         user.id === userId ? { ...user, is_active: isActive } : user
       ));
     } catch (error) {
       console.error('Failed to update user status:', error);
+      setError('Failed to update user status. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -141,13 +128,16 @@ const RoleManagement: React.FC<RoleManagementProps> = ({ currentUserRole, curren
     }
 
     setLoading(true);
+    setError(null);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Delete user via API
+      await userAPI.deleteUser(userId);
 
+      // Update local state
       setUsers(prev => prev.filter(user => user.id !== userId));
     } catch (error) {
       console.error('Failed to delete user:', error);
+      setError('Failed to delete user. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -171,6 +161,28 @@ const RoleManagement: React.FC<RoleManagementProps> = ({ currentUserRole, curren
           Add User
         </Button>
       </div>
+
+      {/* Error Display */}
+      {error && (
+        <div className="bg-red-900/20 border border-red-500 rounded-lg p-4 flex items-center space-x-2">
+          <AlertTriangle className="h-5 w-5 text-red-400" />
+          <span className="text-red-400">{error}</span>
+          <button
+            onClick={() => setError(null)}
+            className="ml-auto text-red-400 hover:text-red-300"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
+      {/* Loading State */}
+      {loading && (
+        <div className="flex items-center justify-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500"></div>
+          <span className="ml-2 text-gray-400">Loading...</span>
+        </div>
+      )}
 
       {/* Search */}
       <div className="relative">
