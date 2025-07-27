@@ -6,6 +6,7 @@ import { usePermissions } from '../contexts/PermissionContext';
 import PermissionGuard from '../components/ui/PermissionGuard';
 import { Permission } from '../types';
 import ErrorMessage from '../components/ui/ErrorMessage';
+import Layout from '../components/layout/Layout';
 
 interface SecuritySettings {
   passwordPolicy: {
@@ -241,7 +242,7 @@ const SecuritySettingsPage: React.FC = () => {
   const currentUserRole = userRole;
 
   return (
-    <div className="max-w-screen-xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
+    <Layout>
       {/* Permission Error Message */}
       {permissionError && (
         <div className="mb-6">
@@ -681,7 +682,7 @@ const SecuritySettingsPage: React.FC = () => {
           </div>
         </PermissionGuard>
       )}
-    </div>
+    </Layout>
   );
 };
 

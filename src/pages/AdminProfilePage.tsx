@@ -4,6 +4,7 @@ import Button from '../components/ui/Button';
 import { useNavigate } from '../lib/router';
 import { useAuth } from '../contexts/AuthContext';
 import { usePermissions } from '../contexts/PermissionContext';
+import Layout from '../components/layout/Layout';
 
 const AdminProfilePage: React.FC = () => {
   const navigate = useNavigate();
@@ -216,7 +217,7 @@ const AdminProfilePage: React.FC = () => {
   };
 
   return (
-    <div className="max-w-screen-xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
+    <Layout>
       {/* Header */}
       <div className="flex items-center mb-8">
         <Button
@@ -646,7 +647,7 @@ const AdminProfilePage: React.FC = () => {
           </div>
         </div>
       )}
-    </div>
+    </Layout>
   );
 };
 

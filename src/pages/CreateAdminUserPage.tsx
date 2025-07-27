@@ -4,6 +4,7 @@ import Button from '../components/ui/Button';
 import { useNavigate } from '../lib/router';
 import ErrorMessage from '../components/ui/ErrorMessage';
 import { useAuth } from '../contexts/AuthContext';
+import Layout from '../components/layout/Layout';
 
 interface AdminUser {
   id: string;
@@ -231,245 +232,247 @@ const CreateAdminUserPage: React.FC = () => {
   };
 
   return (
-    <div className="max-w-screen-xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-2xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center mb-8">
-          <Button
-            variant="ghost"
-            onClick={() => navigate('/admin/manage-users')}
-            className="mr-4"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div>
-            <h1 className="text-3xl font-bold text-white">Create Admin User</h1>
-            <p className="text-gray-400 mt-2">Add a new administrator to the platform</p>
-          </div>
-        </div>
-
-        {/* Success Message */}
-        {success && (
-          <div className="mb-6 p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
-            <div className="flex items-center">
-              <CheckCircle className="h-5 w-5 text-green-500 mr-3" />
-              <div>
-                <h3 className="text-green-500 font-medium">Admin User Created Successfully!</h3>
-                <p className="text-green-400 text-sm">Redirecting to user management...</p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Error Messages */}
-        {errors.length > 0 && (
-          <div className="mb-6">
-            <ErrorMessage
-              title="Please fix the following errors:"
-              message={errors.join(', ')}
-              onClose={() => setErrors([])}
-            />
-          </div>
-        )}
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Name Field */}
-          <div>
-            <label htmlFor="name" className="block text-sm font-medium text-gray-300 mb-2">
-              Full Name
-            </label>
-            <input
-              type="text"
-              id="name"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500"
-              placeholder="Enter full name"
-              required
-            />
-          </div>
-
-          {/* Email Field */}
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
-              Email Address
-            </label>
-            <input
-              type="email"
-              id="email"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500"
-              placeholder="Enter email address"
-              required
-            />
-          </div>
-
-          {/* Role Selection */}
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-3">
-              Admin Role
-            </label>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {[
-                { value: 'content_manager', label: 'Content Manager' },
-                { value: 'community_manager', label: 'Community Manager' },
-                { value: 'user_support', label: 'User Support' },
-                ...(currentUserRole === 'super_admin' ? [{ value: 'super_admin', label: 'Super Admin' }] : [])
-              ].map((role) => (
-                <label
-                  key={role.value}
-                  className={`relative flex items-center p-4 border rounded-lg cursor-pointer transition-colors ${
-                    formData.role === role.value
-                      ? 'border-red-500 bg-red-500/10'
-                      : 'border-gray-600 bg-gray-700 hover:border-gray-500'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="role"
-                    value={role.value}
-                    checked={formData.role === role.value}
-                    onChange={(e) => setFormData({ ...formData, role: e.target.value as any })}
-                    className="sr-only"
-                  />
-                  <div className="flex items-center">
-                    <div className="mr-3">
-                      {getRoleIcon(role.value)}
-                    </div>
-                    <div>
-                      <div className="text-white font-medium">{role.label}</div>
-                      <div className="text-gray-400 text-sm">{getRoleDescription(role.value)}</div>
-                    </div>
-                  </div>
-                  {formData.role === role.value && (
-                    <CheckCircle className="absolute top-3 right-3 h-5 w-5 text-red-500" />
-                  )}
-                </label>
-              ))}
-            </div>
-          </div>
-
-          {/* Password Field */}
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-2">
-              Password
-            </label>
-            <div className="relative">
-              <input
-                type={showPasswords.password ? 'text' : 'password'}
-                id="password"
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                className="w-full px-4 py-3 pr-12 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500"
-                placeholder="Enter password"
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowPasswords({ ...showPasswords, password: !showPasswords.password })}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
-              >
-                {showPasswords.password ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-              </button>
-            </div>
-
-            {/* Password Strength Indicator */}
-            {formData.password && (
-              <div className="mt-3">
-                <div className="flex items-center justify-between text-sm mb-2">
-                  <span className="text-gray-400">Password Strength:</span>
-                  <span className={`font-medium ${passwordStrength.color.replace('bg-', 'text-')}`}>
-                    {passwordStrength.label}
-                  </span>
-                </div>
-                <div className="w-full bg-gray-700 rounded-full h-2">
-                  <div
-                    className={`h-2 rounded-full transition-all duration-300 ${passwordStrength.color}`}
-                    style={{ width: `${passwordStrength.strength}%` }}
-                  ></div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Confirm Password Field */}
-          <div>
-            <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-300 mb-2">
-              Confirm Password
-            </label>
-            <div className="relative">
-              <input
-                type={showPasswords.confirm ? 'text' : 'password'}
-                id="confirmPassword"
-                value={formData.confirmPassword}
-                onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                className="w-full px-4 py-3 pr-12 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500"
-                placeholder="Confirm password"
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowPasswords({ ...showPasswords, confirm: !showPasswords.confirm })}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
-              >
-                {showPasswords.confirm ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-              </button>
-            </div>
-          </div>
-
-          {/* Submit Button */}
-          <div className="flex space-x-4 pt-6">
+    <Layout>
+      <div className="max-w-screen-xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-2xl mx-auto">
+          {/* Header */}
+          <div className="flex items-center mb-8">
             <Button
-              type="button"
-              variant="outline"
+              variant="ghost"
               onClick={() => navigate('/admin/manage-users')}
-              className="flex-1"
+              className="mr-4"
             >
-              Cancel
+              <ArrowLeft className="h-5 w-5" />
             </Button>
-            <Button
-              type="submit"
-              variant="primary"
-              disabled={isSubmitting}
-              className="flex-1"
-            >
-              {isCheckingServer ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Checking Server...
-                </>
-              ) : isSubmitting ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Creating...
-                </>
-              ) : (
-                <>
-                  <Save className="h-4 w-4 mr-2" />
-                  Create Admin User
-                </>
-              )}
-            </Button>
-          </div>
-        </form>
-
-        {/* Info Box */}
-        <div className="mt-8 p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
-          <div className="flex items-start">
-            <CheckCircle className="h-5 w-5 text-green-500 mr-3 mt-0.5" />
             <div>
-              <h3 className="text-green-500 font-medium">Ready to Create</h3>
-              <p className="text-green-400 text-sm mt-1">
-                The new admin user will be created with the provided password and can log in immediately.
-                Make sure the backend server is running on port 3002 and frontend on port 3000/3001.
-              </p>
+              <h1 className="text-3xl font-bold text-white">Create Admin User</h1>
+              <p className="text-gray-400 mt-2">Add a new administrator to the platform</p>
+            </div>
+          </div>
+
+          {/* Success Message */}
+          {success && (
+            <div className="mb-6 p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
+              <div className="flex items-center">
+                <CheckCircle className="h-5 w-5 text-green-500 mr-3" />
+                <div>
+                  <h3 className="text-green-500 font-medium">Admin User Created Successfully!</h3>
+                  <p className="text-green-400 text-sm">Redirecting to user management...</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Error Messages */}
+          {errors.length > 0 && (
+            <div className="mb-6">
+              <ErrorMessage
+                title="Please fix the following errors:"
+                message={errors.join(', ')}
+                onClose={() => setErrors([])}
+              />
+            </div>
+          )}
+
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Name Field */}
+            <div>
+              <label htmlFor="name" className="block text-sm font-medium text-gray-300 mb-2">
+                Full Name
+              </label>
+              <input
+                type="text"
+                id="name"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500"
+                placeholder="Enter full name"
+                required
+              />
+            </div>
+
+            {/* Email Field */}
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
+                Email Address
+              </label>
+              <input
+                type="email"
+                id="email"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500"
+                placeholder="Enter email address"
+                required
+              />
+            </div>
+
+            {/* Role Selection */}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-3">
+                Admin Role
+              </label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {[
+                  { value: 'content_manager', label: 'Content Manager' },
+                  { value: 'community_manager', label: 'Community Manager' },
+                  { value: 'user_support', label: 'User Support' },
+                  ...(currentUserRole === 'super_admin' ? [{ value: 'super_admin', label: 'Super Admin' }] : [])
+                ].map((role) => (
+                  <label
+                    key={role.value}
+                    className={`relative flex items-center p-4 border rounded-lg cursor-pointer transition-colors ${
+                      formData.role === role.value
+                        ? 'border-red-500 bg-red-500/10'
+                        : 'border-gray-600 bg-gray-700 hover:border-gray-500'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="role"
+                      value={role.value}
+                      checked={formData.role === role.value}
+                      onChange={(e) => setFormData({ ...formData, role: e.target.value as any })}
+                      className="sr-only"
+                    />
+                    <div className="flex items-center">
+                      <div className="mr-3">
+                        {getRoleIcon(role.value)}
+                      </div>
+                      <div>
+                        <div className="text-white font-medium">{role.label}</div>
+                        <div className="text-gray-400 text-sm">{getRoleDescription(role.value)}</div>
+                      </div>
+                    </div>
+                    {formData.role === role.value && (
+                      <CheckCircle className="absolute top-3 right-3 h-5 w-5 text-red-500" />
+                    )}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Password Field */}
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-2">
+                Password
+              </label>
+              <div className="relative">
+                <input
+                  type={showPasswords.password ? 'text' : 'password'}
+                  id="password"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  className="w-full px-4 py-3 pr-12 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500"
+                  placeholder="Enter password"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPasswords({ ...showPasswords, password: !showPasswords.password })}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
+                >
+                  {showPasswords.password ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
+              </div>
+
+              {/* Password Strength Indicator */}
+              {formData.password && (
+                <div className="mt-3">
+                  <div className="flex items-center justify-between text-sm mb-2">
+                    <span className="text-gray-400">Password Strength:</span>
+                    <span className={`font-medium ${passwordStrength.color.replace('bg-', 'text-')}`}>
+                      {passwordStrength.label}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-700 rounded-full h-2">
+                    <div
+                      className={`h-2 rounded-full transition-all duration-300 ${passwordStrength.color}`}
+                      style={{ width: `${passwordStrength.strength}%` }}
+                    ></div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Confirm Password Field */}
+            <div>
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-300 mb-2">
+                Confirm Password
+              </label>
+              <div className="relative">
+                <input
+                  type={showPasswords.confirm ? 'text' : 'password'}
+                  id="confirmPassword"
+                  value={formData.confirmPassword}
+                  onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                  className="w-full px-4 py-3 pr-12 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500"
+                  placeholder="Confirm password"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPasswords({ ...showPasswords, confirm: !showPasswords.confirm })}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
+                >
+                  {showPasswords.confirm ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
+              </div>
+            </div>
+
+            {/* Submit Button */}
+            <div className="flex space-x-4 pt-6">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => navigate('/admin/manage-users')}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                variant="primary"
+                disabled={isSubmitting}
+                className="flex-1"
+              >
+                {isCheckingServer ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Checking Server...
+                  </>
+                ) : isSubmitting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    Create Admin User
+                  </>
+                )}
+              </Button>
+            </div>
+          </form>
+
+          {/* Info Box */}
+          <div className="mt-8 p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
+            <div className="flex items-start">
+              <CheckCircle className="h-5 w-5 text-green-500 mr-3 mt-0.5" />
+              <div>
+                <h3 className="text-green-500 font-medium">Ready to Create</h3>
+                <p className="text-green-400 text-sm mt-1">
+                  The new admin user will be created with the provided password and can log in immediately.
+                  Make sure the backend server is running on port 3002 and frontend on port 3000/3001.
+                </p>
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </Layout>
   );
 };
 

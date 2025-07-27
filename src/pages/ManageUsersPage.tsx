@@ -7,6 +7,7 @@ import PermissionGuard from '../components/ui/PermissionGuard';
 import ErrorMessage from '../components/ui/ErrorMessage';
 import { useUsers } from '../hooks/useDatabase';
 import Image from 'next/image';
+import Layout from '../components/layout/Layout';
 
 interface UserData {
   id: string;
@@ -279,7 +280,7 @@ const ManageUsersPage: React.FC = () => {
   }
 
   return (
-    <div className="max-w-screen-xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
+    <Layout>
       {/* Permission Error Message */}
       {permissionError && (
         <div className="mb-6">
@@ -843,7 +844,7 @@ const ManageUsersPage: React.FC = () => {
           </div>
         </div>
       )}
-    </div>
+    </Layout>
   );
 };
 

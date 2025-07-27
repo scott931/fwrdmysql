@@ -4,6 +4,7 @@ import { ArrowLeft, MessageSquare, Mail, Bell, Send, Users, Filter, Search, Cale
 import Button from '../components/ui/Button';
 import { useAuth } from '../contexts/AuthContext';
 import { usePermissions } from '../contexts/PermissionContext';
+import Layout from '../components/layout/Layout';
 
 const CommunicationCenterPage: React.FC = () => {
   const navigate = useNavigate();
@@ -41,7 +42,7 @@ const CommunicationCenterPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white pt-20">
+    <Layout>
       {/* Header */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex items-center justify-between mb-8">
@@ -552,7 +553,7 @@ const CommunicationCenterPage: React.FC = () => {
           )}
         </div>
       </div>
-    </div>
+    </Layout>
   );
 };
 

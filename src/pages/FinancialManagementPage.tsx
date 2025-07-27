@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from '../lib/router';
-import { ArrowLeft, DollarSign, TrendingUp, TrendingDown, CreditCard, Wallet, Receipt, BarChart3, Download, Upload, Filter, Search, Calendar, Users, BookOpen, Award, Settings } from 'lucide-react';
+import { ArrowLeft, DollarSign, TrendingUp, TrendingDown, CreditCard, Wallet, BarChart3, PieChart, Download, Upload, Filter, Search, Calendar, Clock, AlertTriangle, CheckCircle, X, Plus, Edit, Trash2, Eye, EyeOff, Activity, Target, Zap, Settings, Users } from 'lucide-react';
 import Button from '../components/ui/Button';
 import { useAuth } from '../contexts/AuthContext';
 import { usePermissions } from '../contexts/PermissionContext';
+import Layout from '../components/layout/Layout';
 
 const FinancialManagementPage: React.FC = () => {
   const navigate = useNavigate();
@@ -50,7 +51,7 @@ const FinancialManagementPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white pt-20">
+    <Layout>
       {/* Header */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex items-center justify-between mb-8">
@@ -88,8 +89,8 @@ const FinancialManagementPage: React.FC = () => {
           <div className="flex space-x-8 overflow-x-auto">
             {[
               { id: 'overview', label: 'Overview', icon: BarChart3 },
-              { id: 'transactions', label: 'Transactions', icon: Receipt },
-              { id: 'revenue', label: 'Revenue', icon: TrendingUp },
+              { id: 'transactions', label: 'Transactions', icon: CreditCard },
+              { id: 'revenue', label: 'Revenue', icon: DollarSign },
               { id: 'refunds', label: 'Refunds', icon: TrendingDown },
               { id: 'reports', label: 'Reports', icon: Download },
               { id: 'settings', label: 'Settings', icon: Settings }
@@ -179,7 +180,7 @@ const FinancialManagementPage: React.FC = () => {
                       <p className="text-2xl font-bold text-white">{financialData.totalTransactions.toLocaleString()}</p>
                     </div>
                     <div className="bg-purple-600/20 p-3 rounded-lg">
-                      <Receipt className="h-6 w-6 text-purple-400" />
+                      <CreditCard className="h-6 w-6 text-purple-400" />
                     </div>
                   </div>
                   <div className="mt-4 flex items-center text-purple-400 text-sm">
@@ -237,7 +238,7 @@ const FinancialManagementPage: React.FC = () => {
                     </div>
                     <div className="flex items-center justify-between p-3 bg-gray-700 rounded-lg">
                       <div className="flex items-center">
-                        <Receipt className="h-4 w-4 mr-2 text-blue-400" />
+                        <Wallet className="h-4 w-4 mr-2 text-blue-400" />
                         <span className="text-gray-300">Course purchase</span>
                       </div>
                       <span className="text-blue-400 text-sm">+$149.99</span>
@@ -532,7 +533,7 @@ const FinancialManagementPage: React.FC = () => {
           )}
         </div>
       </div>
-    </div>
+    </Layout>
   );
 };
 

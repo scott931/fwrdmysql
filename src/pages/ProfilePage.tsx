@@ -71,7 +71,6 @@ const ProfilePage: React.FC = () => {
   const [profileErrors, setProfileErrors] = useState<string[]>([]);
   const [profileSuccess, setProfileSuccess] = useState(false);
   const [profileLoading, setProfileLoading] = useState(false);
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // Database hooks
   const {
@@ -116,7 +115,7 @@ const ProfilePage: React.FC = () => {
       console.log('🔄 ProfilePage: Setting edit form data:', newFormData);
       setEditProfileForm(newFormData);
     }
-  }, [user, refreshTrigger]);
+  }, [user]);
 
   // Calculate user statistics from database
   const completedCourses = userProgress.filter(p => p.completed).length;
@@ -321,8 +320,6 @@ const ProfilePage: React.FC = () => {
       });
 
       setProfileSuccess(true);
-      // Force refresh of the form data
-      setRefreshTrigger(prev => prev + 1);
       setTimeout(() => {
         setShowEditProfile(false);
         setProfileSuccess(false);

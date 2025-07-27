@@ -41,6 +41,7 @@ import { usePermissions } from '../contexts/PermissionContext';
 import { useAuth } from '../contexts/AuthContext';
 import ErrorMessage from '../components/ui/ErrorMessage';
 import PermissionGuard from '../components/ui/PermissionGuard';
+import Layout from '../components/layout/Layout';
 
 const AdminPage: React.FC = () => {
   const navigate = useNavigate();
@@ -451,7 +452,7 @@ const AdminPage: React.FC = () => {
   */
 
   return (
-    <div className="max-w-screen-xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
+    <Layout>
       {/* Permission Error Message */}
       {permissionError && (
         <div className="mb-6">
@@ -1532,7 +1533,7 @@ const AdminPage: React.FC = () => {
           </div>
         </PermissionGuard>
       )}
-    </div>
+    </Layout>
   );
 };
 

@@ -6,6 +6,7 @@ import VideoPlayer from '../components/ui/VideoPlayer';
 import { courseAPI } from '../lib/api';
 import { Course, Lesson } from '../types';
 import Image from 'next/image';
+import Layout from '../components/layout/Layout';
 
 const LessonPage: React.FC = () => {
   const router = useRouter();
@@ -178,7 +179,7 @@ const LessonPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900">
+    <Layout>
       {/* Header */}
       <div className="bg-black border-b border-gray-800">
         <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
@@ -396,7 +397,7 @@ const LessonPage: React.FC = () => {
           </div>
         </div>
       </div>
-    </div>
+    </Layout>
   );
 };
 

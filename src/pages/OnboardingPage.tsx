@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
 import { Check, GraduationCap, Briefcase, MapPin, Globe, Users, BookOpen, Target, TrendingUp, Award, Zap, ChevronLeft, ArrowRight, Star } from 'lucide-react';
+import Layout from '../components/layout/Layout';
 
 const OnboardingPage: React.FC = () => {
   const router = useRouter();
@@ -197,382 +198,384 @@ const OnboardingPage: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-gray-800 text-white relative overflow-hidden">
-      {/* Background Pattern */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(239,68,68,0.1),transparent_50%)]" />
+    <Layout>
+      <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-gray-800 text-white relative overflow-hidden">
+        {/* Background Pattern */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(239,68,68,0.1),transparent_50%)]" />
 
-      {/* Animated Particles */}
-      <div className="absolute inset-0">
-        {particleStyles.map((style, i) => (
-          <div
-            key={i}
-            className="absolute w-1 h-1 bg-red-500/30 rounded-full animate-pulse"
-            style={style}
-          />
-        ))}
-      </div>
+        {/* Animated Particles */}
+        <div className="absolute inset-0">
+          {particleStyles.map((style, i) => (
+            <div
+              key={i}
+              className="absolute w-1 h-1 bg-red-500/30 rounded-full animate-pulse"
+              style={style}
+            />
+          ))}
+        </div>
 
-      {/* Onboarding Header */}
-      <div className="relative z-10 px-6 py-8">
-        <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <div className="flex items-center">
-            <span className="text-red-600 font-bold text-2xl tracking-tight">FORWARD</span>
-            <span className="text-white font-bold text-2xl tracking-tight">AFRICA</span>
-          </div>
-          <div className="text-gray-400 text-sm">
-            Step {currentStep} of 3
+        {/* Onboarding Header */}
+        <div className="relative z-10 px-6 py-8">
+          <div className="max-w-4xl mx-auto flex items-center justify-between">
+            <div className="flex items-center">
+              <span className="text-red-600 font-bold text-2xl tracking-tight">FORWARD</span>
+              <span className="text-white font-bold text-2xl tracking-tight">AFRICA</span>
+            </div>
+            <div className="text-gray-400 text-sm">
+              Step {currentStep} of 3
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Main Content */}
-      <main className="relative z-10 flex-1 flex items-center justify-center px-6 py-12">
-        <div className="max-w-4xl w-full">
-          {/* Progress Bar */}
-          <div className="mb-12">
-            <div className="flex items-center justify-center mb-8">
-              {[1, 2, 3].map((step) => {
-                const Icon = getStepIcon(step);
-                const isActive = step === currentStep;
-                const isCompleted = step < currentStep;
+        {/* Main Content */}
+        <main className="relative z-10 flex-1 flex items-center justify-center px-6 py-12">
+          <div className="max-w-4xl w-full">
+            {/* Progress Bar */}
+            <div className="mb-12">
+              <div className="flex items-center justify-center mb-8">
+                {[1, 2, 3].map((step) => {
+                  const Icon = getStepIcon(step);
+                  const isActive = step === currentStep;
+                  const isCompleted = step < currentStep;
 
-                return (
-                  <React.Fragment key={step}>
-                    <div className={`flex items-center justify-center w-12 h-12 rounded-full border-2 transition-all duration-300 ${
-                      isActive
-                        ? 'border-red-500 bg-red-500 text-white'
-                        : isCompleted
-                        ? 'border-green-500 bg-green-500 text-white'
-                        : 'border-gray-600 bg-gray-800 text-gray-400'
-                    }`}>
-                      {isCompleted ? (
-                        <Check className="h-5 w-5" />
-                      ) : (
-                        <Icon className="h-5 w-5" />
-                      )}
-                    </div>
-                    {step < 3 && (
-                      <div className={`w-16 h-0.5 mx-4 transition-all duration-300 ${
-                        step < currentStep ? 'bg-green-500' : 'bg-gray-600'
-                      }`} />
-                    )}
-                  </React.Fragment>
-                );
-              })}
-            </div>
-
-            <div className="text-center">
-              <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
-                {getStepTitle(currentStep)}
-              </h1>
-              <p className="text-xl text-gray-300 max-w-2xl mx-auto">
-                {getStepSubtitle(currentStep)}
-              </p>
-            </div>
-          </div>
-
-          {/* Step Content */}
-          <div className="bg-gray-900/50 backdrop-blur-sm rounded-2xl p-8 md:p-12 border border-gray-800">
-            {currentStep === 1 && (
-              <div className="space-y-4">
-                {educationLevels.map((level) => (
-                  <button
-                    key={level.id}
-                    onClick={() => setFormData(prev => ({ ...prev, education_level: level.id }))}
-                    className={`w-full p-6 rounded-xl border-2 transition-all duration-300 text-left group hover:scale-[1.02] ${
-                      formData.education_level === level.id
-                        ? 'border-red-500 bg-red-500/10 shadow-lg shadow-red-500/20'
-                        : 'border-gray-700 bg-gray-800/50 hover:border-gray-600 hover:bg-gray-800'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className={`text-lg font-semibold mb-1 transition-colors ${
-                          formData.education_level === level.id ? 'text-white' : 'text-gray-200 group-hover:text-white'
-                        }`}>
-                          {level.label}
-                        </h3>
-                        <p className="text-gray-400 text-sm">{level.description}</p>
-                      </div>
-                      <div className={`w-5 h-5 rounded-full border-2 transition-all ${
-                        formData.education_level === level.id
-                          ? 'border-red-500 bg-red-500'
-                          : 'border-gray-600 group-hover:border-gray-500'
+                  return (
+                    <React.Fragment key={step}>
+                      <div className={`flex items-center justify-center w-12 h-12 rounded-full border-2 transition-all duration-300 ${
+                        isActive
+                          ? 'border-red-500 bg-red-500 text-white'
+                          : isCompleted
+                          ? 'border-green-500 bg-green-500 text-white'
+                          : 'border-gray-600 bg-gray-800 text-gray-400'
                       }`}>
-                        {formData.education_level === level.id && (
-                          <Check className="h-3 w-3 text-white m-0.5" />
+                        {isCompleted ? (
+                          <Check className="h-5 w-5" />
+                        ) : (
+                          <Icon className="h-5 w-5" />
                         )}
                       </div>
-                    </div>
-                  </button>
-                ))}
+                      {step < 3 && (
+                        <div className={`w-16 h-0.5 mx-4 transition-all duration-300 ${
+                          step < currentStep ? 'bg-green-500' : 'bg-gray-600'
+                        }`} />
+                      )}
+                    </React.Fragment>
+                  );
+                })}
               </div>
-            )}
 
-            {currentStep === 2 && (
-              <div className="space-y-8">
-                {/* Job Title Selection */}
-                <div>
-                  <h3 className="text-lg font-semibold text-white mb-4">What's your current role?</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {jobTitles.map((job) => (
-                      <button
-                        key={job.id}
-                        onClick={() => setFormData(prev => ({ ...prev, job_title: job.id }))}
-                        className={`p-4 rounded-xl border-2 transition-all duration-300 text-left group hover:scale-[1.02] ${
-                          formData.job_title === job.id
-                            ? 'border-red-500 bg-red-500/10 shadow-lg shadow-red-500/20'
-                            : 'border-gray-700 bg-gray-800/50 hover:border-gray-600 hover:bg-gray-800'
-                        }`}
-                      >
-                        <h4 className={`font-semibold mb-1 transition-colors ${
-                          formData.job_title === job.id ? 'text-white' : 'text-gray-200 group-hover:text-white'
+              <div className="text-center">
+                <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
+                  {getStepTitle(currentStep)}
+                </h1>
+                <p className="text-xl text-gray-300 max-w-2xl mx-auto">
+                  {getStepSubtitle(currentStep)}
+                </p>
+              </div>
+            </div>
+
+            {/* Step Content */}
+            <div className="bg-gray-900/50 backdrop-blur-sm rounded-2xl p-8 md:p-12 border border-gray-800">
+              {currentStep === 1 && (
+                <div className="space-y-4">
+                  {educationLevels.map((level) => (
+                    <button
+                      key={level.id}
+                      onClick={() => setFormData(prev => ({ ...prev, education_level: level.id }))}
+                      className={`w-full p-6 rounded-xl border-2 transition-all duration-300 text-left group hover:scale-[1.02] ${
+                        formData.education_level === level.id
+                          ? 'border-red-500 bg-red-500/10 shadow-lg shadow-red-500/20'
+                          : 'border-gray-700 bg-gray-800/50 hover:border-gray-600 hover:bg-gray-800'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className={`text-lg font-semibold mb-1 transition-colors ${
+                            formData.education_level === level.id ? 'text-white' : 'text-gray-200 group-hover:text-white'
+                          }`}>
+                            {level.label}
+                          </h3>
+                          <p className="text-gray-400 text-sm">{level.description}</p>
+                        </div>
+                        <div className={`w-5 h-5 rounded-full border-2 transition-all ${
+                          formData.education_level === level.id
+                            ? 'border-red-500 bg-red-500'
+                            : 'border-gray-600 group-hover:border-gray-500'
                         }`}>
-                          {job.label}
-                        </h4>
-                        <p className="text-gray-400 text-sm">{job.description}</p>
-                      </button>
-                    ))}
-                  </div>
+                          {formData.education_level === level.id && (
+                            <Check className="h-3 w-3 text-white m-0.5" />
+                          )}
+                        </div>
+                      </div>
+                    </button>
+                  ))}
                 </div>
+              )}
 
-                {/* Topics of Interest */}
-                <div>
-                  <h3 className="text-lg font-semibold text-white mb-4">What interests you most?</h3>
-                  <p className="text-gray-400 text-sm mb-6">Select all that apply</p>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    {topicsOfInterest.map((topic) => {
-                      const isSelected = formData.topics_of_interest.includes(topic.id);
-                      const Icon = topic.icon;
-
-                      return (
+              {currentStep === 2 && (
+                <div className="space-y-8">
+                  {/* Job Title Selection */}
+                  <div>
+                    <h3 className="text-lg font-semibold text-white mb-4">What's your current role?</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {jobTitles.map((job) => (
                         <button
-                          key={topic.id}
-                          onClick={() => handleTopicToggle(topic.id)}
-                          className={`p-6 rounded-xl border-2 transition-all duration-300 text-left group hover:scale-[1.02] ${
-                            isSelected
-                              ? 'border-red-500 bg-gradient-to-br from-red-500/20 to-red-600/20 shadow-lg shadow-red-500/20'
+                          key={job.id}
+                          onClick={() => setFormData(prev => ({ ...prev, job_title: job.id }))}
+                          className={`p-4 rounded-xl border-2 transition-all duration-300 text-left group hover:scale-[1.02] ${
+                            formData.job_title === job.id
+                              ? 'border-red-500 bg-red-500/10 shadow-lg shadow-red-500/20'
                               : 'border-gray-700 bg-gray-800/50 hover:border-gray-600 hover:bg-gray-800'
                           }`}
                         >
-                          <div className="flex items-center justify-between mb-3">
-                            <Icon className="h-6 w-6 text-red-500" />
-                            <div className={`w-5 h-5 rounded-full border-2 transition-all ${
-                              isSelected
-                                ? 'border-red-500 bg-red-500'
-                                : 'border-gray-600 group-hover:border-gray-500'
-                            }`}>
-                              {isSelected && (
-                                <Check className="h-3 w-3 text-white m-0.5" />
-                              )}
-                            </div>
-                          </div>
-                          <h3 className={`font-semibold transition-colors ${
-                            isSelected ? 'text-white' : 'text-gray-200 group-hover:text-white'
+                          <h4 className={`font-semibold mb-1 transition-colors ${
+                            formData.job_title === job.id ? 'text-white' : 'text-gray-200 group-hover:text-white'
                           }`}>
-                            {topic.label}
-                          </h3>
+                            {job.label}
+                          </h4>
+                          <p className="text-gray-400 text-sm">{job.description}</p>
                         </button>
-                      );
-                    })}
-                  </div>
-
-                  {formData.topics_of_interest.length > 0 && (
-                    <div className="text-center">
-                      <p className="text-gray-400 text-sm">
-                        {formData.topics_of_interest.length} topic{formData.topics_of_interest.length !== 1 ? 's' : ''} selected
-                      </p>
+                      ))}
                     </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {currentStep === 3 && (
-              <div className="space-y-8">
-                {/* Industry Selection */}
-                <div>
-                  <h3 className="text-lg font-semibold text-white mb-4">What industry are you in?</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {industries.map((industry) => (
-                      <button
-                        key={industry.id}
-                        onClick={() => setFormData(prev => ({ ...prev, industry: industry.id }))}
-                        className={`p-4 rounded-xl border-2 transition-all duration-300 text-left group hover:scale-[1.02] ${
-                          formData.industry === industry.id
-                            ? 'border-red-500 bg-red-500/10 shadow-lg shadow-red-500/20'
-                            : 'border-gray-700 bg-gray-800/50 hover:border-gray-600 hover:bg-gray-800'
-                        }`}
-                      >
-                        <h4 className={`font-semibold transition-colors ${
-                          formData.industry === industry.id ? 'text-white' : 'text-gray-200 group-hover:text-white'
-                        }`}>
-                          {industry.label}
-                        </h4>
-                      </button>
-                    ))}
                   </div>
-                </div>
 
-                {/* Experience Level */}
-                <div>
-                  <h3 className="text-lg font-semibold text-white mb-4">What's your experience level?</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {experienceLevels.map((level) => (
-                      <button
-                        key={level.id}
-                        onClick={() => setFormData(prev => ({ ...prev, experience_level: level.id }))}
-                        className={`p-4 rounded-xl border-2 transition-all duration-300 text-left group hover:scale-[1.02] ${
-                          formData.experience_level === level.id
-                            ? 'border-red-500 bg-red-500/10 shadow-lg shadow-red-500/20'
-                            : 'border-gray-700 bg-gray-800/50 hover:border-gray-600 hover:bg-gray-800'
-                        }`}
-                      >
-                        <h4 className={`font-semibold transition-colors ${
-                          formData.experience_level === level.id ? 'text-white' : 'text-gray-200 group-hover:text-white'
-                        }`}>
-                          {level.label}
-                        </h4>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Business Stage (if applicable) */}
-                {formData.job_title === 'entrepreneur' && (
+                  {/* Topics of Interest */}
                   <div>
-                    <h3 className="text-lg font-semibold text-white mb-4">What stage is your business in?</h3>
+                    <h3 className="text-lg font-semibold text-white mb-4">What interests you most?</h3>
+                    <p className="text-gray-400 text-sm mb-6">Select all that apply</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      {topicsOfInterest.map((topic) => {
+                        const isSelected = formData.topics_of_interest.includes(topic.id);
+                        const Icon = topic.icon;
+
+                        return (
+                          <button
+                            key={topic.id}
+                            onClick={() => handleTopicToggle(topic.id)}
+                            className={`p-6 rounded-xl border-2 transition-all duration-300 text-left group hover:scale-[1.02] ${
+                              isSelected
+                                ? 'border-red-500 bg-gradient-to-br from-red-500/20 to-red-600/20 shadow-lg shadow-red-500/20'
+                                : 'border-gray-700 bg-gray-800/50 hover:border-gray-600 hover:bg-gray-800'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between mb-3">
+                              <Icon className="h-6 w-6 text-red-500" />
+                              <div className={`w-5 h-5 rounded-full border-2 transition-all ${
+                                isSelected
+                                  ? 'border-red-500 bg-red-500'
+                                  : 'border-gray-600 group-hover:border-gray-500'
+                              }`}>
+                                {isSelected && (
+                                  <Check className="h-3 w-3 text-white m-0.5" />
+                                )}
+                              </div>
+                            </div>
+                            <h3 className={`font-semibold transition-colors ${
+                              isSelected ? 'text-white' : 'text-gray-200 group-hover:text-white'
+                            }`}>
+                              {topic.label}
+                            </h3>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {formData.topics_of_interest.length > 0 && (
+                      <div className="text-center">
+                        <p className="text-gray-400 text-sm">
+                          {formData.topics_of_interest.length} topic{formData.topics_of_interest.length !== 1 ? 's' : ''} selected
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {currentStep === 3 && (
+                <div className="space-y-8">
+                  {/* Industry Selection */}
+                  <div>
+                    <h3 className="text-lg font-semibold text-white mb-4">What industry are you in?</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {businessStages.map((stage) => (
+                      {industries.map((industry) => (
                         <button
-                          key={stage.id}
-                          onClick={() => setFormData(prev => ({ ...prev, business_stage: stage.id }))}
+                          key={industry.id}
+                          onClick={() => setFormData(prev => ({ ...prev, industry: industry.id }))}
                           className={`p-4 rounded-xl border-2 transition-all duration-300 text-left group hover:scale-[1.02] ${
-                            formData.business_stage === stage.id
+                            formData.industry === industry.id
                               ? 'border-red-500 bg-red-500/10 shadow-lg shadow-red-500/20'
                               : 'border-gray-700 bg-gray-800/50 hover:border-gray-600 hover:bg-gray-800'
                           }`}
                         >
                           <h4 className={`font-semibold transition-colors ${
-                            formData.business_stage === stage.id ? 'text-white' : 'text-gray-200 group-hover:text-white'
+                            formData.industry === industry.id ? 'text-white' : 'text-gray-200 group-hover:text-white'
                           }`}>
-                            {stage.label}
+                            {industry.label}
                           </h4>
                         </button>
                       ))}
                     </div>
                   </div>
-                )}
 
-                {/* Location */}
-                <div>
-                  <h3 className="text-lg font-semibold text-white mb-4">Where are you located?</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {countries.map((country) => (
-                      <button
-                        key={country.id}
-                        onClick={() => setFormData(prev => ({ ...prev, country: country.id }))}
-                        className={`p-4 rounded-xl border-2 transition-all duration-300 text-left group hover:scale-[1.02] ${
-                          formData.country === country.id
-                            ? 'border-red-500 bg-red-500/10 shadow-lg shadow-red-500/20'
-                            : 'border-gray-700 bg-gray-800/50 hover:border-gray-600 hover:bg-gray-800'
+                  {/* Experience Level */}
+                  <div>
+                    <h3 className="text-lg font-semibold text-white mb-4">What's your experience level?</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {experienceLevels.map((level) => (
+                        <button
+                          key={level.id}
+                          onClick={() => setFormData(prev => ({ ...prev, experience_level: level.id }))}
+                          className={`p-4 rounded-xl border-2 transition-all duration-300 text-left group hover:scale-[1.02] ${
+                            formData.experience_level === level.id
+                              ? 'border-red-500 bg-red-500/10 shadow-lg shadow-red-500/20'
+                              : 'border-gray-700 bg-gray-800/50 hover:border-gray-600 hover:bg-gray-800'
+                          }`}
+                        >
+                          <h4 className={`font-semibold transition-colors ${
+                            formData.experience_level === level.id ? 'text-white' : 'text-gray-200 group-hover:text-white'
+                          }`}>
+                            {level.label}
+                          </h4>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Business Stage (if applicable) */}
+                  {formData.job_title === 'entrepreneur' && (
+                    <div>
+                      <h3 className="text-lg font-semibold text-white mb-4">What stage is your business in?</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {businessStages.map((stage) => (
+                          <button
+                            key={stage.id}
+                            onClick={() => setFormData(prev => ({ ...prev, business_stage: stage.id }))}
+                            className={`p-4 rounded-xl border-2 transition-all duration-300 text-left group hover:scale-[1.02] ${
+                              formData.business_stage === stage.id
+                                ? 'border-red-500 bg-red-500/10 shadow-lg shadow-red-500/20'
+                                : 'border-gray-700 bg-gray-800/50 hover:border-gray-600 hover:bg-gray-800'
+                            }`}
+                          >
+                            <h4 className={`font-semibold transition-colors ${
+                              formData.business_stage === stage.id ? 'text-white' : 'text-gray-200 group-hover:text-white'
+                            }`}>
+                              {stage.label}
+                            </h4>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Location */}
+                  <div>
+                    <h3 className="text-lg font-semibold text-white mb-4">Where are you located?</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {countries.map((country) => (
+                        <button
+                          key={country.id}
+                          onClick={() => setFormData(prev => ({ ...prev, country: country.id }))}
+                          className={`p-4 rounded-xl border-2 transition-all duration-300 text-left group hover:scale-[1.02] ${
+                            formData.country === country.id
+                              ? 'border-red-500 bg-red-500/10 shadow-lg shadow-red-500/20'
+                              : 'border-gray-700 bg-gray-800/50 hover:border-gray-600 hover:bg-gray-800'
+                          }`}
+                        >
+                          <h4 className={`font-semibold transition-colors ${
+                            formData.country === country.id ? 'text-white' : 'text-gray-200 group-hover:text-white'
+                          }`}>
+                            {country.label}
+                          </h4>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Navigation */}
+              <div className="flex justify-between items-center mt-12">
+                <button
+                  onClick={handleBack}
+                  disabled={currentStep === 1}
+                  className={`flex items-center px-4 py-2 rounded-lg transition-all ${
+                    currentStep === 1
+                      ? 'invisible'
+                      : 'text-gray-400 hover:text-white border border-gray-600 hover:border-gray-500'
+                  }`}
+                >
+                  <ChevronLeft className="h-4 w-4 mr-2" />
+                  Back
+                </button>
+
+                <div className="flex-1 flex justify-center">
+                  <div className="flex space-x-2">
+                    {[1, 2, 3].map((step) => (
+                      <div
+                        key={step}
+                        className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                          step === currentStep
+                            ? 'bg-red-500 w-8'
+                            : step < currentStep
+                            ? 'bg-green-500'
+                            : 'bg-gray-600'
                         }`}
-                      >
-                        <h4 className={`font-semibold transition-colors ${
-                          formData.country === country.id ? 'text-white' : 'text-gray-200 group-hover:text-white'
-                        }`}>
-                          {country.label}
-                        </h4>
-                      </button>
+                      />
                     ))}
                   </div>
                 </div>
-              </div>
-            )}
 
-            {/* Navigation */}
-            <div className="flex justify-between items-center mt-12">
-              <button
-                onClick={handleBack}
-                disabled={currentStep === 1}
-                className={`flex items-center px-4 py-2 rounded-lg transition-all ${
-                  currentStep === 1
-                    ? 'invisible'
-                    : 'text-gray-400 hover:text-white border border-gray-600 hover:border-gray-500'
-                }`}
-              >
-                <ChevronLeft className="h-4 w-4 mr-2" />
-                Back
-              </button>
+                <div className="flex items-center space-x-3">
+                  {/* Skip button - always visible */}
+                  <button
+                    onClick={handleSkip}
+                    className="flex items-center px-4 py-2 rounded-lg text-gray-400 hover:text-white border border-gray-600 hover:border-gray-500 transition-all"
+                  >
+                    Skip for now
+                  </button>
 
-              <div className="flex-1 flex justify-center">
-                <div className="flex space-x-2">
-                  {[1, 2, 3].map((step) => (
-                    <div
-                      key={step}
-                      className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                        step === currentStep
-                          ? 'bg-red-500 w-8'
-                          : step < currentStep
-                          ? 'bg-green-500'
-                          : 'bg-gray-600'
+                  {currentStep < 3 ? (
+                    <button
+                      onClick={handleNext}
+                      disabled={!canProceed()}
+                      className={`flex items-center px-6 py-2 rounded-lg transition-all ${
+                        canProceed()
+                          ? 'bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 shadow-lg shadow-red-500/25'
+                          : 'bg-gray-600 cursor-not-allowed'
                       }`}
-                    />
-                  ))}
+                    >
+                      Continue
+                      <ArrowRight className="h-4 w-4 ml-2" />
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleComplete}
+                      disabled={!canProceed()}
+                      className={`flex items-center px-6 py-2 rounded-lg transition-all ${
+                        canProceed()
+                          ? 'bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 shadow-lg shadow-green-500/25'
+                          : 'bg-gray-600 cursor-not-allowed'
+                      }`}
+                    >
+                      Complete Setup
+                      <Star className="h-4 w-4 ml-2" />
+                    </button>
+                  )}
                 </div>
-              </div>
-
-              <div className="flex items-center space-x-3">
-                {/* Skip button - always visible */}
-                <button
-                  onClick={handleSkip}
-                  className="flex items-center px-4 py-2 rounded-lg text-gray-400 hover:text-white border border-gray-600 hover:border-gray-500 transition-all"
-                >
-                  Skip for now
-                </button>
-
-                {currentStep < 3 ? (
-                  <button
-                    onClick={handleNext}
-                    disabled={!canProceed()}
-                    className={`flex items-center px-6 py-2 rounded-lg transition-all ${
-                      canProceed()
-                        ? 'bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 shadow-lg shadow-red-500/25'
-                        : 'bg-gray-600 cursor-not-allowed'
-                    }`}
-                  >
-                    Continue
-                    <ArrowRight className="h-4 w-4 ml-2" />
-                  </button>
-                ) : (
-                  <button
-                    onClick={handleComplete}
-                    disabled={!canProceed()}
-                    className={`flex items-center px-6 py-2 rounded-lg transition-all ${
-                      canProceed()
-                        ? 'bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 shadow-lg shadow-green-500/25'
-                        : 'bg-gray-600 cursor-not-allowed'
-                    }`}
-                  >
-                    Complete Setup
-                    <Star className="h-4 w-4 ml-2" />
-                  </button>
-                )}
               </div>
             </div>
           </div>
-        </div>
-      </main>
+        </main>
 
-      {/* Footer */}
-      <footer className="relative z-10 px-6 py-8">
-        <div className="max-w-4xl mx-auto text-center">
-          <p className="text-gray-500 text-sm">
-            Your information helps us create a personalized learning experience
-          </p>
-        </div>
-      </footer>
-    </div>
+        {/* Footer */}
+        <footer className="relative z-10 px-6 py-8">
+          <div className="max-w-4xl mx-auto text-center">
+            <p className="text-gray-500 text-sm">
+              Your information helps us create a personalized learning experience
+            </p>
+          </div>
+        </footer>
+      </div>
+    </Layout>
   );
 };
 

@@ -5,6 +5,7 @@ import { useNavigate, useSearchParams } from '../lib/router';
 import { categoryAPI } from '../lib/api';
 import { Instructor, Category } from '../types';
 import ImageUpload from '../components/ui/ImageUpload';
+import Layout from '../components/layout/Layout';
 
 interface LessonForm {
   title: string;
@@ -297,360 +298,362 @@ const UploadCoursePage: React.FC = () => {
   };
 
   return (
-    <div className="max-w-screen-xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-3xl mx-auto">
-        <div className="flex items-center mb-8">
-          <Button
-            variant="ghost"
-            onClick={() => navigate('/admin')}
-            className="mr-4"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <h1 className="text-3xl font-bold text-white">
-            {isEditing ? 'Edit Course' : 'Upload New Course'}
-          </h1>
-        </div>
+    <Layout>
+      <div className="max-w-screen-xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-3xl mx-auto">
+          <div className="flex items-center mb-8">
+            <Button
+              variant="ghost"
+              onClick={() => navigate('/admin')}
+              className="mr-4"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <h1 className="text-3xl font-bold text-white">
+              {isEditing ? 'Edit Course' : 'Upload New Course'}
+            </h1>
+          </div>
 
-        <div className="bg-gray-800 rounded-lg p-6">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Course Basic Info */}
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Course Title
-              </label>
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-red-500"
-                placeholder="Enter course title"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Description
-              </label>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={4}
-                className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-red-500"
-                placeholder="Enter course description"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Category
-              </label>
-              <div className="flex space-x-2">
-                <select
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  className="flex-1 px-4 py-3 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-red-500"
-                  required
-                >
-                  <option value="">Select a category</option>
-                  {availableCategories.map(cat => (
-                    <option key={cat.id} value={cat.id}>{cat.name}</option>
-                  ))}
-                </select>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setShowCreateCategory(true)}
-                  className="flex items-center"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  New Category
-                </Button>
-              </div>
-            </div>
-
-            {/* Instructor Selection */}
-            <div className="border-t border-gray-700 pt-6">
-              <div className="flex items-center mb-4">
-                <input
-                  type="checkbox"
-                  id="useInstructor"
-                  checked={useInstructor}
-                  onChange={(e) => {
-                    setUseInstructor(e.target.checked);
-                    if (!e.target.checked) {
-                      setSelectedInstructorId('');
-                    }
-                  }}
-                  className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-600 rounded bg-gray-700"
-                />
-                <label htmlFor="useInstructor" className="ml-2 text-gray-300 flex items-center">
-                  <User className="h-4 w-4 mr-1" />
-                  Assign to Instructor
+          <div className="bg-gray-800 rounded-lg p-6">
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Course Basic Info */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Course Title
                 </label>
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                  placeholder="Enter course title"
+                  required
+                />
               </div>
 
-              {useInstructor && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Select Instructor
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Description
+                </label>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  rows={4}
+                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                  placeholder="Enter course description"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Category
+                </label>
+                <div className="flex space-x-2">
+                  <select
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                    className="flex-1 px-4 py-3 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                    required
+                  >
+                    <option value="">Select a category</option>
+                    {availableCategories.map(cat => (
+                      <option key={cat.id} value={cat.id}>{cat.name}</option>
+                    ))}
+                  </select>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowCreateCategory(true)}
+                    className="flex items-center"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    New Category
+                  </Button>
+                </div>
+              </div>
+
+              {/* Instructor Selection */}
+              <div className="border-t border-gray-700 pt-6">
+                <div className="flex items-center mb-4">
+                  <input
+                    type="checkbox"
+                    id="useInstructor"
+                    checked={useInstructor}
+                    onChange={(e) => {
+                      setUseInstructor(e.target.checked);
+                      if (!e.target.checked) {
+                        setSelectedInstructorId('');
+                      }
+                    }}
+                    className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-600 rounded bg-gray-700"
+                  />
+                  <label htmlFor="useInstructor" className="ml-2 text-gray-300 flex items-center">
+                    <User className="h-4 w-4 mr-1" />
+                    Assign to Instructor
                   </label>
-                  {instructors.length > 0 ? (
-                    <select
-                      value={selectedInstructorId}
-                      onChange={(e) => setSelectedInstructorId(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-red-500"
-                      required={useInstructor}
-                    >
-                      <option value="">Choose an instructor</option>
-                      {instructors.map(instructor => (
-                        <option key={instructor.id} value={instructor.id}>
-                          {instructor.name} - {instructor.title}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <div className="bg-gray-700 border border-gray-600 rounded-md p-4">
-                      <p className="text-gray-400 text-sm mb-3">
-                        No instructors available. You need to add instructors first.
-                      </p>
+                </div>
+
+                {useInstructor && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Select Instructor
+                    </label>
+                    {instructors.length > 0 ? (
+                      <select
+                        value={selectedInstructorId}
+                        onChange={(e) => setSelectedInstructorId(e.target.value)}
+                        className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                        required={useInstructor}
+                      >
+                        <option value="">Choose an instructor</option>
+                        {instructors.map(instructor => (
+                          <option key={instructor.id} value={instructor.id}>
+                            {instructor.name} - {instructor.title}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <div className="bg-gray-700 border border-gray-600 rounded-md p-4">
+                        <p className="text-gray-400 text-sm mb-3">
+                          No instructors available. You need to add instructors first.
+                        </p>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => navigate('/admin/add-instructor')}
+                          className="flex items-center"
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add Instructor
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Create Category Modal */}
+              {showCreateCategory && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                  <div className="bg-gray-800 rounded-lg p-6 w-full max-w-md">
+                    <h3 className="text-xl font-semibold text-white mb-4">Create New Category</h3>
+                    <input
+                      type="text"
+                      value={newCategoryName}
+                      onChange={(e) => setNewCategoryName(e.target.value)}
+                      placeholder="Category name"
+                      className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-red-500 mb-4"
+                    />
+                    <div className="flex space-x-3">
                       <Button
                         type="button"
                         variant="outline"
-                        onClick={() => navigate('/admin/add-instructor')}
-                        className="flex items-center"
+                        onClick={() => {
+                          setShowCreateCategory(false);
+                          setNewCategoryName('');
+                        }}
+                        className="flex-1"
                       >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add Instructor
+                        Cancel
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="primary"
+                        onClick={handleCreateCategory}
+                        className="flex-1"
+                      >
+                        Create
                       </Button>
                     </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Create Category Modal */}
-            {showCreateCategory && (
-              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                <div className="bg-gray-800 rounded-lg p-6 w-full max-w-md">
-                  <h3 className="text-xl font-semibold text-white mb-4">Create New Category</h3>
-                  <input
-                    type="text"
-                    value={newCategoryName}
-                    onChange={(e) => setNewCategoryName(e.target.value)}
-                    placeholder="Category name"
-                    className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-red-500 mb-4"
-                  />
-                  <div className="flex space-x-3">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => {
-                        setShowCreateCategory(false);
-                        setNewCategoryName('');
-                      }}
-                      className="flex-1"
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="primary"
-                      onClick={handleCreateCategory}
-                      className="flex-1"
-                    >
-                      Create
-                    </Button>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Course Images */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <ImageUpload
-                onImageUpload={setThumbnail}
-                currentImage={thumbnail}
-                uploadType="courseThumbnail"
-                label="Course Thumbnail"
-                previewSize="sm"
-                required
-              />
-
-              <ImageUpload
-                onImageUpload={setBanner}
-                currentImage={banner}
-                uploadType="courseBanner"
-                label="Course Banner"
-                previewSize="sm"
-                required
-              />
-            </div>
-
-            {/* Course Settings */}
-            <div className="space-y-4">
-              {/* Coming Soon Settings */}
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="comingSoon"
-                  checked={isComingSoon}
-                  onChange={(e) => setIsComingSoon(e.target.checked)}
-                  className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-600 rounded bg-gray-700"
+              {/* Course Images */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <ImageUpload
+                  onImageUpload={setThumbnail}
+                  currentImage={thumbnail}
+                  uploadType="courseThumbnail"
+                  label="Course Thumbnail"
+                  previewSize="sm"
+                  required
                 />
-                <label htmlFor="comingSoon" className="ml-2 text-gray-300">
-                  Mark as "Coming Soon"
-                </label>
-              </div>
 
-              {/* Featured Course Settings */}
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="featured"
-                  checked={isFeatured}
-                  onChange={(e) => setIsFeatured(e.target.checked)}
-                  className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-600 rounded bg-gray-700"
-                />
-                <label htmlFor="featured" className="ml-2 text-gray-300 flex items-center">
-                  <Star className="h-4 w-4 mr-1 text-yellow-500" />
-                  Add to Featured Classes
-                </label>
-              </div>
-            </div>
-
-            {isComingSoon && (
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Expected Release Date
-                </label>
-                <input
-                  type="date"
-                  value={releaseDate}
-                  onChange={(e) => setReleaseDate(e.target.value)}
-                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                <ImageUpload
+                  onImageUpload={setBanner}
+                  currentImage={banner}
+                  uploadType="courseBanner"
+                  label="Course Banner"
+                  previewSize="sm"
                   required
                 />
               </div>
-            )}
 
-            {/* Lessons Section */}
-            <div className="border-t border-gray-700 pt-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-white">Lessons</h2>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={addLesson}
-                  className="flex items-center"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Lesson
-                </Button>
+              {/* Course Settings */}
+              <div className="space-y-4">
+                {/* Coming Soon Settings */}
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="comingSoon"
+                    checked={isComingSoon}
+                    onChange={(e) => setIsComingSoon(e.target.checked)}
+                    className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-600 rounded bg-gray-700"
+                  />
+                  <label htmlFor="comingSoon" className="ml-2 text-gray-300">
+                    Mark as "Coming Soon"
+                  </label>
+                </div>
+
+                {/* Featured Course Settings */}
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="featured"
+                    checked={isFeatured}
+                    onChange={(e) => setIsFeatured(e.target.checked)}
+                    className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-600 rounded bg-gray-700"
+                  />
+                  <label htmlFor="featured" className="ml-2 text-gray-300 flex items-center">
+                    <Star className="h-4 w-4 mr-1 text-yellow-500" />
+                    Add to Featured Classes
+                  </label>
+                </div>
               </div>
 
-              <div className="space-y-6">
-                {lessons.map((lesson, index) => (
-                  <div key={index} className="bg-gray-700 rounded-lg p-6 relative">
-                    <button
-                      type="button"
-                      onClick={() => removeLesson(index)}
-                      className="absolute top-4 right-4 text-gray-400 hover:text-white"
-                    >
-                      <X className="h-5 w-5" />
-                    </button>
+              {isComingSoon && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Expected Release Date
+                  </label>
+                  <input
+                    type="date"
+                    value={releaseDate}
+                    onChange={(e) => setReleaseDate(e.target.value)}
+                    className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                    required
+                  />
+                </div>
+              )}
 
-                    <div className="grid gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">
-                          Lesson Title
-                        </label>
-                        <input
-                          type="text"
-                          value={lesson.title}
-                          onChange={(e) => updateLesson(index, 'title', e.target.value)}
-                          className="w-full px-4 py-3 bg-gray-600 border border-gray-500 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-red-500"
-                          placeholder="Enter lesson title"
-                          required
-                        />
-                      </div>
+              {/* Lessons Section */}
+              <div className="border-t border-gray-700 pt-6">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xl font-bold text-white">Lessons</h2>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={addLesson}
+                    className="flex items-center"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Lesson
+                  </Button>
+                </div>
 
-                      <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">
-                          Description
-                        </label>
-                        <textarea
-                          value={lesson.description}
-                          onChange={(e) => updateLesson(index, 'description', e.target.value)}
-                          rows={3}
-                          className="w-full px-4 py-3 bg-gray-600 border border-gray-500 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-red-500"
-                          placeholder="Enter lesson description"
-                          required
-                        />
-                      </div>
+                <div className="space-y-6">
+                  {lessons.map((lesson, index) => (
+                    <div key={index} className="bg-gray-700 rounded-lg p-6 relative">
+                      <button
+                        type="button"
+                        onClick={() => removeLesson(index)}
+                        className="absolute top-4 right-4 text-gray-400 hover:text-white"
+                      >
+                        <X className="h-5 w-5" />
+                      </button>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <ImageUpload
-                          onImageUpload={(url) => updateLesson(index, 'thumbnail', url)}
-                          currentImage={lesson.thumbnail}
-                          uploadType="lessonThumbnail"
-                          label="Lesson Thumbnail"
-                          previewSize="sm"
-                          required
-                        />
-
+                      <div className="grid gap-4">
                         <div>
-                          <label className="block text-sm font-medium text-gray-300 mb-2 flex items-center">
-                            Video URL
-                            <div className="ml-2 group relative">
-                              <Info className="h-4 w-4 text-gray-400 cursor-help" />
-                              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
-                                Supports YouTube URLs and direct video files (MP4, WebM, etc.)
-                              </div>
-                            </div>
+                          <label className="block text-sm font-medium text-gray-300 mb-2">
+                            Lesson Title
                           </label>
                           <input
-                            type="url"
-                            value={lesson.videoUrl}
-                            onChange={(e) => updateLesson(index, 'videoUrl', e.target.value)}
+                            type="text"
+                            value={lesson.title}
+                            onChange={(e) => updateLesson(index, 'title', e.target.value)}
                             className="w-full px-4 py-3 bg-gray-600 border border-gray-500 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-red-500"
-                            placeholder="Enter YouTube URL or direct video file URL"
+                            placeholder="Enter lesson title"
                             required
                           />
-                          <p className="text-xs text-gray-400 mt-1">
-                            YouTube URLs will be automatically embedded. Direct video files (MP4, WebM) will use the custom player.
-                          </p>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-300 mb-2">
+                            Description
+                          </label>
+                          <textarea
+                            value={lesson.description}
+                            onChange={(e) => updateLesson(index, 'description', e.target.value)}
+                            rows={3}
+                            className="w-full px-4 py-3 bg-gray-600 border border-gray-500 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                            placeholder="Enter lesson description"
+                            required
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <ImageUpload
+                            onImageUpload={(url) => updateLesson(index, 'thumbnail', url)}
+                            currentImage={lesson.thumbnail}
+                            uploadType="lessonThumbnail"
+                            label="Lesson Thumbnail"
+                            previewSize="sm"
+                            required
+                          />
+
+                          <div>
+                            <label className="block text-sm font-medium text-gray-300 mb-2 flex items-center">
+                              Video URL
+                              <div className="ml-2 group relative">
+                                <Info className="h-4 w-4 text-gray-400 cursor-help" />
+                                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
+                                  Supports YouTube URLs and direct video files (MP4, WebM, etc.)
+                                </div>
+                              </div>
+                            </label>
+                            <input
+                              type="url"
+                              value={lesson.videoUrl}
+                              onChange={(e) => updateLesson(index, 'videoUrl', e.target.value)}
+                              className="w-full px-4 py-3 bg-gray-600 border border-gray-500 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                              placeholder="Enter YouTube URL or direct video file URL"
+                              required
+                            />
+                            <p className="text-xs text-gray-400 mt-1">
+                              YouTube URLs will be automatically embedded. Direct video files (MP4, WebM) will use the custom player.
+                            </p>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
 
-            <div className="flex justify-end space-x-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => navigate('/admin')}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                variant="primary"
-                className="flex items-center"
-              >
-                <Upload className="h-5 w-5 mr-2" />
-                {isEditing ? 'Update Course' : 'Upload Course'}
-              </Button>
-            </div>
-          </form>
+              <div className="flex justify-end space-x-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => navigate('/admin')}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  className="flex items-center"
+                >
+                  <Upload className="h-5 w-5 mr-2" />
+                  {isEditing ? 'Update Course' : 'Upload Course'}
+                </Button>
+              </div>
+            </form>
+          </div>
         </div>
       </div>
-    </div>
+    </Layout>
   );
 };
 
