@@ -576,6 +576,10 @@ export const authService = {
         throw new AuthError('NO_USER', 'No user data available');
       }
 
+      console.log('🔄 AuthService: Updating profile for user:', currentUser.id);
+      console.log('🔄 AuthService: Profile data:', profileData);
+      console.log('🔄 AuthService: API URL:', `${API_BASE_URL}/users/${currentUser.id}`);
+
       const response = await fetch(`${API_BASE_URL}/users/${currentUser.id}`, {
         method: 'PUT',
         headers: {
@@ -601,6 +605,7 @@ export const authService = {
       }
 
       const updatedUser: AuthUser = await response.json();
+      console.log('✅ AuthService: Profile update response:', updatedUser);
 
       // Update stored user data
       const currentToken = authService.getToken();

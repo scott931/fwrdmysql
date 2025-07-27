@@ -52,15 +52,15 @@ export default function LessonPage() {
             },
             instructorId: foundCourse.instructor_id,
             category: foundCourse.category_name || 'General',
-            thumbnail: foundCourse.thumbnail || '/placeholder-course.jpg',
-            banner: foundCourse.banner || '/placeholder-course.jpg',
+                    thumbnail: foundCourse.thumbnail || '/images/placeholder-course.jpg',
+        banner: foundCourse.banner || '/images/placeholder-course.jpg',
             videoUrl: foundCourse.video_url,
             description: foundCourse.description || 'Course description coming soon.',
             lessons: (foundCourse.lessons || []).map((lesson: any) => ({
               id: lesson.id,
               title: lesson.title,
               duration: lesson.duration || '00:00',
-              thumbnail: lesson.thumbnail || '/placeholder-course.jpg',
+              thumbnail: lesson.thumbnail || '/images/placeholder-course.jpg',
               videoUrl: lesson.video_url, // Transform snake_case to camelCase
               description: lesson.description || 'Lesson description coming soon.',
               xpPoints: lesson.xp_points || 100

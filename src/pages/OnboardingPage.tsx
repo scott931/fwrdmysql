@@ -3,11 +3,17 @@ import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
 import { Check, GraduationCap, Briefcase, MapPin, Globe, Users, BookOpen, Target, TrendingUp, Award, Zap, ChevronLeft, ArrowRight, Star } from 'lucide-react';
 import Layout from '../components/layout/Layout';
+import SuccessToast from '../components/ui/SuccessToast';
+import { useProfileCompletion } from '../hooks/useProfileCompletion';
 
 const OnboardingPage: React.FC = () => {
   const router = useRouter();
   const { user, updateProfile } = useAuth();
+  const { resetPromptCount } = useProfileCompletion();
   const [currentStep, setCurrentStep] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [showToast, setShowToast] = useState(false);
   const [formData, setFormData] = useState({
     education_level: '',
     job_title: '',
@@ -60,24 +66,57 @@ const OnboardingPage: React.FC = () => {
 
   const handleComplete = async () => {
     try {
+      setIsSubmitting(true);
+      console.log('🔄 Completing onboarding with data:', {
+        ...formData,
+        onboarding_completed: true
+      });
       await updateProfile({
         ...formData,
         onboarding_completed: true
       });
-      router.push('/home');
+      console.log('✅ Onboarding completed successfully');
+
+      // Reset the profile completion prompt count
+      resetPromptCount();
+
+      setShowSuccess(true);
+      setShowToast(true);
+
+      // Show success message for 2 seconds before redirecting
+      setTimeout(() => {
+        router.push('/home');
+      }, 2000);
     } catch (error) {
-      console.error('Failed to complete onboarding:', error);
+      console.error('❌ Failed to complete onboarding:', error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleSkip = async () => {
     try {
+      setIsSubmitting(true);
+      console.log('🔄 Skipping onboarding');
       await updateProfile({
         onboarding_completed: true
       });
-      router.push('/home');
+      console.log('✅ Onboarding skipped successfully');
+
+      // Reset the profile completion prompt count
+      resetPromptCount();
+
+      setShowSuccess(true);
+      setShowToast(true);
+
+      // Show success message for 2 seconds before redirecting
+      setTimeout(() => {
+        router.push('/home');
+      }, 2000);
     } catch (error) {
-      console.error('Failed to skip onboarding:', error);
+      console.error('❌ Failed to skip onboarding:', error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -123,7 +162,7 @@ const OnboardingPage: React.FC = () => {
 
   // Education levels
   const educationLevels = [
-    { id: 'high_school', label: 'High School', description: 'Currently in or completed high school' },
+    { id: 'high-school', label: 'High School', description: 'Currently in or completed high school' },
     { id: 'bachelor', label: 'Bachelor\'s Degree', description: 'Currently pursuing or completed bachelor\'s degree' },
     { id: 'master', label: 'Master\'s Degree', description: 'Currently pursuing or completed master\'s degree' },
     { id: 'phd', label: 'PhD/Doctorate', description: 'Currently pursuing or completed doctoral degree' },
@@ -199,6 +238,12 @@ const OnboardingPage: React.FC = () => {
 
   return (
     <Layout>
+      <SuccessToast
+        message="Profile completed successfully!"
+        isVisible={showToast}
+        onClose={() => setShowToast(false)}
+        duration={2000}
+      />
       <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-gray-800 text-white relative overflow-hidden">
         {/* Background Pattern */}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(239,68,68,0.1),transparent_50%)]" />
@@ -528,36 +573,66 @@ const OnboardingPage: React.FC = () => {
                   {/* Skip button - always visible */}
                   <button
                     onClick={handleSkip}
-                    className="flex items-center px-4 py-2 rounded-lg text-gray-400 hover:text-white border border-gray-600 hover:border-gray-500 transition-all"
+                    disabled={isSubmitting}
+                    className={`flex items-center px-4 py-2 rounded-lg transition-all ${
+                      isSubmitting
+                        ? 'text-gray-500 border-gray-700 cursor-not-allowed'
+                        : 'text-gray-400 hover:text-white border-gray-600 hover:border-gray-500'
+                    }`}
                   >
-                    Skip for now
+                    {isSubmitting ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400 mr-2"></div>
+                        Skipping...
+                      </>
+                    ) : (
+                      'Skip for now'
+                    )}
                   </button>
 
                   {currentStep < 3 ? (
                     <button
                       onClick={handleNext}
-                      disabled={!canProceed()}
+                      disabled={!canProceed() || isSubmitting}
                       className={`flex items-center px-6 py-2 rounded-lg transition-all ${
-                        canProceed()
+                        canProceed() && !isSubmitting
                           ? 'bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 shadow-lg shadow-red-500/25'
                           : 'bg-gray-600 cursor-not-allowed'
                       }`}
                     >
-                      Continue
-                      <ArrowRight className="h-4 w-4 ml-2" />
+                      {isSubmitting ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          Processing...
+                        </>
+                      ) : (
+                        <>
+                          Continue
+                          <ArrowRight className="h-4 w-4 ml-2" />
+                        </>
+                      )}
                     </button>
                   ) : (
                     <button
                       onClick={handleComplete}
-                      disabled={!canProceed()}
+                      disabled={!canProceed() || isSubmitting}
                       className={`flex items-center px-6 py-2 rounded-lg transition-all ${
-                        canProceed()
+                        canProceed() && !isSubmitting
                           ? 'bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 shadow-lg shadow-green-500/25'
                           : 'bg-gray-600 cursor-not-allowed'
                       }`}
                     >
-                      Complete Setup
-                      <Star className="h-4 w-4 ml-2" />
+                      {isSubmitting ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          Complete Setup
+                          <Star className="h-4 w-4 ml-2" />
+                        </>
+                      )}
                     </button>
                   )}
                 </div>
@@ -565,6 +640,27 @@ const OnboardingPage: React.FC = () => {
             </div>
           </div>
         </main>
+
+        {/* Success Message Overlay */}
+        {showSuccess && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-gray-800 rounded-2xl p-8 max-w-md w-full mx-4 text-center border border-gray-700">
+              <div className="bg-gradient-to-r from-green-500 to-green-600 p-4 rounded-full inline-flex mb-6">
+                <Check className="h-8 w-8 text-white" />
+              </div>
+              <h3 className="text-2xl font-bold text-white mb-4">
+                Profile Completed Successfully!
+              </h3>
+              <p className="text-gray-300 mb-6">
+                Your profile has been updated and you're all set to start your learning journey.
+              </p>
+              <div className="flex items-center justify-center">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-500"></div>
+                <span className="ml-3 text-green-400">Redirecting to home...</span>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Footer */}
         <footer className="relative z-10 px-6 py-8">

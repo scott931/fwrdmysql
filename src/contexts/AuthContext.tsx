@@ -245,7 +245,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.log('🔄 AuthContext: Updating profile with data:', profileData);
       const updatedUser = await authService.updateProfile(profileData);
       console.log('✅ AuthContext: Profile updated, new user data:', updatedUser);
+
+      // Update the user state with the new data
       setUser(updatedUser);
+      console.log('✅ AuthContext: User state updated with onboarding_completed:', updatedUser.onboarding_completed);
+
       return updatedUser;
     } catch (error) {
       console.error('❌ AuthContext: Profile update error:', error);

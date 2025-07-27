@@ -1398,11 +1398,11 @@ const AdminPage: React.FC = () => {
                           <td className="px-4 py-4 align-top">
                             <div className="flex items-start space-x-3 min-w-0 pr-2">
                               <img
-                                src={course.thumbnail || '/placeholder-course.jpg'}
+                                src={course.thumbnail || '/images/placeholder-course.jpg'}
                                 alt={course.title || 'Course'}
                                 className="h-10 w-10 rounded-lg object-cover flex-shrink-0"
                                 onError={(e) => {
-                                  e.currentTarget.src = '/placeholder-course.jpg';
+                                  e.currentTarget.src = '/images/placeholder-course.jpg';
                                 }}
                               />
                               <div className="min-w-0 flex-1 grid grid-rows-2 gap-1">

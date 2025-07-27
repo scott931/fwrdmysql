@@ -105,6 +105,9 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Serve static files from uploads directory
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+// Serve static files from public directory (for placeholder images)
+app.use('/images', express.static(path.join(__dirname, '../public')));
+
 // Create uploads directory if it doesn't exist
 const uploadsDir = path.join(__dirname, 'uploads');
 const avatarsDir = path.join(uploadsDir, 'avatars');
@@ -281,6 +284,28 @@ app.use('/api', secureRoutes);
 app.get('/api/health', (req, res) => {
   const healthStatus = monitoringService.getHealthStatus();
   res.apiSuccess(healthStatus, 'Server is healthy');
+});
+
+// Debug endpoint to check user data (for testing)
+app.get('/api/debug/user/:id', authenticateToken, async (req, res) => {
+  try {
+    const [user] = await executeQuery(
+      'SELECT id, email, full_name, avatar_url, role, onboarding_completed, education_level, job_title, topics_of_interest, industry, experience_level, business_stage, country, state_province, city FROM users WHERE id = ?',
+      [req.params.id]
+    );
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json({
+      message: 'User data retrieved',
+      user: user
+    });
+  } catch (error) {
+    console.error('Debug user data error:', error);
+    res.status(500).json({ error: 'Failed to retrieve user data' });
+  }
 });
 
 // Rate limit status endpoint
@@ -987,6 +1012,9 @@ app.post('/api/users', async (req, res) => {
 
 app.put('/api/users/:id', authenticateToken, async (req, res) => {
   try {
+    console.log('🔧 Backend: Received profile update request for user:', req.params.id);
+    console.log('🔧 Backend: Request body:', req.body);
+
     const {
       email,
       full_name,
@@ -1000,7 +1028,8 @@ app.put('/api/users/:id', authenticateToken, async (req, res) => {
       country,
       state_province,
       city,
-      role
+      role,
+      onboarding_completed
     } = req.body;
 
     // Ensure user can only update their own profile unless they're admin
@@ -1066,6 +1095,10 @@ app.put('/api/users/:id', authenticateToken, async (req, res) => {
       updateFields.push('city = ?');
       updateValues.push(city);
     }
+    if (onboarding_completed !== undefined) {
+      updateFields.push('onboarding_completed = ?');
+      updateValues.push(onboarding_completed);
+    }
     if (updateRole !== undefined) {
       updateFields.push('role = ?');
       updateValues.push(updateRole);
@@ -1087,6 +1120,7 @@ app.put('/api/users/:id', authenticateToken, async (req, res) => {
       country,
       state_province,
       city,
+      onboarding_completed,
       updateRole,
       userId: req.params.id
     });
@@ -1098,18 +1132,31 @@ app.put('/api/users/:id', authenticateToken, async (req, res) => {
     }
 
     const updateQuery = `UPDATE users SET ${updateFields.join(', ')} WHERE id = ?`;
+    console.log('🔧 Backend: Executing UPDATE query:', updateQuery);
+    console.log('🔧 Backend: UPDATE values:', updateValues);
+
     await executeQuery(updateQuery, updateValues);
+    console.log('✅ Backend: UPDATE query executed successfully');
 
     // Return the updated user data
+    console.log('🔧 Backend: Fetching updated user data...');
     const [updatedUser] = await executeQuery(
-      'SELECT id, email, full_name, avatar_url, role, onboarding_completed, industry, experience_level, business_stage, country, state_province, city FROM users WHERE id = ?',
+      'SELECT id, email, full_name, avatar_url, role, onboarding_completed, education_level, job_title, topics_of_interest, industry, experience_level, business_stage, country, state_province, city FROM users WHERE id = ?',
       [req.params.id]
     );
+    console.log('🔧 Backend: Raw updated user data from database:', updatedUser);
 
     // Add permissions field (empty array for now since permissions table doesn't exist)
     updatedUser.permissions = [];
 
-    res.json(updatedUser);
+    console.log('✅ Backend: Profile updated successfully for user:', req.params.id);
+    console.log('✅ Backend: Updated user data:', updatedUser);
+    console.log('✅ Backend: onboarding_completed value:', updatedUser.onboarding_completed);
+
+    res.json({
+      ...updatedUser,
+      message: 'Profile updated successfully'
+    });
   } catch (error) {
     console.error('User update error:', error);
     res.status(500).json({ error: 'Failed to update user' });

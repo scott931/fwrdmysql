@@ -51,7 +51,7 @@ const CourseCard: React.FC<CourseCardProps> = ({ course }) => {
   // MINIMAL TEST VERSION - just show basic info
   const courseId = course.id || 'unknown-course';
   const title = course.title || 'Untitled Course';
-  const thumbnail = course.thumbnail || '/placeholder-course.jpg';
+  const thumbnail = course.thumbnail || '/images/placeholder-course.jpg';
 
   // SUPER SAFE instructor handling
   let instructorName = 'Unknown Instructor';
@@ -140,8 +140,8 @@ const CourseCard: React.FC<CourseCardProps> = ({ course }) => {
               loading="lazy"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
-                if (target.src !== '/placeholder-course.jpg') {
-                  target.src = '/placeholder-course.jpg';
+                if (target.src !== '/images/placeholder-course.jpg') {
+                  target.src = '/images/placeholder-course.jpg';
                 }
               }}
               onLoad={(e) => {
@@ -161,8 +161,8 @@ const CourseCard: React.FC<CourseCardProps> = ({ course }) => {
               loading="lazy"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
-                if (target.src !== '/placeholder-course.jpg') {
-                  target.src = '/placeholder-course.jpg';
+                if (target.src !== '/images/placeholder-course.jpg') {
+                  target.src = '/images/placeholder-course.jpg';
                 }
               }}
               onLoad={(e) => {

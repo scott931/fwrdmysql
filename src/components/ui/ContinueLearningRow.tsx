@@ -75,8 +75,8 @@ const ContinueLearningRow: React.FC<ContinueLearningRowProps> = ({ courses }) =>
                       className="w-full h-full object-cover"
                       onError={(e) => {
                         const target = e.target as HTMLImageElement;
-                        if (target.src !== '/placeholder-course.jpg') {
-                          target.src = '/placeholder-course.jpg';
+                        if (target.src !== '/images/placeholder-course.jpg') {
+                          target.src = '/images/placeholder-course.jpg';
                         }
                       }}
                     />
@@ -89,8 +89,8 @@ const ContinueLearningRow: React.FC<ContinueLearningRowProps> = ({ courses }) =>
                       className="w-full h-full object-cover"
                       onError={(e) => {
                         const target = e.target as HTMLImageElement;
-                        if (target.src !== '/placeholder-course.jpg') {
-                          target.src = '/placeholder-course.jpg';
+                        if (target.src !== '/images/placeholder-course.jpg') {
+                          target.src = '/images/placeholder-course.jpg';
                         }
                       }}
                     />
