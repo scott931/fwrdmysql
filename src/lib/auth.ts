@@ -223,14 +223,42 @@ export const authService = {
     return timeUntilExpiry <= TOKEN_REFRESH_THRESHOLD;
   },
 
-  // Clear all auth data
+  // Clear all auth data and user-specific data
   clearAuthData: () => {
     if (typeof window !== 'undefined') {
+      // Clear auth tokens and user data
       localStorage.removeItem(TOKEN_KEY);
       localStorage.removeItem(REFRESH_TOKEN_KEY);
       localStorage.removeItem(USER_KEY);
       localStorage.removeItem(TOKEN_EXPIRY_KEY);
-      console.log('🧹 Auth data cleared');
+
+      // Clear all user-specific localStorage items
+      const keysToRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (
+          key.startsWith('profile_prompt_') ||
+          key.startsWith('user_') ||
+          key.startsWith('userLevel') ||
+          key.startsWith('achievements') ||
+          key.startsWith('learningStreak') ||
+          key.startsWith('certificates') ||
+          key.startsWith('notifications') ||
+          key.startsWith('userBehavior_') ||
+          key.startsWith('videoTracking_') ||
+          key.startsWith('audit_logs')
+        )) {
+          keysToRemove.push(key);
+        }
+      }
+
+      // Remove all user-specific keys
+      keysToRemove.forEach(key => {
+        localStorage.removeItem(key);
+        console.log(`🧹 Cleared user data: ${key}`);
+      });
+
+      console.log('🧹 All auth and user data cleared');
     }
   },
 

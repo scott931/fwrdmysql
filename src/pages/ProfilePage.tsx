@@ -12,7 +12,7 @@ import EditProfileForm from '../components/ui/EditProfileForm';
 
 const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
-  const { user, profile, signOut, updateProfile } = useAuth();
+  const { user, profile, signOut, updateProfile, loading: authLoading, checkAuthStatus } = useAuth();
   const [activeTab, setActiveTab] = useState<'profile' | 'settings' | 'security'>('profile');
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -100,9 +100,18 @@ const ProfilePage: React.FC = () => {
     }
   }, [user?.id, fetchUserProgress, fetchUserCertificates]);
 
-  // Initialize form data only once when user data is available
+  // Force refresh user data from database when component mounts or user changes
   useEffect(() => {
-    if (user && !formInitializedRef.current) {
+    if (user?.id) {
+      // Force fetch fresh user data from database
+      checkAuthStatus();
+      console.log('🔄 ProfilePage: Forcing fresh user data fetch from database');
+    }
+  }, [user?.id, checkAuthStatus]);
+
+  // Initialize form data when user data is available or changes
+  useEffect(() => {
+    if (user) {
       setEditProfileForm({
         full_name: user.full_name || '',
         avatar_url: user.avatar_url || '',
@@ -114,8 +123,51 @@ const ProfilePage: React.FC = () => {
         city: user.city || ''
       });
       formInitializedRef.current = true;
+    } else {
+      // Reset form when user is null (logout)
+      setEditProfileForm({
+        full_name: '',
+        avatar_url: '',
+        industry: '',
+        experience_level: '',
+        business_stage: '',
+        country: '',
+        state_province: '',
+        city: ''
+      });
+      formInitializedRef.current = false;
     }
-  }, [user?.id]); // Only depend on user ID, not the entire user object
+  }, [user?.id, user]); // Depend on both user ID and user object to catch logout
+
+  // Clear any remaining cached data when user becomes null (logout)
+  useEffect(() => {
+    if (!user && typeof window !== 'undefined') {
+      // Force clear any remaining user-specific data
+      const keysToRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (
+          key.startsWith('profile_prompt_') ||
+          key.startsWith('user_') ||
+          key.startsWith('userLevel') ||
+          key.startsWith('achievements') ||
+          key.startsWith('learningStreak') ||
+          key.startsWith('certificates') ||
+          key.startsWith('notifications') ||
+          key.startsWith('userBehavior_') ||
+          key.startsWith('videoTracking_') ||
+          key.startsWith('audit_logs')
+        )) {
+          keysToRemove.push(key);
+        }
+      }
+
+      keysToRemove.forEach(key => {
+        localStorage.removeItem(key);
+        console.log(`🧹 ProfilePage: Cleared cached data: ${key}`);
+      });
+    }
+  }, [user]);
 
 
 
@@ -124,17 +176,25 @@ const ProfilePage: React.FC = () => {
   const totalHoursWatched = userProgress.reduce((total, p) => total + (p.progress || 0), 0) / 100; // Rough estimate
   const certificatesEarned = userCertificates.length;
 
-  // Get user data from auth context
-  const userData = {
-    name: user?.full_name || profile?.full_name || 'User',
-    email: user?.email || profile?.email || 'user@example.com',
-    avatar: user?.avatar_url || profile?.avatar_url || 'https://images.pexels.com/photos/2182970/pexels-photo-2182970.jpeg',
-    joinDate: new Date(), // We'll add created_at to AuthUser interface later
-    coursesCompleted: completedCourses,
-    hoursWatched: Math.round(totalHoursWatched * 10), // Convert to hours
-    certificatesEarned: certificatesEarned,
-    lastPasswordChange: new Date('2023-12-15') // This would come from user's password history
-  };
+  // Get user data from auth context with better fallbacks and memoization
+  const userData = useMemo(() => {
+    const avatarUrl = user?.avatar_url || profile?.avatar_url || '/placeholder-avatar.jpg';
+    // Add cache-busting parameter to force image reload when user changes
+    const cacheBustedAvatar = avatarUrl.includes('?')
+      ? `${avatarUrl}&t=${Date.now()}`
+      : `${avatarUrl}?t=${Date.now()}`;
+
+    return {
+      name: user?.full_name || profile?.full_name || 'User',
+      email: user?.email || profile?.email || 'user@example.com',
+      avatar: cacheBustedAvatar,
+      joinDate: new Date(), // We'll add created_at to AuthUser interface later
+      coursesCompleted: completedCourses,
+      hoursWatched: Math.round(totalHoursWatched * 10), // Convert to hours
+      certificatesEarned: certificatesEarned,
+      lastPasswordChange: new Date('2023-12-15') // This would come from user's password history
+    };
+  }, [user?.full_name, user?.email, user?.avatar_url, profile?.full_name, profile?.email, profile?.avatar_url, completedCourses, totalHoursWatched, certificatesEarned]);
 
   const validatePassword = (password: string): string[] => {
     const errors: string[] = [];
@@ -229,7 +289,12 @@ const ProfilePage: React.FC = () => {
 
   const handleLogout = async () => {
     await signOut();
+    // Force a complete page reload to clear all cached data and state
+    if (typeof window !== 'undefined') {
+      window.location.href = '/';
+    } else {
     navigate('/');
+    }
   };
 
   const handleDeleteAccount = async () => {
@@ -255,7 +320,12 @@ const ProfilePage: React.FC = () => {
       }
 
       await signOut();
+      // Force a complete page reload to clear all cached data and state
+      if (typeof window !== 'undefined') {
+        window.location.href = '/';
+      } else {
       navigate('/');
+      }
     } catch (error) {
       console.error('Failed to delete account:', error);
       alert('Failed to delete account. Please try again.');
@@ -340,7 +410,7 @@ const ProfilePage: React.FC = () => {
     }, [initialData]);
 
     const handleSubmit = (e: React.FormEvent) => {
-      e.preventDefault();
+    e.preventDefault();
       onSubmit(formData);
     };
 
@@ -711,8 +781,32 @@ const ProfilePage: React.FC = () => {
     );
   };
 
+  // Add loading state and authentication check after all hooks
+  if (authLoading) {
   return (
     <Layout>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto"></div>
+            <p className="mt-4 text-gray-400">Loading profile...</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (!user) {
+    // Force a complete page reload to clear all cached data
+    if (typeof window !== 'undefined') {
+      window.location.href = '/login';
+      return null;
+    }
+    navigate('/login');
+    return null;
+  }
+
+  return (
+    <Layout key={user?.id || 'no-user'}>
       <div className="min-h-screen bg-gray-900 py-8">
         <div className="max-w-4xl mx-auto px-4">
           {/* Header */}
@@ -769,6 +863,7 @@ const ProfilePage: React.FC = () => {
                 <div className="flex items-center space-x-6 mb-6">
                   {userData.avatar.startsWith('http') ? (
                     <img
+                      key={`${user?.id || 'no-user'}-${Date.now()}`}
                       src={userData.avatar}
                       alt={userData.name}
                       className="w-20 h-20 rounded-full object-cover"
@@ -781,6 +876,7 @@ const ProfilePage: React.FC = () => {
                     />
                   ) : (
                     <Image
+                      key={`${user?.id || 'no-user'}-${Date.now()}`}
                       src={userData.avatar}
                       alt={userData.name}
                       width={80}
