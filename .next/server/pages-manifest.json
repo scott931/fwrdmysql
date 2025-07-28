@@ -3,6 +3,7 @@
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
   "/courses": "pages/courses.js",
+  "/home": "pages/home.js",
   "/login": "pages/login.js",
-  "/home": "pages/home.js"
+  "/course/[courseId]/lesson/[lessonId]": "pages/course/[courseId]/lesson/[lessonId].js"
 }

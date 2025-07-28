@@ -53,25 +53,55 @@ const CourseCard: React.FC<CourseCardProps> = ({ course }) => {
   const title = course.title || 'Untitled Course';
   const thumbnail = course.thumbnail || '/images/placeholder-course.jpg';
 
-  // SUPER SAFE instructor handling
+  // DUAL FALLBACK instructor handling - same logic as admin page
   let instructorName = 'Unknown Instructor';
   let instructorImage = '/images/placeholder-avatar.jpg';
 
+  console.log('🔍 CourseCard instructor debug:', {
+    courseId: course.id,
+    hasInstructorObject: !!course.instructor,
+    instructorType: typeof course.instructor,
+    instructorObject: course.instructor,
+    hasInstructorName: !!(course as any).instructor_name,
+    instructorNameValue: (course as any).instructor_name,
+    instructorImageValue: (course as any).instructor_image
+  });
+
   try {
-    if (course.instructor) {
-      if (typeof course.instructor === 'object' && course.instructor !== null) {
-        instructorName = (course.instructor as any).name || 'Unknown Instructor';
-        instructorImage = (course.instructor as any).image || '/images/placeholder-avatar.jpg';
-      } else if (typeof course.instructor === 'string') {
-        instructorName = course.instructor;
-        instructorImage = '/images/placeholder-avatar.jpg';
-      }
+    // First: Try to access the transformed instructor object (from useCourses hook)
+    if (course.instructor && typeof course.instructor === 'object' && course.instructor !== null) {
+      console.log('✅ CourseCard: Using instructor object');
+      instructorName = (course.instructor as any).name || 'Unknown Instructor';
+      instructorImage = (course.instructor as any).image || '/images/placeholder-avatar.jpg';
+    }
+    // Second: Fall back to raw API field (direct from API)
+    else if ((course as any).instructor_name) {
+      console.log('✅ CourseCard: Using instructor_name field');
+      instructorName = (course as any).instructor_name || 'Unknown Instructor';
+      instructorImage = (course as any).instructor_image || '/images/placeholder-avatar.jpg';
+    }
+    // Third: Handle string instructor (legacy format)
+    else if (typeof course.instructor === 'string') {
+      console.log('✅ CourseCard: Using string instructor');
+      instructorName = course.instructor;
+      instructorImage = '/images/placeholder-avatar.jpg';
+    }
+    // Fourth: Final fallback
+    else {
+      console.log('❌ CourseCard: Using final fallback - no instructor data found');
+      instructorName = 'Unknown Instructor';
+      instructorImage = '/images/placeholder-avatar.jpg';
     }
   } catch (error) {
     console.error('Error accessing instructor data:', error);
     instructorName = 'Unknown Instructor';
     instructorImage = '/images/placeholder-avatar.jpg';
   }
+
+  console.log('🎯 CourseCard final instructor data:', {
+    name: instructorName,
+    image: instructorImage
+  });
 
   // Check if course is playable
   const isPlayable = course.lessons && course.lessons.length > 0 && !course.comingSoon;

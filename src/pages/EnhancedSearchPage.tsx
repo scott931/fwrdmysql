@@ -82,12 +82,37 @@ const EnhancedSearchPage: React.FC = () => {
       const lowercaseQuery = query.toLowerCase();
 
       // Filter courses
-      const filteredCourses = allCourses.filter(course =>
-        course.title.toLowerCase().includes(lowercaseQuery) ||
-        course.description.toLowerCase().includes(lowercaseQuery) ||
-        course.instructor.name.toLowerCase().includes(lowercaseQuery) ||
-        course.category.toLowerCase().includes(lowercaseQuery)
-      );
+      const filteredCourses = allCourses.filter(course => {
+        // DUAL FALLBACK instructor handling - same logic as admin page
+        let instructorName = 'Unknown Instructor';
+
+        try {
+          // First: Try to access the transformed instructor object (from useCourses hook)
+          if (course.instructor && typeof course.instructor === 'object' && course.instructor !== null) {
+            instructorName = (course.instructor as any).name || 'Unknown Instructor';
+          }
+          // Second: Fall back to raw API field (direct from API)
+          else if ((course as any).instructor_name) {
+            instructorName = (course as any).instructor_name || 'Unknown Instructor';
+          }
+          // Third: Handle string instructor (legacy format)
+          else if (typeof course.instructor === 'string') {
+            instructorName = course.instructor;
+          }
+          // Fourth: Final fallback
+          else {
+            instructorName = 'Unknown Instructor';
+          }
+        } catch (error) {
+          console.error('Error accessing instructor data:', error);
+          instructorName = 'Unknown Instructor';
+        }
+
+        return course.title.toLowerCase().includes(lowercaseQuery) ||
+          course.description.toLowerCase().includes(lowercaseQuery) ||
+          instructorName.toLowerCase().includes(lowercaseQuery) ||
+          course.category.toLowerCase().includes(lowercaseQuery);
+      });
 
       // Filter instructors
       const filteredInstructors = allInstructors.filter(instructor =>

@@ -8,37 +8,106 @@ import { Course } from '../types';
 const transformCourseData = (backendCourse: any): Course => {
   console.log('Transform Course Data - Backend:', backendCourse);
 
-  // Transform instructor data properly
+  // Transform instructor data with dual fallback logic
+  let instructorName = 'Unknown Instructor';
+  let instructorTitle = 'Instructor';
+  let instructorImage = '/images/placeholder-avatar.jpg';
+  let instructorBio = 'Experienced instructor';
+  let instructorEmail = 'instructor@forwardafrica.com';
+  let instructorExpertise = ['Education'];
+  let instructorExperience = 5;
+  let instructorCreatedAt = new Date();
+
+  console.log('🔍 TransformCourseData instructor debug:', {
+    courseId: backendCourse.id,
+    hasInstructorObject: !!backendCourse.instructor,
+    instructorType: typeof backendCourse.instructor,
+    hasInstructorName: !!backendCourse.instructor_name,
+    instructorNameValue: backendCourse.instructor_name,
+    instructorTitleValue: backendCourse.instructor_title,
+    instructorImageValue: backendCourse.instructor_image
+  });
+
+  try {
+    // First: Try to access the transformed instructor object (from useCourses hook)
+    if (backendCourse.instructor && typeof backendCourse.instructor === 'object' && backendCourse.instructor !== null) {
+      console.log('✅ TransformCourseData: Using instructor object');
+      instructorName = (backendCourse.instructor as any).name || 'Unknown Instructor';
+      instructorTitle = (backendCourse.instructor as any).title || 'Instructor';
+      instructorImage = (backendCourse.instructor as any).image || '/images/placeholder-avatar.jpg';
+      instructorBio = (backendCourse.instructor as any).bio || 'Experienced instructor';
+      instructorEmail = (backendCourse.instructor as any).email || 'instructor@forwardafrica.com';
+      instructorExpertise = (backendCourse.instructor as any).expertise || ['Education'];
+      instructorExperience = (backendCourse.instructor as any).experience || 5;
+      instructorCreatedAt = new Date((backendCourse.instructor as any).createdAt || Date.now());
+    }
+    // Second: Fall back to raw API field (direct from API)
+    else if (backendCourse.instructor_name) {
+      console.log('✅ TransformCourseData: Using instructor_name field');
+      instructorName = backendCourse.instructor_name || 'Unknown Instructor';
+      instructorTitle = backendCourse.instructor_title || 'Instructor';
+      instructorImage = backendCourse.instructor_image || '/images/placeholder-avatar.jpg';
+      instructorBio = backendCourse.instructor_bio || 'Experienced instructor';
+      instructorEmail = backendCourse.instructor_email || 'instructor@forwardafrica.com';
+      instructorExpertise = backendCourse.instructor_expertise ? JSON.parse(backendCourse.instructor_expertise) : ['Education'];
+      instructorExperience = backendCourse.instructor_experience || 5;
+      instructorCreatedAt = new Date(backendCourse.instructor_created_at || Date.now());
+    }
+    // Third: Handle string instructor (legacy format)
+    else if (typeof backendCourse.instructor === 'string') {
+      console.log('✅ TransformCourseData: Using string instructor');
+      instructorName = backendCourse.instructor;
+      instructorTitle = 'Instructor';
+      instructorImage = '/images/placeholder-avatar.jpg';
+      instructorBio = 'Experienced instructor';
+      instructorEmail = 'instructor@forwardafrica.com';
+      instructorExpertise = ['Education'];
+      instructorExperience = 5;
+      instructorCreatedAt = new Date();
+    }
+    // Fourth: Final fallback
+    else {
+      console.log('❌ TransformCourseData: Using final fallback - no instructor data found');
+      instructorName = 'Unknown Instructor';
+      instructorTitle = 'Instructor';
+      instructorImage = '/images/placeholder-avatar.jpg';
+      instructorBio = 'Experienced instructor';
+      instructorEmail = 'instructor@forwardafrica.com';
+      instructorExpertise = ['Education'];
+      instructorExperience = 5;
+      instructorCreatedAt = new Date();
+    }
+  } catch (error) {
+    console.error('Error accessing instructor data:', error);
+    instructorName = 'Unknown Instructor';
+    instructorTitle = 'Instructor';
+    instructorImage = '/images/placeholder-avatar.jpg';
+    instructorBio = 'Experienced instructor';
+    instructorEmail = 'instructor@forwardafrica.com';
+    instructorExpertise = ['Education'];
+    instructorExperience = 5;
+    instructorCreatedAt = new Date();
+  }
+
+  console.log('🎯 TransformCourseData final instructor data:', {
+    name: instructorName,
+    title: instructorTitle,
+    image: instructorImage
+  });
+
   const instructor = {
     id: backendCourse.instructor_id || 'unknown',
-    name: backendCourse.instructor_name || 'Unknown Instructor',
-    title: backendCourse.instructor_title || 'Instructor',
-            image: backendCourse.instructor_image || '/images/placeholder-avatar.jpg',
-    bio: backendCourse.instructor_bio || 'Experienced instructor',
-    email: backendCourse.instructor_email || 'instructor@forwardafrica.com',
-    expertise: ['Education'], // Default expertise
-    experience: 5, // Default experience
-    createdAt: new Date()
+    name: instructorName,
+    title: instructorTitle,
+    image: instructorImage,
+    bio: instructorBio,
+    email: instructorEmail,
+    expertise: instructorExpertise,
+    experience: instructorExperience,
+    createdAt: instructorCreatedAt
   };
 
-  // Try to parse expertise if it exists
-  if (backendCourse.instructor_expertise) {
-    try {
-      instructor.expertise = JSON.parse(backendCourse.instructor_expertise);
-    } catch (e) {
-      console.log('Could not parse instructor expertise:', backendCourse.instructor_expertise);
-    }
-  }
-
-  // Try to parse experience if it exists
-  if (backendCourse.instructor_experience) {
-    instructor.experience = parseInt(backendCourse.instructor_experience) || 5;
-  }
-
-  // Try to parse created_at if it exists
-  if (backendCourse.instructor_created_at) {
-    instructor.createdAt = new Date(backendCourse.instructor_created_at);
-  }
+  // Note: Instructor data parsing is now handled in the dual fallback logic above
 
   const transformed = {
     id: backendCourse.id,

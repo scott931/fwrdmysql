@@ -86,37 +86,77 @@ const HeroBanner: React.FC<HeroBannerProps> = ({ course, onPlay }) => {
       <div className="absolute bottom-0 left-0 right-0 p-6 md:p-12 flex flex-col items-start">
         <span className="text-sm md:text-base text-red-500 font-semibold mb-2">FEATURED MASTER CLASS</span>
         <h1 className="text-3xl md:text-5xl font-bold text-white mb-2">{course.title || 'Featured Course'}</h1>
-        {course.instructor && (
-          <div className="flex items-center mb-4">
-            {(course.instructor.image || '/images/placeholder-avatar.jpg').startsWith('http') ? (
-              <img
-                src={course.instructor.image || '/images/placeholder-avatar.jpg'}
-                alt={course.instructor.name || 'Instructor'}
-                className="w-10 h-10 rounded-full object-cover mr-3"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.src = '/images/placeholder-avatar.jpg';
-                }}
-              />
-            ) : (
-              <Image
-                src={course.instructor.image || '/images/placeholder-avatar.jpg'}
-                alt={course.instructor.name || 'Instructor'}
-                width={40}
-                height={40}
-                className="w-10 h-10 rounded-full object-cover mr-3"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.src = '/images/placeholder-avatar.jpg';
-                }}
-              />
-            )}
-            <div>
-              <p className="text-white font-medium">{course.instructor.name || 'Unknown Instructor'}</p>
-              <p className="text-gray-300 text-sm">{course.instructor.title || 'Course Instructor'}</p>
+        {/* DUAL FALLBACK instructor handling - same logic as admin page */}
+        {(() => {
+          // Get instructor info with dual fallback
+          let instructorName = 'Unknown Instructor';
+          let instructorTitle = 'Course Instructor';
+          let instructorImage = '/images/placeholder-avatar.jpg';
+
+          try {
+            // First: Try to access the transformed instructor object (from useCourses hook)
+            if (course.instructor && typeof course.instructor === 'object' && course.instructor !== null) {
+              instructorName = (course.instructor as any).name || 'Unknown Instructor';
+              instructorTitle = (course.instructor as any).title || 'Course Instructor';
+              instructorImage = (course.instructor as any).image || '/images/placeholder-avatar.jpg';
+            }
+            // Second: Fall back to raw API field (direct from API)
+            else if ((course as any).instructor_name) {
+              instructorName = (course as any).instructor_name || 'Unknown Instructor';
+              instructorTitle = (course as any).instructor_title || 'Course Instructor';
+              instructorImage = (course as any).instructor_image || '/images/placeholder-avatar.jpg';
+            }
+            // Third: Handle string instructor (legacy format)
+            else if (typeof course.instructor === 'string') {
+              instructorName = course.instructor;
+              instructorTitle = 'Course Instructor';
+              instructorImage = '/images/placeholder-avatar.jpg';
+            }
+            // Fourth: Final fallback
+            else {
+              instructorName = 'Unknown Instructor';
+              instructorTitle = 'Course Instructor';
+              instructorImage = '/images/placeholder-avatar.jpg';
+            }
+          } catch (error) {
+            console.error('Error accessing instructor data:', error);
+            instructorName = 'Unknown Instructor';
+            instructorTitle = 'Course Instructor';
+            instructorImage = '/images/placeholder-avatar.jpg';
+          }
+
+          return (
+            <div className="flex items-center mb-4">
+              {instructorImage.startsWith('http') ? (
+                <img
+                  src={instructorImage}
+                  alt={instructorName}
+                  className="w-10 h-10 rounded-full object-cover mr-3"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.src = '/images/placeholder-avatar.jpg';
+                  }}
+                />
+              ) : (
+                <Image
+                  src={instructorImage}
+                  alt={instructorName}
+                  width={40}
+                  height={40}
+                  className="w-10 h-10 rounded-full object-cover mr-3"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.src = '/images/placeholder-avatar.jpg';
+                  }}
+                />
+              )}
+              <div>
+                <p className="text-white font-medium">{instructorName}</p>
+                <p className="text-gray-300 text-sm">{instructorTitle}</p>
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
         <p className="text-gray-200 text-sm md:text-base max-w-2xl mb-6">{course.description || 'Learn from industry experts and advance your skills with our comprehensive course.'}</p>
         <div className="flex space-x-4">
           <Button

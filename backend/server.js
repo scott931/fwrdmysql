@@ -707,6 +707,124 @@ app.post('/api/init-db', async (req, res) => {
       );
     }
 
+    // Insert sample courses if they don't exist
+    const [existingCourses] = await executeQuery('SELECT COUNT(*) as count FROM courses');
+    if (existingCourses.count === 0) {
+      // Create sample courses that reference the demo instructor
+      const sampleCourses = [
+        {
+          id: 'course-1',
+          title: 'Business Fundamentals for Entrepreneurs',
+          instructor_id: 'instructor-1',
+          category_id: 'business',
+          thumbnail: 'https://images.pexels.com/photos/7681118/pexels-photo-7681118.jpeg',
+          banner: 'https://images.pexels.com/photos/3184292/pexels-photo-3184292.jpeg',
+          video_url: 'https://www.youtube.com/watch?v=8jPQjjsBbIc',
+          description: 'Learn the essential principles of business management and entrepreneurship from our expert instructor.',
+          featured: true,
+          total_xp: 500
+        },
+        {
+          id: 'course-2',
+          title: 'Digital Marketing Mastery',
+          instructor_id: 'instructor-1',
+          category_id: 'marketing',
+          thumbnail: 'https://images.pexels.com/photos/7681119/pexels-photo-7681119.jpeg',
+          banner: 'https://images.pexels.com/photos/3184293/pexels-photo-3184293.jpeg',
+          video_url: 'https://www.youtube.com/watch?v=9bZkp7q19f0',
+          description: 'Master digital marketing strategies for modern businesses with comprehensive lessons.',
+          featured: true,
+          total_xp: 600
+        },
+        {
+          id: 'course-3',
+          title: 'Financial Planning for Startups',
+          instructor_id: 'instructor-1',
+          category_id: 'finance',
+          thumbnail: 'https://images.pexels.com/photos/7681120/pexels-photo-7681120.jpeg',
+          banner: 'https://images.pexels.com/photos/3184294/pexels-photo-3184294.jpeg',
+          video_url: 'https://www.youtube.com/watch?v=kJQP7kiw5Fk',
+          description: 'Essential financial management skills for startup success and sustainable growth.',
+          featured: false,
+          total_xp: 450
+        }
+      ];
+
+      for (const course of sampleCourses) {
+        await executeQuery(
+          'INSERT INTO courses (id, title, instructor_id, category_id, thumbnail, banner, video_url, description, featured, total_xp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [
+            course.id,
+            course.title,
+            course.instructor_id,
+            course.category_id,
+            course.thumbnail,
+            course.banner,
+            course.video_url,
+            course.description,
+            course.featured,
+            course.total_xp
+          ]
+        );
+      }
+
+      // Create sample lessons for the first course
+      const sampleLessons = [
+        {
+          id: 'lesson-1',
+          course_id: 'course-1',
+          title: 'Introduction to Business Fundamentals',
+          duration: '25:30',
+          thumbnail: 'https://images.pexels.com/photos/7681891/pexels-photo-7681891.jpeg',
+          video_url: 'https://www.youtube.com/watch?v=8jPQjjsBbIc',
+          description: 'Learn the foundational principles of business management and entrepreneurship.',
+          xp_points: 100,
+          order_index: 1
+        },
+        {
+          id: 'lesson-2',
+          course_id: 'course-1',
+          title: 'Strategic Planning and Execution',
+          duration: '32:15',
+          thumbnail: 'https://images.pexels.com/photos/7681866/pexels-photo-7681866.jpeg',
+          video_url: 'https://www.youtube.com/watch?v=9bZkp7q19f0',
+          description: 'Master the art of strategic planning and effective execution in business.',
+          xp_points: 120,
+          order_index: 2
+        },
+        {
+          id: 'lesson-3',
+          course_id: 'course-1',
+          title: 'Financial Management Essentials',
+          duration: '28:45',
+          thumbnail: 'https://images.pexels.com/photos/7681892/pexels-photo-7681892.jpeg',
+          video_url: 'https://www.youtube.com/watch?v=kJQP7kiw5Fk',
+          description: 'Understand the fundamentals of financial management for business success.',
+          xp_points: 110,
+          order_index: 3
+        }
+      ];
+
+      for (const lesson of sampleLessons) {
+        await executeQuery(
+          'INSERT INTO lessons (id, course_id, title, duration, thumbnail, video_url, description, xp_points, order_index) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [
+            lesson.id,
+            lesson.course_id,
+            lesson.title,
+            lesson.duration,
+            lesson.thumbnail,
+            lesson.video_url,
+            lesson.description,
+            lesson.xp_points,
+            lesson.order_index
+          ]
+        );
+      }
+
+      console.log('✅ Sample courses and lessons created successfully');
+    }
+
     // Create a test user if it doesn't exist
     const [existingUser] = await executeQuery('SELECT id FROM users WHERE email = ?', ['admin@forwardafrica.com']);
 

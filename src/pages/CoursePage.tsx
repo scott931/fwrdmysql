@@ -56,6 +56,12 @@ const CoursePage: React.FC = () => {
 
           const foundCourse = await response.json();
           console.log('Course data from API:', foundCourse);
+          console.log('Instructor data from API:', {
+            instructor_name: foundCourse.instructor_name,
+            instructor_title: foundCourse.instructor_title,
+            instructor_image: foundCourse.instructor_image,
+            instructor_id: foundCourse.instructor_id
+          });
           console.log('Raw lessons from API:', foundCourse.lessons);
 
           // Check if this course has no lessons but there might be another course with the same title
@@ -106,25 +112,95 @@ const CoursePage: React.FC = () => {
             }
           }
 
-          // Transform the course data to match frontend format
+          // Transform the course data to match frontend format with dual fallback logic
           const transformedCourse = {
             id: foundCourse.id,
             title: foundCourse.title,
-            instructor: {
-              id: foundCourse.instructor_id || 'unknown',
-              name: foundCourse.instructor_name || 'Unknown Instructor',
-              title: foundCourse.instructor_title || 'Instructor',
-              image: foundCourse.instructor_image || '/images/placeholder-avatar.jpg',
-              bio: foundCourse.instructor_bio || 'Experienced instructor',
-              email: foundCourse.instructor_email || 'instructor@forwardafrica.com',
-              expertise: ['Education'],
-              experience: 5,
-              createdAt: new Date()
-            },
+            instructor: (() => {
+              // DUAL FALLBACK instructor handling - same logic as admin page
+              let instructorName = 'Unknown Instructor';
+              let instructorTitle = 'Instructor';
+              let instructorImage = '/images/placeholder-avatar.jpg';
+              let instructorBio = 'Experienced instructor';
+              let instructorEmail = 'instructor@forwardafrica.com';
+
+              console.log('🔍 Instructor transformation debug:', {
+                hasInstructorObject: !!foundCourse.instructor,
+                instructorType: typeof foundCourse.instructor,
+                hasInstructorName: !!foundCourse.instructor_name,
+                instructorNameValue: foundCourse.instructor_name,
+                instructorTitleValue: foundCourse.instructor_title,
+                instructorImageValue: foundCourse.instructor_image
+              });
+
+              try {
+                // First: Try to access the transformed instructor object (from useCourses hook)
+                if (foundCourse.instructor && typeof foundCourse.instructor === 'object' && foundCourse.instructor !== null) {
+                  console.log('✅ Using instructor object');
+                  instructorName = (foundCourse.instructor as any).name || 'Unknown Instructor';
+                  instructorTitle = (foundCourse.instructor as any).title || 'Instructor';
+                  instructorImage = (foundCourse.instructor as any).image || '/images/placeholder-avatar.jpg';
+                  instructorBio = (foundCourse.instructor as any).bio || 'Experienced instructor';
+                  instructorEmail = (foundCourse.instructor as any).email || 'instructor@forwardafrica.com';
+                }
+                // Second: Fall back to raw API field (direct from API)
+                else if (foundCourse.instructor_name) {
+                  console.log('✅ Using instructor_name field');
+                  instructorName = foundCourse.instructor_name || 'Unknown Instructor';
+                  instructorTitle = foundCourse.instructor_title || 'Instructor';
+                  instructorImage = foundCourse.instructor_image || '/images/placeholder-avatar.jpg';
+                  instructorBio = foundCourse.instructor_bio || 'Experienced instructor';
+                  instructorEmail = foundCourse.instructor_email || 'instructor@forwardafrica.com';
+                }
+                // Third: Handle string instructor (legacy format)
+                else if (typeof foundCourse.instructor === 'string') {
+                  console.log('✅ Using string instructor');
+                  instructorName = foundCourse.instructor;
+                  instructorTitle = 'Instructor';
+                  instructorImage = '/images/placeholder-avatar.jpg';
+                  instructorBio = 'Experienced instructor';
+                  instructorEmail = 'instructor@forwardafrica.com';
+                }
+                // Fourth: Final fallback
+                else {
+                  console.log('❌ Using final fallback - no instructor data found');
+                  instructorName = 'Unknown Instructor';
+                  instructorTitle = 'Instructor';
+                  instructorImage = '/images/placeholder-avatar.jpg';
+                  instructorBio = 'Experienced instructor';
+                  instructorEmail = 'instructor@forwardafrica.com';
+                }
+              } catch (error) {
+                console.error('Error accessing instructor data:', error);
+                instructorName = 'Unknown Instructor';
+                instructorTitle = 'Instructor';
+                instructorImage = '/images/placeholder-avatar.jpg';
+                instructorBio = 'Experienced instructor';
+                instructorEmail = 'instructor@forwardafrica.com';
+              }
+
+              console.log('🎯 Final instructor data:', {
+                name: instructorName,
+                title: instructorTitle,
+                image: instructorImage
+              });
+
+              return {
+                id: foundCourse.instructor_id || 'unknown',
+                name: instructorName,
+                title: instructorTitle,
+                image: instructorImage,
+                bio: instructorBio,
+                email: instructorEmail,
+                expertise: ['Education'],
+                experience: 5,
+                createdAt: new Date()
+              };
+            })(),
             instructorId: foundCourse.instructor_id,
             category: foundCourse.category_name || 'General',
-                    thumbnail: foundCourse.thumbnail || '/images/placeholder-course.jpg',
-        banner: foundCourse.banner || '/images/placeholder-course.jpg',
+            thumbnail: foundCourse.thumbnail || '/images/placeholder-course.jpg',
+            banner: foundCourse.banner || '/images/placeholder-course.jpg',
             videoUrl: foundCourse.video_url,
             description: foundCourse.description || 'Course description coming soon.',
             lessons: (foundCourse.lessons || []).map((lesson: any) => ({
@@ -338,12 +414,40 @@ const CoursePage: React.FC = () => {
   // If we reach here, it means the course has no lessons (coming soon)
   const currentLesson = course.lessons.find(lesson => lesson.id === selectedLesson);
 
-  const instructorInfo = typeof course.instructor === 'object' ? course.instructor : {
-    name: course.instructor,
-    title: 'Expert Educator',
-    image: 'https://images.pexels.com/photos/2182970/pexels-photo-2182970.jpeg',
-    bio: 'Experienced professional in the field.'
-  };
+  // DUAL FALLBACK instructor handling - same logic as admin page
+  const instructorInfo = (() => {
+    // First: Try to access the transformed instructor object (from useCourses hook)
+    if (course.instructor && typeof course.instructor === 'object' && course.instructor !== null) {
+      return course.instructor;
+    }
+    // Second: Fall back to raw API field (direct from API)
+    else if ((course as any).instructor_name) {
+      return {
+        name: (course as any).instructor_name || 'Unknown Instructor',
+        title: (course as any).instructor_title || 'Expert Educator',
+        image: (course as any).instructor_image || '/images/placeholder-avatar.jpg',
+        bio: (course as any).instructor_bio || 'Experienced professional in the field.'
+      };
+    }
+    // Third: Handle string instructor (legacy format)
+    else if (typeof course.instructor === 'string') {
+      return {
+        name: course.instructor,
+        title: 'Expert Educator',
+        image: '/images/placeholder-avatar.jpg',
+        bio: 'Experienced professional in the field.'
+      };
+    }
+    // Fourth: Final fallback
+    else {
+      return {
+        name: 'Unknown Instructor',
+        title: 'Expert Educator',
+        image: '/images/placeholder-avatar.jpg',
+        bio: 'Experienced professional in the field.'
+      };
+    }
+  })();
 
   // Debug info for troubleshooting
   const debugInfo = {
