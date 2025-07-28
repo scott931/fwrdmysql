@@ -97,6 +97,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson, courseId, showProgres
     // Prevent running if lesson is not properly loaded
     if (!lesson || !lesson.videoUrl) {
       console.log('❌ No lesson or video URL provided');
+      console.log('Lesson object:', lesson);
       setIsLoading(false);
       setHasError(true);
       return;
@@ -105,11 +106,24 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson, courseId, showProgres
     console.log('=== VideoPlayer: Processing video URL ===');
     console.log('Lesson object:', lesson);
     console.log('Video URL:', lesson.videoUrl);
+    console.log('Video URL type:', typeof lesson.videoUrl);
+    console.log('Video URL length:', lesson.videoUrl.length);
     console.log('Lesson ID:', lesson.id);
     console.log('Lesson title:', lesson.title);
 
     const videoUrl = lesson.videoUrl;
     console.log('Processing video URL:', videoUrl);
+
+    // Check if URL is valid
+    try {
+      new URL(videoUrl);
+      console.log('✅ Video URL is valid');
+    } catch (error) {
+      console.error('❌ Video URL is invalid:', error);
+      setHasError(true);
+      setIsLoading(false);
+      return;
+    }
 
     const ytId = extractYouTubeId(videoUrl);
     console.log('Extracted YouTube ID:', ytId);
@@ -122,8 +136,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson, courseId, showProgres
 
       // Test if the YouTube video is accessible
       const testUrl = `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${ytId}&format=json`;
+      console.log('Testing YouTube accessibility with URL:', testUrl);
+
       fetch(testUrl)
         .then(response => {
+          console.log('YouTube test response status:', response.status);
           if (response.ok) {
             console.log('✅ YouTube video is accessible');
           } else {
@@ -168,6 +185,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson, courseId, showProgres
       };
     } else {
       console.log('📹 Direct video file detected');
+      console.log('Direct video URL:', videoUrl);
       setIsYouTube(false);
       setYouTubeId('');
       setIsLoading(true);
@@ -606,6 +624,36 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson, courseId, showProgres
             playsInline
             preload="metadata"
             crossOrigin="anonymous"
+            onLoadStart={() => {
+              console.log('📹 Video loadStart triggered');
+              setIsLoading(true);
+              setHasError(false);
+            }}
+            onLoadedMetadata={() => {
+              console.log('📹 Video loadedMetadata triggered');
+              console.log('Video duration:', videoRef.current?.duration);
+              console.log('Video currentTime:', videoRef.current?.currentTime);
+              console.log('Video readyState:', videoRef.current?.readyState);
+            }}
+            onCanPlay={() => {
+              console.log('📹 Video canPlay triggered');
+              setIsLoading(false);
+              setHasError(false);
+            }}
+            onError={(e) => {
+              console.error('📹 Video error triggered:', e);
+              console.error('Video error details:', videoRef.current?.error);
+              setHasError(true);
+              setIsLoading(false);
+            }}
+            onPlay={() => {
+              console.log('📹 Video play triggered');
+              setIsPlaying(true);
+            }}
+            onPause={() => {
+              console.log('📹 Video pause triggered');
+              setIsPlaying(false);
+            }}
           />
 
           {/* Loading State */}

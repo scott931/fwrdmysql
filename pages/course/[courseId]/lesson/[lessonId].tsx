@@ -168,14 +168,26 @@ export default function LessonPage() {
           })) || []
         });
 
-        // Transform course data
+        // Transform course data and lessons to match frontend format
         const transformedCourse: Course = {
           id: foundCourse.id,
           title: foundCourse.title,
           description: foundCourse.description,
           instructor: foundCourse.instructor,
           thumbnail: foundCourse.thumbnail,
-          lessons: foundCourse.lessons || [],
+          lessons: (foundCourse.lessons || []).map((lesson: any) => ({
+            ...lesson,
+            // Transform snake_case to camelCase for video URL
+            videoUrl: lesson.video_url || lesson.videoUrl,
+            // Ensure other fields are properly formatted
+            id: lesson.id,
+            title: lesson.title,
+            description: lesson.description || '',
+            duration: lesson.duration || '0:00',
+            course_id: lesson.course_id,
+            order: lesson.order || 0,
+            thumbnail: lesson.thumbnail || lesson.lesson_thumbnail || '/placeholder-course.jpg'
+          })),
           category: foundCourse.category,
           banner: foundCourse.banner || foundCourse.thumbnail,
           videoUrl: foundCourse.videoUrl,

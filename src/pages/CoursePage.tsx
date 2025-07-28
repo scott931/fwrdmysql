@@ -58,6 +58,54 @@ const CoursePage: React.FC = () => {
           console.log('Course data from API:', foundCourse);
           console.log('Raw lessons from API:', foundCourse.lessons);
 
+          // Check if this course has no lessons but there might be another course with the same title
+          if (!foundCourse.lessons || foundCourse.lessons.length === 0) {
+            console.log('⚠️ Course has no lessons, checking for alternative course with same title');
+            console.log('🔍 Current course:', {
+              id: foundCourse.id,
+              title: foundCourse.title,
+              lessonsCount: foundCourse.lessons?.length || 0
+            });
+
+            // Fetch all courses to find alternative
+            const allCoursesResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002/api'}/courses`);
+            if (allCoursesResponse.ok) {
+              const allCourses = await allCoursesResponse.json();
+
+              // Find courses with the same title that have lessons
+              const alternativeCourses = allCourses.filter((course: any) =>
+                course.title === foundCourse.title &&
+                course.id !== foundCourse.id &&
+                course.lessons &&
+                course.lessons.length > 0
+              );
+
+              console.log('🔍 Alternative courses found:', alternativeCourses.map((c: any) => ({
+                id: c.id,
+                title: c.title,
+                lessonsCount: c.lessons?.length || 0
+              })));
+
+              if (alternativeCourses.length > 0) {
+                const bestAlternative = alternativeCourses[0]; // Take the first one
+                console.log('🎯 Found alternative course with lessons:', {
+                  currentCourseId: foundCourse.id,
+                  alternativeCourseId: bestAlternative.id,
+                  alternativeLessonsCount: bestAlternative.lessons.length,
+                  alternativeFirstLesson: bestAlternative.lessons[0]
+                });
+
+                // Redirect to the alternative course
+                const targetUrl = `/course/${bestAlternative.id}`;
+                console.log('🔄 Redirecting to alternative course:', targetUrl);
+                router.replace(targetUrl);
+                return;
+              } else {
+                console.log('❌ No alternative courses found with lessons');
+              }
+            }
+          }
+
           // Transform the course data to match frontend format
           const transformedCourse = {
             id: foundCourse.id,
@@ -79,7 +127,19 @@ const CoursePage: React.FC = () => {
             banner: foundCourse.banner || '/placeholder-course.jpg',
             videoUrl: foundCourse.video_url,
             description: foundCourse.description || 'Course description coming soon.',
-            lessons: foundCourse.lessons || [],
+            lessons: (foundCourse.lessons || []).map((lesson: any) => ({
+              ...lesson,
+              // Transform snake_case to camelCase for video URL
+              videoUrl: lesson.video_url || lesson.videoUrl,
+              // Ensure other fields are properly formatted
+              id: lesson.id,
+              title: lesson.title,
+              description: lesson.description || '',
+              duration: lesson.duration || '0:00',
+              course_id: lesson.course_id,
+              order: lesson.order || 0,
+              thumbnail: lesson.thumbnail || lesson.lesson_thumbnail || '/placeholder-course.jpg'
+            })),
             featured: foundCourse.featured || false,
             totalXP: foundCourse.total_xp || 1000,
             comingSoon: foundCourse.coming_soon || false,
@@ -285,8 +345,37 @@ const CoursePage: React.FC = () => {
     bio: 'Experienced professional in the field.'
   };
 
+  // Debug info for troubleshooting
+  const debugInfo = {
+    courseId: courseId,
+    courseTitle: course.title,
+    lessonsCount: course.lessons.length,
+    selectedLesson: selectedLesson,
+    progress: progress,
+    hasLessons: course.lessons.length > 0,
+    isComingSoon: course.comingSoon,
+    instructor: instructorInfo.name,
+    category: course.category,
+    featured: course.featured,
+    totalXP: course.totalXP
+  };
+
   return (
     <Layout>
+      {/* Debug Info - Remove in production */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="fixed top-4 right-4 bg-black bg-opacity-90 text-white p-4 rounded-lg text-xs max-w-xs z-50">
+          <h4 className="font-bold mb-2">🐛 Debug Info</h4>
+          <div className="space-y-1">
+            <div><strong>Course:</strong> {debugInfo.courseTitle}</div>
+            <div><strong>Lesson:</strong> {course.lessons[0]?.title || 'None'}</div>
+            <div><strong>Progress:</strong> {debugInfo.progress.toFixed(1)}%</div>
+            <div><strong>Auth:</strong> Logged in</div>
+            <div><strong>Error:</strong> {course.lessons.length === 0 ? 'No lessons available' : 'None'}</div>
+          </div>
+        </div>
+      )}
+
       <div className="pb-16">
         {/* Course Info Banner */}
         <div className="relative w-full bg-black py-12">
@@ -300,6 +389,30 @@ const CoursePage: React.FC = () => {
                     This course is currently being developed and will be available soon.
                     We're working hard to bring you high-quality video lessons.
                   </p>
+
+                  {/* Show alternative courses if available */}
+                  {course.lessons.length === 0 && (
+                    <div className="mb-6 p-4 bg-gray-700 rounded-lg">
+                      <p className="text-gray-300 text-sm mb-3">
+                        While you wait, check out these similar courses:
+                      </p>
+                      <div className="space-y-2">
+                        <button
+                          onClick={() => router.push('/course/76')}
+                          className="w-full text-left p-2 bg-gray-600 hover:bg-gray-500 rounded text-sm text-white transition-colors"
+                        >
+                          📚 Fundamentals for Entrepreneurs (Course 76) - 2 lessons available
+                        </button>
+                        <button
+                          onClick={() => router.push('/course/1')}
+                          className="w-full text-left p-2 bg-gray-600 hover:bg-gray-500 rounded text-sm text-white transition-colors"
+                        >
+                          📚 Business Fundamentals for Entrepreneurs (Course 1) - 3 lessons available
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex space-x-4">
                     <button
                       onClick={() => router.push('/courses')}

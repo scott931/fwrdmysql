@@ -50,7 +50,19 @@ const transformCourseData = (backendCourse: any): Course => {
         banner: backendCourse.banner || '/placeholder-course.jpg',
     videoUrl: backendCourse.video_url,
     description: backendCourse.description || 'Course description coming soon.',
-    lessons: (backendCourse.lessons || []).slice().sort((a: any, b: any) => {
+    lessons: (backendCourse.lessons || []).map((lesson: any) => ({
+      ...lesson,
+      // Transform snake_case to camelCase for video URL
+      videoUrl: lesson.video_url || lesson.videoUrl,
+      // Ensure other fields are properly formatted
+      id: lesson.id,
+      title: lesson.title,
+      description: lesson.description || '',
+      duration: lesson.duration || '0:00',
+      course_id: lesson.course_id,
+      order: lesson.order || 0,
+      thumbnail: lesson.thumbnail || lesson.lesson_thumbnail || '/placeholder-course.jpg'
+    })).slice().sort((a: any, b: any) => {
       // Sort by order_index if present, then by title
       if (a.orderIndex !== undefined && b.orderIndex !== undefined) {
         return a.orderIndex - b.orderIndex;

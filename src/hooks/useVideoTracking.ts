@@ -88,33 +88,32 @@ export const useVideoTracking = ({
 
   // Initialize WebSocket connection
   useEffect(() => {
-    if (user?.id) {
-      const connectWebSocket = async () => {
-        try {
-          await getWebSocketService().connect(user.id);
-          setIsConnected(true);
+    if (!user) return;
 
-          // Set up message handlers
-          getWebSocketService().onMessage('progress_update', handleProgressUpdate);
-          getWebSocketService().onMessage('play_state', handlePlayStateUpdate);
-          getWebSocketService().onMessage('resume_point', handleResumePointUpdate);
+    const connectWebSocket = async () => {
+      try {
+        // Temporarily disable WebSocket to prevent connection issues
+        getWebSocketService().disable();
+        console.log('🔌 WebSocket disabled to prevent connection issues');
 
-        } catch (error) {
-          console.error('Failed to connect WebSocket:', error);
-          setIsConnected(false);
-        }
-      };
+        // await getWebSocketService().connect(user.id);
+        // getWebSocketService().onMessage('progress_update', handleProgressUpdate);
+        // getWebSocketService().onMessage('play_state', handlePlayStateUpdate);
+        // getWebSocketService().onMessage('resume_point', handleResumePointUpdate);
+      } catch (error) {
+        console.error('Failed to connect WebSocket:', error);
+      }
+    };
 
-      connectWebSocket();
+    connectWebSocket();
 
-      return () => {
-        getWebSocketService().offMessage('progress_update');
-        getWebSocketService().offMessage('play_state');
-        getWebSocketService().offMessage('resume_point');
-        getWebSocketService().disconnect();
-      };
-    }
-  }, [user?.id, handleProgressUpdate, handlePlayStateUpdate, handleResumePointUpdate]);
+    return () => {
+      // getWebSocketService().offMessage('progress_update');
+      // getWebSocketService().offMessage('play_state');
+      // getWebSocketService().offMessage('resume_point');
+      // getWebSocketService().disconnect();
+    };
+  }, [user]);
 
   // Start tracking video progress
   const startTracking = useCallback(() => {
