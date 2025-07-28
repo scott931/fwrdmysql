@@ -352,7 +352,7 @@ app.get('/api/courses/featured', (req, res) => {
       id: '1',
       title: 'Business Fundamentals for Entrepreneurs',
       description: 'Learn the essential principles of business management and entrepreneurship.',
-      thumbnail: '/placeholder-course.jpg',
+      thumbnail: '/images/placeholder-course.jpg',
       instructor: {
         name: 'Dr. Sarah Johnson',
         title: 'Business Professor'
@@ -366,7 +366,7 @@ app.get('/api/courses/featured', (req, res) => {
       id: '2',
       title: 'Digital Marketing Mastery',
       description: 'Master digital marketing strategies for modern businesses.',
-      thumbnail: '/placeholder-course.jpg',
+      thumbnail: '/images/placeholder-course.jpg',
       instructor: {
         name: 'Mike Chen',
         title: 'Marketing Expert'
@@ -380,7 +380,7 @@ app.get('/api/courses/featured', (req, res) => {
       id: '3',
       title: 'Financial Planning for Startups',
       description: 'Essential financial management skills for startup success.',
-      thumbnail: '/placeholder-course.jpg',
+      thumbnail: '/images/placeholder-course.jpg',
       instructor: {
         name: 'Lisa Rodriguez',
         title: 'Financial Advisor'

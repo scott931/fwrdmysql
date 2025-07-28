@@ -20,8 +20,8 @@ const InstructorCard: React.FC<InstructorCardProps> = ({ instructor }) => {
               className="w-full h-full object-cover"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
-                if (target.src !== '/placeholder-avatar.jpg') {
-                  target.src = '/placeholder-avatar.jpg';
+                if (target.src !== '/images/placeholder-avatar.jpg') {
+                  target.src = '/images/placeholder-avatar.jpg';
                 }
               }}
             />
@@ -35,8 +35,8 @@ const InstructorCard: React.FC<InstructorCardProps> = ({ instructor }) => {
               className="w-full h-full object-cover"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
-                if (target.src !== '/placeholder-avatar.jpg') {
-                  target.src = '/placeholder-avatar.jpg';
+                if (target.src !== '/images/placeholder-avatar.jpg') {
+                  target.src = '/images/placeholder-avatar.jpg';
                 }
               }}
             />

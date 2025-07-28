@@ -13,7 +13,7 @@ const transformCourseData = (backendCourse: any): Course => {
     id: backendCourse.instructor_id || 'unknown',
     name: backendCourse.instructor_name || 'Unknown Instructor',
     title: backendCourse.instructor_title || 'Instructor',
-    image: backendCourse.instructor_image || '/placeholder-avatar.jpg',
+            image: backendCourse.instructor_image || '/images/placeholder-avatar.jpg',
     bio: backendCourse.instructor_bio || 'Experienced instructor',
     email: backendCourse.instructor_email || 'instructor@forwardafrica.com',
     expertise: ['Education'], // Default expertise
@@ -46,8 +46,8 @@ const transformCourseData = (backendCourse: any): Course => {
     instructor: instructor,
     instructorId: backendCourse.instructor_id,
     category: backendCourse.category_name || backendCourse.category || 'General',
-            thumbnail: backendCourse.thumbnail || '/placeholder-course.jpg',
-        banner: backendCourse.banner || '/placeholder-course.jpg',
+            thumbnail: backendCourse.thumbnail || '/images/placeholder-course.jpg',
+        banner: backendCourse.banner || '/images/placeholder-course.jpg',
     videoUrl: backendCourse.video_url,
     description: backendCourse.description || 'Course description coming soon.',
     lessons: (backendCourse.lessons || []).map((lesson: any) => ({
@@ -61,7 +61,7 @@ const transformCourseData = (backendCourse: any): Course => {
       duration: lesson.duration || '0:00',
       course_id: lesson.course_id,
       order: lesson.order || 0,
-      thumbnail: lesson.thumbnail || lesson.lesson_thumbnail || '/placeholder-course.jpg'
+              thumbnail: lesson.thumbnail || lesson.lesson_thumbnail || '/images/placeholder-course.jpg'
     })).slice().sort((a: any, b: any) => {
       // Sort by order_index if present, then by title
       if (a.orderIndex !== undefined && b.orderIndex !== undefined) {

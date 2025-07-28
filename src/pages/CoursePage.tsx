@@ -114,7 +114,7 @@ const CoursePage: React.FC = () => {
               id: foundCourse.instructor_id || 'unknown',
               name: foundCourse.instructor_name || 'Unknown Instructor',
               title: foundCourse.instructor_title || 'Instructor',
-              image: foundCourse.instructor_image || '/placeholder-avatar.jpg',
+              image: foundCourse.instructor_image || '/images/placeholder-avatar.jpg',
               bio: foundCourse.instructor_bio || 'Experienced instructor',
               email: foundCourse.instructor_email || 'instructor@forwardafrica.com',
               expertise: ['Education'],
@@ -123,8 +123,8 @@ const CoursePage: React.FC = () => {
             },
             instructorId: foundCourse.instructor_id,
             category: foundCourse.category_name || 'General',
-            thumbnail: foundCourse.thumbnail || '/placeholder-course.jpg',
-            banner: foundCourse.banner || '/placeholder-course.jpg',
+                    thumbnail: foundCourse.thumbnail || '/images/placeholder-course.jpg',
+        banner: foundCourse.banner || '/images/placeholder-course.jpg',
             videoUrl: foundCourse.video_url,
             description: foundCourse.description || 'Course description coming soon.',
             lessons: (foundCourse.lessons || []).map((lesson: any) => ({
@@ -138,7 +138,7 @@ const CoursePage: React.FC = () => {
               duration: lesson.duration || '0:00',
               course_id: lesson.course_id,
               order: lesson.order || 0,
-              thumbnail: lesson.thumbnail || lesson.lesson_thumbnail || '/placeholder-course.jpg'
+              thumbnail: lesson.thumbnail || lesson.lesson_thumbnail || '/images/placeholder-course.jpg'
             })),
             featured: foundCourse.featured || false,
             totalXP: foundCourse.total_xp || 1000,
@@ -441,8 +441,8 @@ const CoursePage: React.FC = () => {
                         className="w-12 h-12 rounded-full object-cover mr-4"
                         onError={(e) => {
                           const target = e.target as HTMLImageElement;
-                          if (target.src !== '/placeholder-avatar.jpg') {
-                            target.src = '/placeholder-avatar.jpg';
+                          if (target.src !== '/images/placeholder-avatar.jpg') {
+                            target.src = '/images/placeholder-avatar.jpg';
                           }
                         }}
                       />
@@ -455,8 +455,8 @@ const CoursePage: React.FC = () => {
                         className="w-12 h-12 rounded-full object-cover mr-4"
                         onError={(e) => {
                           const target = e.target as HTMLImageElement;
-                          if (target.src !== '/placeholder-avatar.jpg') {
-                            target.src = '/placeholder-avatar.jpg';
+                          if (target.src !== '/images/placeholder-avatar.jpg') {
+                            target.src = '/images/placeholder-avatar.jpg';
                           }
                         }}
                       />
@@ -537,8 +537,8 @@ const CoursePage: React.FC = () => {
                   className="w-full h-auto rounded-lg"
                   onError={(e) => {
                     const target = e.target as HTMLImageElement;
-                    if (target.src !== '/placeholder-avatar.jpg') {
-                      target.src = '/placeholder-avatar.jpg';
+                    if (target.src !== '/images/placeholder-avatar.jpg') {
+                      target.src = '/images/placeholder-avatar.jpg';
                     }
                   }}
                 />
@@ -551,8 +551,8 @@ const CoursePage: React.FC = () => {
                   className="w-full h-auto rounded-lg"
                   onError={(e) => {
                     const target = e.target as HTMLImageElement;
-                    if (target.src !== '/placeholder-avatar.jpg') {
-                      target.src = '/placeholder-avatar.jpg';
+                    if (target.src !== '/images/placeholder-avatar.jpg') {
+                      target.src = '/images/placeholder-avatar.jpg';
                     }
                   }}
                 />

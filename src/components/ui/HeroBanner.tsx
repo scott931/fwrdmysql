@@ -56,26 +56,26 @@ const HeroBanner: React.FC<HeroBannerProps> = ({ course, onPlay }) => {
             onError={handleVideoError}
           />
         ) : (
-          (course.banner || '/placeholder-course.jpg').startsWith('http') ? (
-            <img
-              src={course.banner || '/placeholder-course.jpg'}
+                  (course.banner || '/images/placeholder-course.jpg').startsWith('http') ? (
+                      <img
+              src={course.banner || '/images/placeholder-course.jpg'}
               alt={course.title || 'Course Banner'}
               className="object-cover w-full h-full"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
-                target.src = '/placeholder-course.jpg';
+                target.src = '/images/placeholder-course.jpg';
               }}
             />
           ) : (
             <Image
-              src={course.banner || '/placeholder-course.jpg'}
+              src={course.banner || '/images/placeholder-course.jpg'}
               alt={course.title || 'Course Banner'}
               width={1920}
               height={1080}
               className="object-cover w-full h-full"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
-                target.src = '/placeholder-course.jpg';
+                target.src = '/images/placeholder-course.jpg';
               }}
             />
           )
@@ -88,26 +88,26 @@ const HeroBanner: React.FC<HeroBannerProps> = ({ course, onPlay }) => {
         <h1 className="text-3xl md:text-5xl font-bold text-white mb-2">{course.title || 'Featured Course'}</h1>
         {course.instructor && (
           <div className="flex items-center mb-4">
-            {(course.instructor.image || '/placeholder-avatar.jpg').startsWith('http') ? (
+            {(course.instructor.image || '/images/placeholder-avatar.jpg').startsWith('http') ? (
               <img
-                src={course.instructor.image || '/placeholder-avatar.jpg'}
+                src={course.instructor.image || '/images/placeholder-avatar.jpg'}
                 alt={course.instructor.name || 'Instructor'}
                 className="w-10 h-10 rounded-full object-cover mr-3"
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
-                  target.src = '/placeholder-avatar.jpg';
+                  target.src = '/images/placeholder-avatar.jpg';
                 }}
               />
             ) : (
               <Image
-                src={course.instructor.image || '/placeholder-avatar.jpg'}
+                src={course.instructor.image || '/images/placeholder-avatar.jpg'}
                 alt={course.instructor.name || 'Instructor'}
                 width={40}
                 height={40}
                 className="w-10 h-10 rounded-full object-cover mr-3"
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
-                  target.src = '/placeholder-avatar.jpg';
+                  target.src = '/images/placeholder-avatar.jpg';
                 }}
               />
             )}

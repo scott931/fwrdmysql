@@ -186,7 +186,7 @@ export default function LessonPage() {
             duration: lesson.duration || '0:00',
             course_id: lesson.course_id,
             order: lesson.order || 0,
-            thumbnail: lesson.thumbnail || lesson.lesson_thumbnail || '/placeholder-course.jpg'
+            thumbnail: lesson.thumbnail || lesson.lesson_thumbnail || '/images/placeholder-course.jpg'
           })),
           category: foundCourse.category,
           banner: foundCourse.banner || foundCourse.thumbnail,

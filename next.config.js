@@ -1,13 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    domains: [
-      'images.pexels.com',
-      'localhost',
-      'via.placeholder.com',
-      '127.0.0.1'
-    ],
     remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'images.pexels.com',
+      },
       {
         protocol: 'http',
         hostname: 'localhost',
@@ -20,7 +18,15 @@ const nextConfig = {
         port: '3002',
         pathname: '/uploads/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'via.placeholder.com',
+      },
     ],
+    // Add local domain configuration for static images
+    domains: ['localhost'],
+    // Configure unoptimized images for local static files
+    unoptimized: false,
   },
   // Enable static exports if needed
   // output: 'export',

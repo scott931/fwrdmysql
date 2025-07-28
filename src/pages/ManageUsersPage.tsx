@@ -448,8 +448,8 @@ const ManageUsersPage: React.FC = () => {
                                 className="h-10 w-10 rounded-full object-cover"
                                 onError={(e) => {
                                   const target = e.target as HTMLImageElement;
-                                  if (target.src !== '/placeholder-avatar.jpg') {
-                                    target.src = '/placeholder-avatar.jpg';
+                                  if (target.src !== '/images/placeholder-avatar.jpg') {
+                                    target.src = '/images/placeholder-avatar.jpg';
                                   }
                                 }}
                               />
@@ -462,8 +462,8 @@ const ManageUsersPage: React.FC = () => {
                                 className="h-10 w-10 rounded-full object-cover"
                                 onError={(e) => {
                                   const target = e.target as HTMLImageElement;
-                                  if (target.src !== '/placeholder-avatar.jpg') {
-                                    target.src = '/placeholder-avatar.jpg';
+                                  if (target.src !== '/images/placeholder-avatar.jpg') {
+                                    target.src = '/images/placeholder-avatar.jpg';
                                   }
                                 }}
                               />
@@ -656,8 +656,8 @@ const ManageUsersPage: React.FC = () => {
                           className="h-16 w-16 rounded-full object-cover"
                           onError={(e) => {
                             const target = e.target as HTMLImageElement;
-                            if (target.src !== '/placeholder-avatar.jpg') {
-                              target.src = '/placeholder-avatar.jpg';
+                            if (target.src !== '/images/placeholder-avatar.jpg') {
+                              target.src = '/images/placeholder-avatar.jpg';
                             }
                           }}
                         />
@@ -670,8 +670,8 @@ const ManageUsersPage: React.FC = () => {
                           className="h-16 w-16 rounded-full object-cover"
                           onError={(e) => {
                             const target = e.target as HTMLImageElement;
-                            if (target.src !== '/placeholder-avatar.jpg') {
-                              target.src = '/placeholder-avatar.jpg';
+                            if (target.src !== '/images/placeholder-avatar.jpg') {
+                              target.src = '/images/placeholder-avatar.jpg';
                             }
                           }}
                         />

@@ -178,7 +178,7 @@ const ProfilePage: React.FC = () => {
 
   // Get user data from auth context with better fallbacks and memoization
   const userData = useMemo(() => {
-    const avatarUrl = user?.avatar_url || profile?.avatar_url || '/placeholder-avatar.jpg';
+    const avatarUrl = user?.avatar_url || profile?.avatar_url || '/images/placeholder-avatar.jpg';
     // Add cache-busting parameter to force image reload when user changes
     const cacheBustedAvatar = avatarUrl.includes('?')
       ? `${avatarUrl}&t=${Date.now()}`
@@ -887,8 +887,8 @@ const ProfilePage: React.FC = () => {
                       className="w-20 h-20 rounded-full object-cover"
                       onError={(e) => {
                         const target = e.target as HTMLImageElement;
-                        if (target.src !== '/placeholder-avatar.jpg') {
-                          target.src = '/placeholder-avatar.jpg';
+                        if (target.src !== '/images/placeholder-avatar.jpg') {
+                          target.src = '/images/placeholder-avatar.jpg';
                         }
                       }}
                     />
@@ -902,8 +902,8 @@ const ProfilePage: React.FC = () => {
                       className="w-20 h-20 rounded-full object-cover"
                       onError={(e) => {
                         const target = e.target as HTMLImageElement;
-                        if (target.src !== '/placeholder-avatar.jpg') {
-                          target.src = '/placeholder-avatar.jpg';
+                        if (target.src !== '/images/placeholder-avatar.jpg') {
+                          target.src = '/images/placeholder-avatar.jpg';
                         }
                       }}
                     />

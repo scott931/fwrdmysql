@@ -915,11 +915,11 @@ const AdminPage: React.FC = () => {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
                             <img
-                              src={course.instructor?.image || (course as any).instructor_image || '/placeholder-avatar.jpg'}
+                              src={course.instructor?.image || (course as any).instructor_image || '/images/placeholder-avatar.jpg'}
                               alt={course.instructor?.name || (course as any).instructor_name || 'Instructor'}
                               className="h-8 w-8 rounded-full object-cover mr-3"
                               onError={(e) => {
-                                e.currentTarget.src = '/placeholder-avatar.jpg';
+                                e.currentTarget.src = '/images/placeholder-avatar.jpg';
                               }}
                             />
                             <div>
