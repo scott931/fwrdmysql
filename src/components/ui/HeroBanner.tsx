@@ -56,26 +56,26 @@ const HeroBanner: React.FC<HeroBannerProps> = ({ course, onPlay }) => {
             onError={handleVideoError}
           />
         ) : (
-          (course.banner || '/images/placeholder-course.jpg').startsWith('http') ? (
+          (course.banner || '/placeholder-course.jpg').startsWith('http') ? (
             <img
-              src={course.banner || '/images/placeholder-course.jpg'}
+              src={course.banner || '/placeholder-course.jpg'}
               alt={course.title || 'Course Banner'}
               className="object-cover w-full h-full"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
-                target.src = '/images/placeholder-course.jpg';
+                target.src = '/placeholder-course.jpg';
               }}
             />
           ) : (
             <Image
-              src={course.banner || '/images/placeholder-course.jpg'}
+              src={course.banner || '/placeholder-course.jpg'}
               alt={course.title || 'Course Banner'}
               width={1920}
               height={1080}
               className="object-cover w-full h-full"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
-                target.src = '/images/placeholder-course.jpg';
+                target.src = '/placeholder-course.jpg';
               }}
             />
           )

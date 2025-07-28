@@ -27,23 +27,25 @@ const RealTimeProgress: React.FC<RealTimeProgressProps> = ({
   className = ''
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+  const [isClient, setIsClient] = useState(false);
+  const [lastUpdate, setLastUpdate] = useState(new Date());
 
+  // Set client flag on mount to prevent hydration issues
   useEffect(() => {
-    if (data) {
-      setLastUpdate(new Date());
-    }
-  }, [data]);
+    setIsClient(true);
+  }, []);
 
-  if (!data) {
-    return (
-      <div className={`bg-gray-800 rounded-lg p-4 ${className}`}>
-        <div className="flex items-center justify-center text-gray-400">
-          <Clock className="h-5 w-5 mr-2" />
-          <span className="text-sm">No progress data available</span>
-        </div>
-      </div>
-    );
+  // Update timestamp every second
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setLastUpdate(new Date());
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  if (!data || !isClient) {
+    return null;
   }
 
   const formatTime = (seconds: number): string => {

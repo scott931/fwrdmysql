@@ -456,7 +456,7 @@ export const useAnalytics = () => {
       setStats(data);
     } catch (err) {
       // Handle authentication error gracefully
-      if (err.message === 'Authentication required') {
+      if (err instanceof Error && err.message === 'Authentication required') {
         console.log('📊 Platform stats require authentication - using fallback data');
         setError(null); // Don't show error for auth requirement
       } else {

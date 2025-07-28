@@ -270,7 +270,7 @@ app.use((req, res, next) => {
   res.setHeader('X-XSS-Protection', '1; mode=block');
 
   // Content security policy
-  res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';");
+      res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: https:; connect-src 'self' http://localhost:3002 https:; font-src 'self' https:;");
 
   next();
 });
@@ -352,7 +352,7 @@ app.get('/api/courses/featured', (req, res) => {
       id: '1',
       title: 'Business Fundamentals for Entrepreneurs',
       description: 'Learn the essential principles of business management and entrepreneurship.',
-      thumbnail: '/images/placeholder-course.jpg',
+      thumbnail: '/placeholder-course.jpg',
       instructor: {
         name: 'Dr. Sarah Johnson',
         title: 'Business Professor'
@@ -366,7 +366,7 @@ app.get('/api/courses/featured', (req, res) => {
       id: '2',
       title: 'Digital Marketing Mastery',
       description: 'Master digital marketing strategies for modern businesses.',
-      thumbnail: '/images/placeholder-course.jpg',
+      thumbnail: '/placeholder-course.jpg',
       instructor: {
         name: 'Mike Chen',
         title: 'Marketing Expert'
@@ -380,7 +380,7 @@ app.get('/api/courses/featured', (req, res) => {
       id: '3',
       title: 'Financial Planning for Startups',
       description: 'Essential financial management skills for startup success.',
-      thumbnail: '/images/placeholder-course.jpg',
+      thumbnail: '/placeholder-course.jpg',
       instructor: {
         name: 'Lisa Rodriguez',
         title: 'Financial Advisor'

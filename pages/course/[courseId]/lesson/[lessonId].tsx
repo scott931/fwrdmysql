@@ -1,353 +1,553 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/router';
-import { Play, Clock, ChevronLeft, ChevronRight, BookOpen, CheckCircle } from 'lucide-react';
+import { Play, Clock, ChevronLeft, ChevronRight, BookOpen, CheckCircle, Trash2 } from 'lucide-react';
 import VideoPlayer from '../../../../src/components/ui/VideoPlayer';
 import { Course, Lesson } from '../../../../src/types';
+import { useAuth } from '../../../../src/contexts/AuthContext';
+
+// Debug utility
+const DEBUG = {
+  log: (message: string, data?: any) => {
+    console.log(`🐛 [DEBUG] ${message}`, data || '');
+  },
+  error: (message: string, error?: any) => {
+    console.error(`❌ [DEBUG ERROR] ${message}`, error || '');
+  },
+  warn: (message: string, data?: any) => {
+    console.warn(`⚠️ [DEBUG WARN] ${message}`, data || '');
+  }
+};
+
+// Local storage utility
+const clearLocalStorage = () => {
+  try {
+    // Clear all local storage
+    localStorage.clear();
+    DEBUG.log('🧹 Local storage cleared successfully');
+
+    // Show success message
+    alert('Local storage cleared successfully!');
+
+    // Optionally reload the page to ensure clean state
+    if (confirm('Would you like to reload the page to ensure a clean state?')) {
+      window.location.reload();
+    }
+  } catch (error) {
+    DEBUG.error('❌ Error clearing local storage', error);
+    alert('Error clearing local storage: ' + (error instanceof Error ? error.message : 'Unknown error'));
+  }
+};
 
 export default function LessonPage() {
   const router = useRouter();
   const { courseId, lessonId } = router.query;
+  const { user, loading: authLoading } = useAuth();
   const [course, setCourse] = useState<Course | null>(null);
   const [currentLesson, setCurrentLesson] = useState<Lesson | null>(null);
   const [currentLessonIndex, setCurrentLessonIndex] = useState<number>(0);
   const [progress, setProgress] = useState<number>(0);
   const [showNotes, setShowNotes] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [debugInfo, setDebugInfo] = useState<any>({});
+  const [error, setError] = useState<string | null>(null);
+  const lastFetchedKey = useRef<string>('');
+
+  // Debug: Log component mount and initial state
+  useEffect(() => {
+    DEBUG.log('🚀 LessonPage Component Mounted', {
+      courseId,
+      lessonId,
+      router: {
+        isReady: router.isReady,
+        pathname: router.pathname,
+        asPath: router.asPath,
+        query: router.query
+      },
+      auth: {
+        user: user ? { id: user.id, email: user.email } : null,
+        authLoading
+      }
+    });
+  }, []);
+
+  // Debug: Log route changes
+  useEffect(() => {
+    if (router.isReady) {
+      DEBUG.log('🔄 Route Changed', {
+        courseId,
+        lessonId,
+        isReady: router.isReady,
+        pathname: router.pathname,
+        asPath: router.asPath
+      });
+    }
+  }, [router.isReady, courseId, lessonId, router.pathname, router.asPath]);
 
   // Scroll to top on component mount
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' });
   }, []);
 
+  // Authentication check - improved to prevent navigation loops
   useEffect(() => {
-    const fetchCourseData = async () => {
-      if (courseId && typeof courseId === 'string') {
+    DEBUG.log('🔐 Authentication Check', {
+      authLoading,
+      user: user ? {
+        id: user.id,
+        email: user.email,
+        onboarding_completed: user.onboarding_completed
+      } : null,
+      courseId,
+      lessonId
+    });
+
+    // Only redirect if we're sure the user is not authenticated and auth check is complete
+    if (!authLoading && !user && router.isReady) {
+      DEBUG.warn('⚠️ User not authenticated, redirecting to login');
+      // Use replace to prevent back button issues
+      router.replace('/login');
+      return;
+    }
+
+    // Allow access even if onboarding is incomplete (progressive profiling)
+    if (!authLoading && user && !user.onboarding_completed) {
+      DEBUG.warn('⚠️ User has not completed onboarding, but allowing access to course content');
+    }
+  }, [user, authLoading, router.isReady, courseId, lessonId]);
+
+  // Fetch course data with detailed debugging
+    useEffect(() => {
+    if (!router.isReady || !courseId) {
+      DEBUG.log('⏳ Waiting for router to be ready or courseId', {
+        isReady: router.isReady,
+        courseId
+      });
+      return;
+    }
+
+    const fetchKey = `${courseId}-${lessonId}`;
+    if (lastFetchedKey.current === fetchKey) {
+      DEBUG.log('🔄 Skipping fetch - same key already fetched', { fetchKey });
+      return;
+    }
+
+        const fetchCourseData = async () => {
         try {
           setLoading(true);
-          console.log('Fetching course data for:', courseId);
+        setError(null);
+        DEBUG.log('📡 Starting course data fetch', {
+          courseId,
+          lessonId,
+          apiUrl: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002/api'}/courses/${courseId}`
+        });
 
           // Fetch course from database API
-          const response = await fetch(`http://localhost:3002/api/courses/${courseId}`);
-          if (!response.ok) {
-            throw new Error('Course not found');
+          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002/api'}/courses/${courseId}`);
+
+        DEBUG.log('📡 API Response received', {
+          status: response.status,
+          statusText: response.statusText,
+          ok: response.ok
+        });
+
+        if (!response.ok) {
+          throw new Error(`Course not found: ${response.status} ${response.statusText}`);
+        }
+
+        const foundCourse = await response.json();
+        DEBUG.log('📦 Course data received', {
+          courseId: foundCourse.id,
+          title: foundCourse.title,
+          lessonsCount: foundCourse.lessons?.length || 0,
+          lessons: foundCourse.lessons?.map((l: any) => ({
+            id: l.id,
+            title: l.title,
+            course_id: l.course_id,
+            duration: l.duration,
+            video_url: l.video_url
+          })) || []
+        });
+
+        // Transform course data
+        const transformedCourse: Course = {
+          id: foundCourse.id,
+          title: foundCourse.title,
+          description: foundCourse.description,
+          instructor: foundCourse.instructor,
+          thumbnail: foundCourse.thumbnail,
+          lessons: foundCourse.lessons || [],
+          category: foundCourse.category,
+          banner: foundCourse.banner || foundCourse.thumbnail,
+          videoUrl: foundCourse.videoUrl,
+          featured: foundCourse.featured || false,
+          totalXP: foundCourse.totalXP || 1000,
+          comingSoon: foundCourse.comingSoon || false,
+          releaseDate: foundCourse.releaseDate
+        };
+
+        DEBUG.log('🔄 Course data transformed', {
+          transformedCourse: {
+            id: transformedCourse.id,
+            title: transformedCourse.title,
+            lessonsCount: transformedCourse.lessons.length,
+            lessonIds: transformedCourse.lessons.map((l: any) => l.id),
+            lessonDetails: transformedCourse.lessons.map((l: any) => ({
+              id: l.id,
+              title: l.title,
+              course_id: l.course_id
+            }))
           }
+        });
 
-          const foundCourse = await response.json();
-          console.log('Course data from API:', foundCourse);
+        setCourse(transformedCourse);
+        lastFetchedKey.current = fetchKey;
 
-          // Transform course data to match frontend format
-          const transformedCourse: Course = {
-            id: foundCourse.id,
-            title: foundCourse.title,
-            instructor: {
-              id: foundCourse.instructor_id || 'unknown',
-              name: foundCourse.instructor_name || 'Unknown Instructor',
-              title: foundCourse.instructor_title || 'Instructor',
-              image: foundCourse.instructor_image || '/placeholder-avatar.jpg',
-              bio: foundCourse.instructor_bio || 'Experienced instructor',
-              email: foundCourse.instructor_email || 'instructor@forwardafrica.com',
-              expertise: ['Education'],
-              experience: 5,
-              createdAt: new Date()
-            },
-            instructorId: foundCourse.instructor_id,
-            category: foundCourse.category_name || 'General',
-                    thumbnail: foundCourse.thumbnail || '/images/placeholder-course.jpg',
-        banner: foundCourse.banner || '/images/placeholder-course.jpg',
-            videoUrl: foundCourse.video_url,
-            description: foundCourse.description || 'Course description coming soon.',
-            lessons: (foundCourse.lessons || []).map((lesson: any) => ({
-              id: lesson.id,
-              title: lesson.title,
-              duration: lesson.duration || '00:00',
-              thumbnail: lesson.thumbnail || '/images/placeholder-course.jpg',
-              videoUrl: lesson.video_url, // Transform snake_case to camelCase
-              description: lesson.description || 'Lesson description coming soon.',
-              xpPoints: lesson.xp_points || 100
-            })),
-            featured: foundCourse.featured || false,
-            totalXP: foundCourse.total_xp || 1000,
-            comingSoon: foundCourse.coming_soon || false,
-            releaseDate: foundCourse.release_date
-          };
+        // Find the target lesson
+        const currentLesson = transformedCourse.lessons.find(lesson => {
+          // Handle both string and number types for lesson ID comparison
+          const lessonIdStr = String(lesson.id);
+          const requestedLessonIdStr = String(lessonId);
+          const matches = lessonIdStr === requestedLessonIdStr;
 
-          console.log('Transformed course data:', transformedCourse);
-          setCourse(transformedCourse);
+          DEBUG.log('🔍 Lesson ID comparison', {
+            lessonId: lesson.id,
+            lessonIdType: typeof lesson.id,
+            requestedLessonId: lessonId,
+            requestedLessonIdType: typeof lessonId,
+            lessonIdStr,
+            requestedLessonIdStr,
+            matches
+          });
 
-          // Find the current lesson
-          let targetLessonId = lessonId as string;
-          if (!targetLessonId && transformedCourse.lessons.length > 0) {
-            // If no lessonId provided, use the first lesson or last watched
-            const storedProgress = localStorage.getItem('userProgress');
-            if (storedProgress) {
-              const progressData = JSON.parse(storedProgress);
-              if (progressData[courseId]) {
-                targetLessonId = progressData[courseId].lessonId;
-              } else {
-                targetLessonId = transformedCourse.lessons[0].id;
-              }
-            } else {
-              targetLessonId = transformedCourse.lessons[0].id;
-            }
-          }
+          return matches;
+        });
 
-          const lessonIndex = transformedCourse.lessons.findIndex((l: Lesson) => l.id === targetLessonId);
-          if (lessonIndex !== -1) {
-            const transformedLesson = transformedCourse.lessons[lessonIndex];
-            console.log('Selected lesson data:', transformedLesson);
-            setCurrentLesson(transformedLesson);
-            setCurrentLessonIndex(lessonIndex);
+          if (currentLesson) {
+            setCurrentLesson(currentLesson);
+            setCourse(transformedCourse);
 
             // Calculate progress
+            const lessonIndex = transformedCourse.lessons.findIndex(l => l.id === lessonId);
+            setCurrentLessonIndex(lessonIndex);
             const progressValue = ((lessonIndex + 1) / transformedCourse.lessons.length) * 100;
             setProgress(progressValue);
+            DEBUG.log('📊 Progress calculated', { progressValue, lessonIndex, totalLessons: transformedCourse.lessons.length });
 
-            // Update URL if needed
-            if (lessonId !== targetLessonId) {
-              router.replace(`/course/${courseId}/lesson/${targetLessonId}`, undefined, { shallow: true });
-            }
           } else {
-            // Lesson not found, redirect to course page
-            router.push(`/course/${courseId}`);
+            DEBUG.error('❌ Lesson not found', {
+              targetLessonId: lessonId,
+              availableLessonIds: transformedCourse.lessons.map(l => l.id),
+              availableLessons: transformedCourse.lessons.map(l => ({ id: l.id, title: l.title }))
+            });
+
+            // Try to redirect to the first available lesson instead of course page
+            if (transformedCourse.lessons.length > 0) {
+              const firstLesson = transformedCourse.lessons[0];
+              const fallbackUrl = `/course/${courseId}/lesson/${firstLesson.id}`;
+
+              // Prevent redirecting to the same lesson that's not found
+              if (firstLesson.id === lessonId) {
+                DEBUG.error('❌ First lesson is the same as requested lesson, redirecting to course page');
+                router.push(`/course/${courseId}`);
+                return;
+              }
+
+              DEBUG.log('🔄 Redirecting to first available lesson', {
+                fallbackUrl,
+                firstLessonId: firstLesson.id,
+                firstLessonTitle: firstLesson.title,
+                requestedLessonId: lessonId,
+                availableLessonIds: transformedCourse.lessons.map(l => l.id)
+              });
+
+              router.replace(fallbackUrl);
+              return;
+            } else {
+              // No lessons available, redirect to course page
+              router.push(`/course/${courseId}`);
+              return;
+            }
           }
+
+        setLoading(false);
+        DEBUG.log('✅ Course data fetch completed successfully');
+
         } catch (error) {
-          console.error('Error fetching course:', error);
-          // Course not found, redirect to courses page
-          router.push('/courses');
-        } finally {
+        DEBUG.error('❌ Error fetching course data', error);
+        setError(error instanceof Error ? error.message : 'Failed to load course data');
           setLoading(false);
         }
+      };
+
+      fetchCourseData();
+  }, [courseId, lessonId, router.isReady]);
+
+  // Debug: Log state changes
+  useEffect(() => {
+    DEBUG.log('📊 State Updated', {
+      loading,
+      course: course ? { id: course.id, title: course.title, lessonsCount: course.lessons.length } : null,
+      currentLesson: currentLesson ? { id: currentLesson.id, title: currentLesson.title } : null,
+      currentLessonIndex,
+      progress,
+      error
+    });
+  }, [loading, course, currentLesson, currentLessonIndex, progress, error]);
+
+  // Navigation functions with debugging
+  const navigateToLesson = (direction: 'prev' | 'next') => {
+    if (!course) return;
+
+    const newIndex = direction === 'next' ? currentLessonIndex + 1 : currentLessonIndex - 1;
+
+    DEBUG.log('🔄 Navigating to lesson', {
+      direction,
+      currentIndex: currentLessonIndex,
+      newIndex,
+      totalLessons: course.lessons.length,
+      isValid: newIndex >= 0 && newIndex < course.lessons.length
+    });
+
+    if (newIndex >= 0 && newIndex < course.lessons.length) {
+      const targetLesson = course.lessons[newIndex];
+      const targetUrl = `/course/${courseId}/lesson/${targetLesson.id}`;
+
+      // Prevent navigation if already on the target route
+      if (router.asPath === targetUrl) {
+        DEBUG.log('Already on target lesson, skipping navigation');
+        return;
       }
-    };
 
-    fetchCourseData();
-  }, [courseId, lessonId, router]);
+      DEBUG.log('🎯 Target lesson', {
+        id: targetLesson.id,
+        title: targetLesson.title,
+        targetUrl
+      });
 
-
-
-
-
-  const goToPreviousLesson = () => {
-    if (currentLessonIndex > 0) {
-      const prevLesson = course!.lessons[currentLessonIndex - 1];
-      router.push(`/course/${courseId}/lesson/${prevLesson.id}`);
+      router.replace(targetUrl);
     }
   };
 
-  const goToNextLesson = () => {
-    if (currentLessonIndex < course!.lessons.length - 1) {
-      const nextLesson = course!.lessons[currentLessonIndex + 1];
-      router.push(`/course/${courseId}/lesson/${nextLesson.id}`);
-    }
-  };
-
-  const goToCourse = () => {
-    router.push(`/course/${courseId}`);
-  };
-
-  if (loading || !course || !currentLesson) {
+  // Show loading state while checking authentication
+  if (authLoading) {
+    DEBUG.log('⏳ Showing auth loading state');
     return (
       <div className="flex justify-center items-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-red-600"></div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-red-600"></div>
+          <p className="mt-4 text-gray-400">Checking authentication...</p>
+        </div>
       </div>
     );
   }
 
-  const instructorInfo = typeof course.instructor === 'object' ? course.instructor : {
-    name: course.instructor,
-    title: 'Expert Educator',
-    image: 'https://images.pexels.com/photos/2182970/pexels-photo-2182970.jpeg',
-    bio: 'Experienced professional in the field.'
-  };
+  // Show loading state while fetching course data
+  if (loading || !course || !currentLesson) {
+    DEBUG.log('⏳ Showing data loading state', {
+      loading,
+      hasCourse: !!course,
+      hasCurrentLesson: !!currentLesson
+    });
+
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-red-600"></div>
+          <p className="mt-4 text-gray-400">
+            {error ? `Error: ${error}` : 'Loading course data...'}
+          </p>
+          {debugInfo && Object.keys(debugInfo).length > 0 && (
+            <div className="mt-4 text-xs text-gray-500 max-w-md mx-auto">
+              <p>Debug Info:</p>
+              <pre className="text-left overflow-auto">
+                {JSON.stringify(debugInfo, null, 2)}
+              </pre>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Debug: Log successful render
+  DEBUG.log('🎉 Rendering lesson page successfully', {
+    course: { id: course.id, title: course.title },
+    lesson: { id: currentLesson.id, title: currentLesson.title },
+    progress
+  });
 
   return (
-    <div className="min-h-screen bg-gray-900">
+    <div className="min-h-screen bg-gray-900 text-white">
+      {/* Debug Panel - Only show on client side */}
+      {typeof window !== 'undefined' && (
+        <div className="fixed top-4 right-4 bg-black bg-opacity-80 p-4 rounded-lg text-xs max-w-sm z-50">
+          <h3 className="font-bold mb-2">🐛 Debug Info</h3>
+          <div className="space-y-1">
+            <div>Course: {course?.title}</div>
+            <div>Lesson: {currentLesson?.title}</div>
+            <div>Progress: {progress.toFixed(1)}%</div>
+            <div>Auth: {user ? 'Logged in' : 'Not logged in'}</div>
+            <div>Error: {error || 'None'}</div>
+            <button
+              onClick={clearLocalStorage}
+              className="flex items-center space-x-2 px-3 py-1 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+            >
+              <Trash2 className="h-4 w-4" />
+              <span>Clear Local Storage</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
-      <div className="bg-black border-b border-gray-800">
-        <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
+      <div className="bg-gray-800 border-b border-gray-700">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-4">
               <button
-                onClick={goToCourse}
-                className="text-gray-400 hover:text-white transition-colors"
+                onClick={() => router.push(`/course/${courseId}`)}
+                className="flex items-center space-x-2 text-gray-300 hover:text-white transition-colors"
               >
                 <ChevronLeft className="h-5 w-5" />
+                <span>Back to Course</span>
               </button>
-              <div>
-                <h1 className="text-white text-lg font-semibold">{course.title}</h1>
-                <p className="text-gray-400 text-sm">
-                  Lesson {currentLessonIndex + 1} of {course.lessons.length}
-                </p>
-              </div>
             </div>
 
-            {/* Progress */}
             <div className="flex items-center space-x-4">
-              <div className="text-right">
-                <p className="text-white text-sm font-medium">
-                  {Math.round(progress)}% Complete
-                </p>
-                <div className="w-32 bg-gray-700 h-2 rounded-full overflow-hidden">
-                  <div
-                    className="bg-red-600 h-full transition-all duration-300"
-                    style={{ width: `${progress}%` }}
-                  ></div>
+              <div className="flex items-center space-x-2">
+                <BookOpen className="h-4 w-4 text-gray-400" />
+                <span className="text-sm text-gray-400">
+                  Lesson {currentLessonIndex + 1} of {course.lessons.length}
+                </span>
                 </div>
+
+              <div className="flex items-center space-x-2">
+                <Clock className="h-4 w-4 text-gray-400" />
+                <span className="text-sm text-gray-400">
+                  {currentLesson.duration}
+                </span>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex flex-col lg:flex-row lg:space-x-8">
-          {/* Main Content - Video Player */}
-          <div className="lg:w-2/3 mb-8 lg:mb-0">
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Video Player */}
-            <div className="bg-black rounded-lg overflow-hidden mb-6">
-              <VideoPlayer lesson={currentLesson} />
-            </div>
-
-            {/* Lesson Navigation */}
-            <div className="flex items-center justify-between mb-6">
-              <button
-                onClick={goToPreviousLesson}
-                disabled={currentLessonIndex === 0}
-                className={`flex items-center space-x-2 px-4 py-2 rounded-md transition-colors ${
-                  currentLessonIndex === 0
-                    ? 'text-gray-500 cursor-not-allowed'
-                    : 'text-white hover:bg-gray-800'
-                }`}
-              >
-                <ChevronLeft className="h-4 w-4" />
-                <span>Previous Lesson</span>
-              </button>
-
-              <button
-                onClick={goToNextLesson}
-                disabled={currentLessonIndex === course.lessons.length - 1}
-                className={`flex items-center space-x-2 px-4 py-2 rounded-md transition-colors ${
-                  currentLessonIndex === course.lessons.length - 1
-                    ? 'text-gray-500 cursor-not-allowed'
-                    : 'text-white hover:bg-gray-800'
-                }`}
-              >
-                <span>Next Lesson</span>
-                <ChevronRight className="h-4 w-4" />
-              </button>
+          <div className="lg:col-span-2">
+                         <div className="bg-black rounded-lg overflow-hidden">
+               <VideoPlayer
+                 lesson={currentLesson}
+                 courseId={courseId as string}
+                 showProgressPanel={true}
+               />
             </div>
 
             {/* Lesson Info */}
-            <div className="bg-gray-800 rounded-lg p-6">
-              <h2 className="text-white text-2xl font-bold mb-4">{currentLesson.title}</h2>
-
-              <div className="flex items-center space-x-4 mb-4">
-                <div className="flex items-center text-gray-400">
-                  <Clock className="h-4 w-4 mr-2" />
-                  <span>{currentLesson.duration}</span>
-                </div>
-                <div className="flex items-center text-gray-400">
-                  <BookOpen className="h-4 w-4 mr-2" />
-                  <span>Lesson {currentLessonIndex + 1}</span>
-                </div>
-              </div>
-
-              <p className="text-gray-300 mb-6">{currentLesson.description}</p>
-
-              {/* Notes Section */}
-              <div className="border-t border-gray-700 pt-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-white text-lg font-semibold">Lesson Notes</h3>
-                  <button
-                    onClick={() => setShowNotes(!showNotes)}
-                    className="text-red-500 hover:text-red-400 transition-colors"
-                  >
-                    {showNotes ? 'Hide Notes' : 'Show Notes'}
-                  </button>
-                </div>
-
-                {showNotes && (
-                  <div className="bg-gray-700 rounded-lg p-4">
-                    <p className="text-gray-300 text-sm">
-                      Take notes during this lesson. Your notes will be saved automatically.
-                    </p>
-                    <textarea
-                      className="w-full mt-4 bg-gray-600 border border-gray-500 rounded-md p-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500"
-                      rows={6}
-                      placeholder="Add your notes here..."
-                    />
-                  </div>
-                )}
-              </div>
+            <div className="mt-6">
+              <h1 className="text-2xl font-bold text-white mb-4">
+                {currentLesson.title}
+              </h1>
+              <p className="text-gray-300 mb-6">
+                {currentLesson.description}
+              </p>
             </div>
           </div>
 
-          {/* Sidebar - Course Info & Lessons */}
-          <div className="lg:w-1/3">
-            <div className="bg-gray-800 rounded-lg p-6 sticky top-8">
-              {/* Instructor Info */}
-              <div className="flex items-center mb-6">
-                <img
-                  src={instructorInfo.image}
-                  alt={instructorInfo.name}
-                  className="w-12 h-12 rounded-full object-cover mr-4"
-                />
-                <div>
-                  <h3 className="text-white font-medium">{instructorInfo.name}</h3>
-                  <p className="text-gray-400 text-sm">{instructorInfo.title}</p>
+          {/* Sidebar */}
+          <div className="lg:col-span-1">
+            {/* Progress */}
+            <div className="bg-gray-800 rounded-lg p-6 mb-6">
+              <h3 className="text-lg font-semibold text-white mb-4">Course Progress</h3>
+              <div className="mb-4">
+                <div className="flex justify-between text-sm text-gray-400 mb-2">
+                  <span>Progress</span>
+                  <span>{progress.toFixed(1)}%</span>
                 </div>
-              </div>
-
-              {/* Course Progress */}
-              <div className="mb-6">
-                <h3 className="text-white font-medium mb-3">Course Progress</h3>
-                <div className="bg-gray-700 h-2 rounded-full overflow-hidden mb-2">
+                <div className="w-full bg-gray-700 rounded-full h-2">
                   <div
-                    className="bg-red-600 h-full transition-all duration-300"
+                    className="bg-red-600 h-2 rounded-full transition-all duration-300"
                     style={{ width: `${progress}%` }}
                   ></div>
                 </div>
-                <p className="text-gray-400 text-sm">
-                  {Math.round(progress)}% complete • {course.lessons.length} lessons
-                </p>
+              </div>
+            </div>
+
+            {/* Lesson Navigation */}
+            <div className="bg-gray-800 rounded-lg p-6">
+              <h3 className="text-lg font-semibold text-white mb-4">Lesson Navigation</h3>
+              <div className="flex justify-between mb-4">
+                <button
+                  onClick={() => navigateToLesson('prev')}
+                  disabled={currentLessonIndex === 0}
+                  className="flex items-center space-x-2 px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  <span>Previous</span>
+                </button>
+
+                <button
+                  onClick={() => navigateToLesson('next')}
+                  disabled={currentLessonIndex === course.lessons.length - 1}
+                  className="flex items-center space-x-2 px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  <span>Next</span>
+                  <ChevronRight className="h-4 w-4" />
+                </button>
               </div>
 
-              {/* Lessons List */}
-              <div>
-                <h3 className="text-white font-medium mb-3">All Lessons</h3>
+              {/* Lesson List */}
                 <div className="space-y-2">
-                  {course.lessons.map((lesson: Lesson, index: number) => (
+                {course.lessons.map((lesson, index) => (
                     <button
                       key={lesson.id}
-                      onClick={() => handleLessonSelect(lesson.id)}
-                      className={`flex items-center w-full p-3 rounded-md transition-colors text-left ${
+                    onClick={() => {
+                      const targetUrl = `/course/${courseId}/lesson/${lesson.id}`;
+
+                      // Prevent navigation if already on the target route
+                      if (router.asPath === targetUrl) {
+                        DEBUG.log('Already on target lesson, skipping navigation');
+                        return;
+                      }
+
+                      DEBUG.log('🔄 Navigating to lesson from list', {
+                        lessonId: lesson.id,
+                        lessonTitle: lesson.title,
+                        index,
+                        targetUrl
+                      });
+                      router.replace(targetUrl);
+                    }}
+                    className={`w-full text-left p-3 rounded-lg transition-colors ${
                         lesson.id === currentLesson.id
                           ? 'bg-red-600 text-white'
-                          : index < currentLessonIndex
-                          ? 'bg-green-600/20 text-green-400 hover:bg-green-600/30'
-                          : 'hover:bg-gray-700 text-gray-300'
-                      }`}
-                    >
-                      <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-gray-700 mr-3">
-                        {lesson.id === currentLesson.id ? (
-                          <Play className="h-4 w-4 text-white" />
-                        ) : index < currentLessonIndex ? (
+                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        {index < currentLessonIndex ? (
                           <CheckCircle className="h-4 w-4 text-green-400" />
+                        ) : index === currentLessonIndex ? (
+                          <Play className="h-4 w-4 text-red-400" />
                         ) : (
-                          <span className="text-gray-300">{index + 1}</span>
+                          <div className="h-4 w-4 rounded-full border border-gray-500" />
                         )}
+                        <span className="text-sm font-medium">
+                          Lesson {index + 1}
+                        </span>
                       </div>
-                      <div className="flex-1">
-                        <p className={`text-sm font-medium ${
-                          lesson.id === currentLesson.id ? 'text-white' : 'text-gray-300'
-                        }`}>
+                      <span className="text-xs text-gray-400">
+                        {lesson.duration}
+                      </span>
+                    </div>
+                    <p className="text-xs mt-1 truncate">
                           {lesson.title}
                         </p>
-                        <p className="text-xs text-gray-400">{lesson.duration}</p>
-                      </div>
                     </button>
                   ))}
-                </div>
               </div>
             </div>
           </div>

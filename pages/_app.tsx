@@ -6,7 +6,10 @@ import { setupAutomaticRefresh } from '../src/lib/authInterceptor'
 import DatabaseTest from '../src/components/ui/DatabaseTest'
 import { TokenStatusIndicator } from '../src/components/ui/TokenStatusIndicator'
 import GlobalErrorBoundary from '../src/components/ui/GlobalErrorBoundary'
+import NavigationDebugger from '../src/components/ui/NavigationDebugger';
 import '../src/index.css'
+// Import console storage utilities for global access
+import '../src/utils/consoleStorage'
 
 // Token Refresh Initializer Component
 const TokenRefreshInitializer = () => {
@@ -68,6 +71,7 @@ export default function App({ Component, pageProps }: AppProps) {
           <TokenRefreshInitializer />
           <Component {...pageProps} />
           <ClientOnlyComponents />
+          <NavigationDebugger />
         </PermissionProvider>
       </AuthProvider>
     </GlobalErrorBoundary>

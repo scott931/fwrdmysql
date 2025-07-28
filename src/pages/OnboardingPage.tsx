@@ -85,7 +85,7 @@ const OnboardingPage: React.FC = () => {
 
       // Show success message for 2 seconds before redirecting
       setTimeout(() => {
-        router.push('/home');
+        router.push('/courses');
       }, 2000);
     } catch (error) {
       console.error('❌ Failed to complete onboarding:', error);
@@ -111,7 +111,7 @@ const OnboardingPage: React.FC = () => {
 
       // Show success message for 2 seconds before redirecting
       setTimeout(() => {
-        router.push('/home');
+        router.push('/courses');
       }, 2000);
     } catch (error) {
       console.error('❌ Failed to skip onboarding:', error);

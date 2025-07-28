@@ -41,7 +41,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
   };
 
   const getUploadEndpoint = () => {
-    const baseUrl = 'http://localhost:3002/api';
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002/api';
     switch (uploadType) {
       case 'avatar':
         return `${baseUrl}/upload/avatar`;

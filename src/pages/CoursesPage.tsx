@@ -46,8 +46,8 @@ const transformCourseData = (backendCourse: any): Course => {
     instructor: instructor,
     instructorId: backendCourse.instructor_id,
     category: backendCourse.category_name || backendCourse.category || 'General',
-            thumbnail: backendCourse.thumbnail || '/images/placeholder-course.jpg',
-        banner: backendCourse.banner || '/images/placeholder-course.jpg',
+            thumbnail: backendCourse.thumbnail || '/placeholder-course.jpg',
+        banner: backendCourse.banner || '/placeholder-course.jpg',
     videoUrl: backendCourse.video_url,
     description: backendCourse.description || 'Course description coming soon.',
     lessons: (backendCourse.lessons || []).slice().sort((a: any, b: any) => {

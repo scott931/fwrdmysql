@@ -97,20 +97,44 @@ interface ProtectedData {
 
 // Example 2: Protected Component with Token Refresh
 export const ProtectedComponentExample: React.FC = () => {
-  const { isAuthenticated, user } = useAuth();
-  const { tokenStatus, refreshState, refreshToken, timeUntilExpiry } = useTokenRefresh();
+  const { user, isAuthenticated } = useAuth();
+  const { tokenStatus, refreshState, refreshToken } = useTokenRefresh();
   const [data, setData] = useState<ProtectedData | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [isClient, setIsClient] = useState(false);
+
+  // Set client flag on mount to prevent hydration issues
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  const timeUntilExpiry = tokenStatus.expiryTime
+    ? Math.max(0, Math.floor((tokenStatus.expiryTime - Date.now()) / 1000))
+    : null;
 
   const fetchProtectedData = async () => {
-    setLoading(true);
-    setError('');
+    if (!isAuthenticated) {
+      setError('User not authenticated');
+      return;
+    }
 
     try {
-      // This will automatically handle token refresh if needed
-      const response = await apiClient.get('/auth/me');
-      setData(response.data);
+      setLoading(true);
+      setError(null);
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002/api'}/protected-data`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('forward_africa_token')}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      setData(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch data');
     } finally {
@@ -118,24 +142,23 @@ export const ProtectedComponentExample: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    if (isAuthenticated) {
-      fetchProtectedData();
-    }
-  }, [isAuthenticated]);
-
-  if (!isAuthenticated) {
-    return (
-      <div className="p-4 border rounded bg-yellow-50">
-        <h2 className="text-lg font-semibold text-yellow-800">Authentication Required</h2>
-        <p className="text-yellow-700">Please login to access this content.</p>
-      </div>
-    );
+  // Don't render anything until client-side hydration is complete
+  if (!isClient) {
+    return null;
   }
 
   return (
     <div className="p-4 border rounded">
-      <h2 className="text-xl font-bold mb-4">Protected Content</h2>
+      <h2 className="text-xl font-bold mb-4">Protected Component Example</h2>
+
+      {/* Authentication Status */}
+      <div className="mb-4 p-3 bg-blue-50 rounded">
+        <h3 className="font-semibold mb-2">Authentication Status:</h3>
+        <div className="text-sm space-y-1">
+          <div>Is Authenticated: {isAuthenticated ? 'Yes' : 'No'}</div>
+          <div>User: {user?.email || 'Not logged in'}</div>
+        </div>
+      </div>
 
       {/* Token Status Display */}
       <div className="mb-4 p-3 bg-gray-50 rounded">
@@ -196,6 +219,12 @@ export const TokenExpirationHandlerExample: React.FC = () => {
   const { signOut } = useAuth();
   const { tokenStatus, refreshToken } = useTokenRefresh();
   const [lastAction, setLastAction] = useState('');
+  const [isClient, setIsClient] = useState(false);
+
+  // Set client flag on mount to prevent hydration issues
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   useEffect(() => {
     if (tokenStatus.isExpired && tokenStatus.isAuthenticated) {
@@ -212,6 +241,11 @@ export const TokenExpirationHandlerExample: React.FC = () => {
       });
     }
   }, [tokenStatus.isExpired, tokenStatus.isAuthenticated, refreshToken, signOut]);
+
+  // Don't render anything until client-side hydration is complete
+  if (!isClient) {
+    return null;
+  }
 
   return (
     <div className="p-4 border rounded">

@@ -80,7 +80,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         throw new Error('No refresh token available');
       }
 
-      const response = await fetch('http://localhost:3002/api/auth/refresh', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002/api'}/auth/refresh`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

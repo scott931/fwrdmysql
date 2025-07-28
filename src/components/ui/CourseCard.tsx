@@ -51,7 +51,7 @@ const CourseCard: React.FC<CourseCardProps> = ({ course }) => {
   // MINIMAL TEST VERSION - just show basic info
   const courseId = course.id || 'unknown-course';
   const title = course.title || 'Untitled Course';
-  const thumbnail = course.thumbnail || '/images/placeholder-course.jpg';
+  const thumbnail = course.thumbnail || '/placeholder-course.jpg';
 
   // SUPER SAFE instructor handling
   let instructorName = 'Unknown Instructor';
@@ -105,13 +105,28 @@ const CourseCard: React.FC<CourseCardProps> = ({ course }) => {
     if (course.lessons && course.lessons.length > 0) {
       const firstLessonId = course.lessons[0].id;
       const lessonUrl = `/course/${courseId}/lesson/${firstLessonId}`;
+
+      // Prevent navigation if already on the target route
+      if (router.asPath === lessonUrl) {
+        console.log('Already on target lesson, skipping navigation');
+        return;
+      }
+
       console.log('Navigating to lesson:', lessonUrl);
-      // Navigate directly to first lesson
-      router.push(lessonUrl);
+      // Use replace to prevent navigation loops
+      router.replace(lessonUrl);
     } else {
       console.log('No lessons found, navigating to course page');
+      const courseUrl = `/course/${courseId}`;
+
+      // Prevent navigation if already on the target route
+      if (router.asPath === courseUrl) {
+        console.log('Already on course page, skipping navigation');
+        return;
+      }
+
       // Navigate to course page if no lessons
-      router.push(`/course/${courseId}`);
+      router.replace(courseUrl);
     }
   };
 
@@ -140,8 +155,8 @@ const CourseCard: React.FC<CourseCardProps> = ({ course }) => {
               loading="lazy"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
-                if (target.src !== '/images/placeholder-course.jpg') {
-                  target.src = '/images/placeholder-course.jpg';
+                if (target.src !== '/placeholder-course.jpg') {
+                  target.src = '/placeholder-course.jpg';
                 }
               }}
               onLoad={(e) => {
@@ -161,8 +176,8 @@ const CourseCard: React.FC<CourseCardProps> = ({ course }) => {
               loading="lazy"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
-                if (target.src !== '/images/placeholder-course.jpg') {
-                  target.src = '/images/placeholder-course.jpg';
+                if (target.src !== '/placeholder-course.jpg') {
+                  target.src = '/placeholder-course.jpg';
                 }
               }}
               onLoad={(e) => {

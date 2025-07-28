@@ -15,11 +15,19 @@ const CoursePage: React.FC = () => {
   const [course, setCourse] = useState<Course | null>(null);
   const [selectedLesson, setSelectedLesson] = useState<string | null>(null);
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
-  const [progress, setProgress] = useState<number>(0);
+  const [progress, setProgress] = useState(0);
   const { generateCertificate, getCertificate } = useCertificates();
-  const [certificate, setCertificate] = useState<Certificate | undefined>();
+  const [certificate, setCertificate] = useState<Certificate | undefined>(undefined);
   const [isDownloading, setIsDownloading] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [redirecting, setRedirecting] = useState(false);
+  const [hasRedirected, setHasRedirected] = useState(false);
+  const [isClient, setIsClient] = useState(false);
+
+  // Set client flag on mount to prevent hydration issues
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   // Scroll to top on component mount
   useEffect(() => {
@@ -27,11 +35,11 @@ const CoursePage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (courseId) {
+    if (courseId && isClient) {
       const cert = getCertificate(courseId as string);
       setCertificate(cert);
     }
-  }, [courseId, getCertificate]);
+  }, [courseId, getCertificate, isClient]);
 
   useEffect(() => {
     const fetchCourseData = async () => {
@@ -41,13 +49,14 @@ const CoursePage: React.FC = () => {
           console.log('Fetching course data for:', courseId);
 
           // Fetch course from database API
-          const response = await fetch(`http://localhost:3002/api/courses/${courseId}`);
+          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002/api'}/courses/${courseId}`);
           if (!response.ok) {
             throw new Error('Course not found');
           }
 
           const foundCourse = await response.json();
           console.log('Course data from API:', foundCourse);
+          console.log('Raw lessons from API:', foundCourse.lessons);
 
           // Transform the course data to match frontend format
           const transformedCourse = {
@@ -66,8 +75,8 @@ const CoursePage: React.FC = () => {
             },
             instructorId: foundCourse.instructor_id,
             category: foundCourse.category_name || 'General',
-                    thumbnail: foundCourse.thumbnail || '/images/placeholder-course.jpg',
-        banner: foundCourse.banner || '/images/placeholder-course.jpg',
+            thumbnail: foundCourse.thumbnail || '/placeholder-course.jpg',
+            banner: foundCourse.banner || '/placeholder-course.jpg',
             videoUrl: foundCourse.video_url,
             description: foundCourse.description || 'Course description coming soon.',
             lessons: foundCourse.lessons || [],
@@ -77,22 +86,27 @@ const CoursePage: React.FC = () => {
             releaseDate: foundCourse.release_date
           };
 
+          console.log('Transformed course data:', transformedCourse);
+          console.log('Transformed lessons:', transformedCourse.lessons);
+          console.log('Lesson IDs:', transformedCourse.lessons.map((l: any) => l.id));
+
           setCourse(transformedCourse);
 
-          // Load progress from localStorage
-          const storedProgress = localStorage.getItem('userProgress');
-          if (storedProgress) {
-            const progressData = JSON.parse(storedProgress);
-            if (progressData[courseId]) {
-              setSelectedLesson(progressData[courseId].lessonId);
-              setProgress(progressData[courseId].progress);
-            } else if (transformedCourse.lessons.length > 0) {
-              setSelectedLesson(transformedCourse.lessons[0].id);
+          // Load progress from localStorage for courses without lessons (only on client side)
+          if (typeof window !== 'undefined') {
+            const storedProgress = localStorage.getItem('userProgress');
+            if (storedProgress) {
+              const progressData = JSON.parse(storedProgress);
+              if (progressData[courseId]) {
+                setSelectedLesson(progressData[courseId].lessonId);
+                setProgress(progressData[courseId].progress);
+              } else {
+                setSelectedLesson(null);
+              }
             } else {
               setSelectedLesson(null);
+              setProgress(0);
             }
-          } else if (transformedCourse.lessons.length > 0) {
-            setSelectedLesson(transformedCourse.lessons[0].id);
           } else {
             setSelectedLesson(null);
             setProgress(0);
@@ -109,6 +123,73 @@ const CoursePage: React.FC = () => {
 
     fetchCourseData();
   }, [courseId, router]);
+
+  // Reset redirect state when courseId changes
+  useEffect(() => {
+    setHasRedirected(false);
+    setRedirecting(false);
+  }, [courseId]);
+
+  // Handle automatic redirect to first lesson after course data is loaded
+  useEffect(() => {
+    if (course && course.lessons && course.lessons.length > 0 && isClient && !redirecting && !hasRedirected) {
+      const firstLesson = course.lessons[0];
+
+      // Validate that the first lesson exists and has a valid ID
+      if (!firstLesson || !firstLesson.id) {
+        console.error('❌ First lesson is invalid:', firstLesson);
+        setHasRedirected(true);
+        return;
+      }
+
+      // Additional validation: ensure the lesson ID is actually in the course data
+      const lessonExists = course.lessons.some(lesson => lesson.id === firstLesson.id);
+      if (!lessonExists) {
+        console.error('❌ First lesson ID not found in course data:', {
+          firstLessonId: firstLesson.id,
+          availableLessonIds: course.lessons.map(l => l.id)
+        });
+        setHasRedirected(true);
+        return;
+      }
+
+      const targetUrl = `/course/${courseId}/lesson/${firstLesson.id}`;
+
+      // Prevent navigation if already on the target route
+      if (router.asPath === targetUrl) {
+        console.log('Already on target lesson, staying on course page');
+        setHasRedirected(true);
+        return;
+      }
+
+      console.log('🎯 Auto-redirecting to first lesson:', {
+        courseId,
+        firstLessonId: firstLesson.id,
+        firstLessonIdType: typeof firstLesson.id,
+        firstLessonTitle: firstLesson.title,
+        lessonsCount: course.lessons.length,
+        targetUrl,
+        currentPath: router.asPath,
+        allLessonIds: course.lessons.map(l => ({ id: l.id, title: l.title })),
+        allLessonIdsOnly: course.lessons.map(l => l.id),
+        allLessonIdTypes: course.lessons.map(l => ({ id: l.id, type: typeof l.id }))
+      });
+
+      setRedirecting(true);
+      setHasRedirected(true);
+
+      // Use a small delay to ensure the component is fully mounted
+      setTimeout(() => {
+        try {
+          router.push(targetUrl);
+        } catch (error) {
+          console.error('Navigation error:', error);
+          setRedirecting(false);
+          setHasRedirected(false); // Reset if navigation fails
+        }
+      }, 100);
+    }
+  }, [course, courseId, router, isClient, redirecting, hasRedirected]);
 
   const handleDownloadCertificate = async () => {
     if (!certificate || !course) return;
@@ -129,29 +210,31 @@ const CoursePage: React.FC = () => {
     const lessonIndex = course.lessons.findIndex(l => l.id === lessonId);
     const progressValue = ((lessonIndex + 1) / course.lessons.length) * 100;
 
-    // Save progress to localStorage
-    const storedProgress = localStorage.getItem('userProgress');
-    const progressData = storedProgress ? JSON.parse(storedProgress) : {};
+    // Save progress to localStorage (only on client side)
+    if (typeof window !== 'undefined') {
+      const storedProgress = localStorage.getItem('userProgress');
+      const progressData = storedProgress ? JSON.parse(storedProgress) : {};
 
-    progressData[courseId] = {
-      lessonId,
-      progress: progressValue,
-      lastWatched: new Date().toISOString()
-    };
+      progressData[courseId] = {
+        lessonId,
+        progress: progressValue,
+        lastWatched: new Date().toISOString()
+      };
 
-    // Generate certificate if course is completed
-    if (progressValue === 100 && !certificate) {
-      const newCertificate = generateCertificate(
-        courseId,
-        course.title,
-        'John Doe', // Replace with actual user name
-        typeof course.instructor === 'object' ? course.instructor.name : course.instructor
-      );
-      setCertificate(newCertificate);
-      progressData[courseId].certificate = newCertificate;
+      // Generate certificate if course is completed
+      if (progressValue === 100 && !certificate) {
+        const newCertificate = generateCertificate(
+          courseId,
+          course.title,
+          'John Doe', // Replace with actual user name
+          typeof course.instructor === 'object' ? course.instructor.name : course.instructor
+        );
+        setCertificate(newCertificate);
+        progressData[courseId].certificate = newCertificate;
+      }
+
+      localStorage.setItem('userProgress', JSON.stringify(progressData));
     }
-
-    localStorage.setItem('userProgress', JSON.stringify(progressData));
     setProgress(progressValue);
   };
 
@@ -160,11 +243,17 @@ const CoursePage: React.FC = () => {
     updateProgress(lessonId);
   };
 
-  if (loading) {
+  // Show loading state while redirecting or before client-side hydration
+  if (loading || redirecting || !isClient) {
     return (
       <Layout>
         <div className="flex justify-center items-center h-screen">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-red-600"></div>
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-red-600"></div>
+            <p className="mt-4 text-gray-400">
+              {redirecting ? 'Redirecting to video lessons...' : 'Loading course...'}
+            </p>
+          </div>
         </div>
       </Layout>
     );
@@ -186,6 +275,7 @@ const CoursePage: React.FC = () => {
     );
   }
 
+  // If we reach here, it means the course has no lessons (coming soon)
   const currentLesson = course.lessons.find(lesson => lesson.id === selectedLesson);
 
   const instructorInfo = typeof course.instructor === 'object' ? course.instructor : {
@@ -204,54 +294,27 @@ const CoursePage: React.FC = () => {
             <div className="flex flex-col md:flex-row md:space-x-8">
               {/* Left Column - Video Player */}
               <div className="md:w-2/3 mb-8 md:mb-0">
-                {course.lessons.length > 0 ? (
-                  <div className="flex flex-col items-center justify-center p-8 bg-gray-800 rounded-lg">
-                    <h2 className="text-white text-xl font-bold mb-4">Ready to Start Learning?</h2>
-                    <p className="text-gray-300 text-center mb-6">
-                      This course contains {course.lessons.length} video lessons.
-                      Click below to start your learning journey.
-                    </p>
-                    <Button
-                      variant="primary"
-                      size="lg"
-                      onClick={() => {
-                        console.log('🎯 Start Learning clicked:', {
-                          courseId,
-                          firstLessonId: course.lessons[0]?.id,
-                          lessonsCount: course.lessons.length,
-                          targetUrl: `/course/${courseId}/lesson/${course.lessons[0]?.id}`
-                        });
-                        router.push(`/course/${courseId}/lesson/${course.lessons[0].id}`);
-                      }}
-                      className="group"
+                <div className="flex flex-col items-center justify-center p-8 bg-gray-800 rounded-lg">
+                  <h2 className="text-white text-xl font-bold mb-4">Course Coming Soon</h2>
+                  <p className="text-gray-300 text-center mb-6">
+                    This course is currently being developed and will be available soon.
+                    We're working hard to bring you high-quality video lessons.
+                  </p>
+                  <div className="flex space-x-4">
+                    <button
+                      onClick={() => router.push('/courses')}
+                      className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors"
                     >
-                      Start Learning
-                      <ChevronRight className="h-5 w-5 ml-2 group-hover:translate-x-1 transition-transform" />
-                    </Button>
+                      Browse Other Courses
+                    </button>
+                    <button
+                      onClick={() => router.push('/home')}
+                      className="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 transition-colors"
+                    >
+                      Go to Home
+                    </button>
                   </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center p-8 bg-gray-800 rounded-lg">
-                    <h2 className="text-white text-xl font-bold mb-4">Course Coming Soon</h2>
-                    <p className="text-gray-300 text-center mb-6">
-                      This course is currently being developed and will be available soon.
-                      We're working hard to bring you high-quality video lessons.
-                    </p>
-                    <div className="flex space-x-4">
-                      <button
-                        onClick={() => router.push('/courses')}
-                        className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors"
-                      >
-                        Browse Other Courses
-                      </button>
-                      <button
-                        onClick={() => router.push('/home')}
-                        className="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 transition-colors"
-                      >
-                        Go to Home
-                      </button>
-                    </div>
-                  </div>
-                )}
+                </div>
               </div>
 
               {/* Right Column - Course Info & Lessons */}
@@ -318,13 +381,11 @@ const CoursePage: React.FC = () => {
                   <div className="flex items-center space-x-2 mb-6">
                     <Award className="h-5 w-5 text-red-500" />
                     <span className="text-white text-sm">
-                      {course.lessons.length > 0
-                        ? `Includes ${course.lessons.length} video lessons`
-                        : 'Lessons coming soon'}
+                      Lessons coming soon
                     </span>
                   </div>
 
-                  {certificate && (
+                  {isClient && certificate && (
                     <div className="mb-6 p-4 bg-gray-700 rounded-lg">
                       <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center">
@@ -343,38 +404,6 @@ const CoursePage: React.FC = () => {
                       <p className="text-gray-400 text-sm">
                         Congratulations! You've completed this course and earned a certificate.
                       </p>
-                    </div>
-                  )}
-
-                  {/* Lessons List */}
-                  {course.lessons.length > 0 && (
-                    <div className="border-t border-gray-700 pt-4">
-                      <h3 className="text-white font-medium mb-3">Lessons</h3>
-                      <div className="space-y-3">
-                        {course.lessons.map((lesson, index) => (
-                          <button
-                            key={lesson.id}
-                            onClick={() => router.push(`/course/${courseId}/lesson/${lesson.id}`)}
-                            className={`flex items-center w-full p-2 rounded-md transition-colors ${
-                              selectedLesson === lesson.id ? 'bg-red-600 text-white' : 'hover:bg-gray-700 text-gray-300'
-                            }`}
-                          >
-                            <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-gray-700 mr-3">
-                              {selectedLesson === lesson.id ? (
-                                <Play className="h-4 w-4 text-white" />
-                              ) : (
-                                <span className="text-gray-300">{index + 1}</span>
-                              )}
-                            </div>
-                            <div className="text-left">
-                              <p className={`text-sm font-medium ${selectedLesson === lesson.id ? 'text-white' : 'text-gray-300'}`}>
-                                {lesson.title}
-                              </p>
-                              <p className="text-xs text-gray-400">{lesson.duration}</p>
-                            </div>
-                          </button>
-                        ))}
-                      </div>
                     </div>
                   )}
                 </div>

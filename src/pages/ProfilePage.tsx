@@ -395,8 +395,26 @@ const ProfilePage: React.FC = () => {
     errors,
     success
   }: {
-    initialData: any;
-    onSubmit: (data: any) => void;
+    initialData: {
+      full_name: string;
+      avatar_url: string;
+      industry: string;
+      experience_level: string;
+      business_stage: string;
+      country: string;
+      state_province: string;
+      city: string;
+    };
+    onSubmit: (data: {
+      full_name: string;
+      avatar_url: string;
+      industry: string;
+      experience_level: string;
+      business_stage: string;
+      country: string;
+      state_province: string;
+      city: string;
+    }) => void;
     onCancel: () => void;
     loading: boolean;
     errors: string[];

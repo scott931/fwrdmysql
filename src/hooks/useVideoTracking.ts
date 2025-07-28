@@ -50,36 +50,6 @@ export const useVideoTracking = ({
 
   const updateIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Initialize WebSocket connection
-  useEffect(() => {
-    if (user?.id) {
-      const connectWebSocket = async () => {
-        try {
-          await getWebSocketService().connect(user.id);
-          setIsConnected(true);
-
-          // Set up message handlers
-          getWebSocketService().onMessage('progress_update', handleProgressUpdate);
-          getWebSocketService().onMessage('play_state', handlePlayStateUpdate);
-          getWebSocketService().onMessage('resume_point', handleResumePointUpdate);
-
-        } catch (error) {
-          console.error('Failed to connect WebSocket:', error);
-          setIsConnected(false);
-        }
-      };
-
-      connectWebSocket();
-
-      return () => {
-        getWebSocketService().offMessage('progress_update');
-        getWebSocketService().offMessage('play_state');
-        getWebSocketService().offMessage('resume_point');
-        getWebSocketService().disconnect();
-      };
-    }
-  }, [user?.id]);
-
   // Handle incoming progress updates from other devices
   const handleProgressUpdate = useCallback((message: CrossDeviceSyncMessage) => {
     if (message.payload.courseId === courseId && message.payload.lessonId === lessonId) {
@@ -115,6 +85,36 @@ export const useVideoTracking = ({
       console.log('📱 Received resume point from another device:', message.payload.resumeTime);
     }
   }, [courseId, lessonId]);
+
+  // Initialize WebSocket connection
+  useEffect(() => {
+    if (user?.id) {
+      const connectWebSocket = async () => {
+        try {
+          await getWebSocketService().connect(user.id);
+          setIsConnected(true);
+
+          // Set up message handlers
+          getWebSocketService().onMessage('progress_update', handleProgressUpdate);
+          getWebSocketService().onMessage('play_state', handlePlayStateUpdate);
+          getWebSocketService().onMessage('resume_point', handleResumePointUpdate);
+
+        } catch (error) {
+          console.error('Failed to connect WebSocket:', error);
+          setIsConnected(false);
+        }
+      };
+
+      connectWebSocket();
+
+      return () => {
+        getWebSocketService().offMessage('progress_update');
+        getWebSocketService().offMessage('play_state');
+        getWebSocketService().offMessage('resume_point');
+        getWebSocketService().disconnect();
+      };
+    }
+  }, [user?.id, handleProgressUpdate, handlePlayStateUpdate, handleResumePointUpdate]);
 
   // Start tracking video progress
   const startTracking = useCallback(() => {

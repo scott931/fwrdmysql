@@ -69,65 +69,72 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson, courseId, showProgres
     duration: 0 // Will be updated when video loads
   });
 
-  // Function to extract YouTube video ID from various YouTube URL formats
+  // Extract YouTube video ID from various URL formats
   const extractYouTubeId = (url: string): string | null => {
-    if (!url) {
-      console.log('No URL provided');
-      return null;
-    }
-
-    // Remove any whitespace
-    url = url.trim();
-    console.log('Processing URL:', url);
+    if (!url) return null;
 
     const patterns = [
-      // Standard YouTube URLs
-      /(?:https?:\/\/)?(?:www\.)?youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})/,
-      // YouTube short URLs
-      /(?:https?:\/\/)?youtu\.be\/([a-zA-Z0-9_-]{11})/,
-      // YouTube embed URLs
-      /(?:https?:\/\/)?(?:www\.)?youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/,
-      // YouTube URLs with additional parameters
-      /(?:https?:\/\/)?(?:www\.)?youtube\.com\/watch\?.*v=([a-zA-Z0-9_-]{11})/,
-      // YouTube URLs with time stamps
-      /(?:https?:\/\/)?(?:www\.)?youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})&?.*$/,
-      // YouTube mobile URLs
-      /(?:https?:\/\/)?m\.youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})/
+      /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
+      /youtube\.com\/watch\?.*v=([a-zA-Z0-9_-]{11})/,
+      /youtu\.be\/([a-zA-Z0-9_-]{11})/
     ];
 
     for (let i = 0; i < patterns.length; i++) {
       const pattern = patterns[i];
       const match = url.match(pattern);
       if (match && match[1]) {
-        console.log(`YouTube ID extracted using pattern ${i + 1}:`, match[1]);
+        console.log(`✅ YouTube ID extracted using pattern ${i + 1}:`, match[1]);
         return match[1];
       }
     }
 
-    console.log('No YouTube ID found for URL:', url);
+    console.log('❌ No YouTube ID found for URL:', url);
     return null;
   };
 
   // Check if the video URL is a YouTube URL and extract ID
   useEffect(() => {
-    console.log('=== VideoPlayer: Processing video URL ===');
-    console.log('Video URL:', lesson.videoUrl);
-
-    if (!lesson.videoUrl) {
-      console.log('No video URL provided');
+    // Prevent running if lesson is not properly loaded
+    if (!lesson || !lesson.videoUrl) {
+      console.log('❌ No lesson or video URL provided');
       setIsLoading(false);
       setHasError(true);
       return;
     }
 
+    console.log('=== VideoPlayer: Processing video URL ===');
+    console.log('Lesson object:', lesson);
+    console.log('Video URL:', lesson.videoUrl);
+    console.log('Lesson ID:', lesson.id);
+    console.log('Lesson title:', lesson.title);
+
     const videoUrl = lesson.videoUrl;
+    console.log('Processing video URL:', videoUrl);
+
     const ytId = extractYouTubeId(videoUrl);
+    console.log('Extracted YouTube ID:', ytId);
 
     if (ytId) {
       console.log('✅ YouTube video detected, ID:', ytId);
       setIsYouTube(true);
       setYouTubeId(ytId);
       setHasError(false);
+
+      // Test if the YouTube video is accessible
+      const testUrl = `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${ytId}&format=json`;
+      fetch(testUrl)
+        .then(response => {
+          if (response.ok) {
+            console.log('✅ YouTube video is accessible');
+          } else {
+            console.log('❌ YouTube video is not accessible');
+            setHasError(true);
+          }
+        })
+        .catch(error => {
+          console.log('❌ Error testing YouTube video accessibility:', error);
+          // Don't set error immediately, let the iframe try to load
+        });
 
       // For YouTube videos, we'll set loading to false after a short delay
       // to allow the iframe to start loading
@@ -166,7 +173,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson, courseId, showProgres
       setIsLoading(true);
       setHasError(false);
     }
-  }, [lesson.videoUrl]);
+  }, [lesson?.videoUrl, lesson?.id, lesson?.title]);
 
   useEffect(() => {
     if (isYouTube) {
@@ -240,7 +247,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson, courseId, showProgres
       video.removeEventListener('error', handleError);
       video.removeEventListener('loadstart', handleLoadStart);
     };
-  }, [lesson.videoUrl, isYouTube]);
+  }, [lesson.videoUrl, isYouTube, updateProgress, getSmartResumeTime]);
 
   // Handle iframe load events for YouTube
   useEffect(() => {
@@ -267,7 +274,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson, courseId, showProgres
       iframe.removeEventListener('load', handleIframeLoad);
       iframe.removeEventListener('error', handleIframeError);
     };
-  }, [isYouTube, youTubeId]);
+  }, [isYouTube, youTubeId, lesson.title]);
 
   const togglePlay = async () => {
     if (isYouTube || !videoRef.current) return;
@@ -361,7 +368,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson, courseId, showProgres
       allowfullscreen: '1'
     });
 
-    return `https://www.youtube.com/embed/${videoId}?${params.toString()}`;
+    const embedUrl = `https://www.youtube.com/embed/${videoId}?${params.toString()}`;
+    console.log('🎬 Generated YouTube embed URL:', embedUrl);
+    return embedUrl;
   };
 
   console.log('=== VideoPlayer Render ===');
@@ -476,17 +485,17 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson, courseId, showProgres
             loading="lazy"
             style={{ border: 'none' }}
             onLoad={() => {
-              console.log('YouTube iframe onLoad triggered');
+              console.log('✅ YouTube iframe onLoad triggered');
               setIsLoading(false);
               setHasError(false);
             }}
             onError={() => {
-              console.error('YouTube iframe onError triggered');
+              console.error('❌ YouTube iframe onError triggered');
               setIsLoading(false);
               setHasError(true);
             }}
             onAbort={() => {
-              console.error('YouTube iframe onAbort triggered');
+              console.error('❌ YouTube iframe onAbort triggered');
               setIsLoading(false);
               setHasError(true);
             }}
