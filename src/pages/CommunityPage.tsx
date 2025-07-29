@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Users, MessageCircle, Bell, Search, Settings, BookOpen, Calendar, Folder, Star, Plus, MoreHorizontal, Phone, Video, Send, Mic, Menu, X } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/router';
 
 interface NetworkGroup {
   id: string;
@@ -129,6 +130,7 @@ const sampleMessages: Message[] = [
 ];
 
 const CommunityPage: React.FC = () => {
+  const router = useRouter();
   const [groups, setGroups] = useState<NetworkGroup[]>([]);
   const [selectedGroup, setSelectedGroup] = useState<NetworkGroup | null>(null);
   const [activeTab, setActiveTab] = useState<'all' | 'joined' | 'work' | 'personal' | 'saved'>('all');
@@ -195,9 +197,8 @@ const CommunityPage: React.FC = () => {
   };
 
   const handleGroupSelect = (group: NetworkGroup) => {
-    setSelectedGroup(group);
-    setChatOpen(true);
-    setSidebarOpen(false);
+    // Navigate to the chat page for this group
+    router.push(`/community/chat/${group.id}`);
   };
 
   return (

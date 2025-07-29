@@ -3,7 +3,5 @@
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
   "/afri-sage": "pages/afri-sage.js",
-  "/admin": "pages/admin.js",
-  "/admin/system-configuration": "pages/admin/system-configuration.js",
-  "/profile": "pages/profile.js"
+  "/courses": "pages/courses.js"
 }

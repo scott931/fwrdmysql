@@ -19,25 +19,15 @@ self.__BUILD_MANIFEST = {
       "static/chunks/main.js",
       "static/chunks/pages/_error.js"
     ],
-    "/admin": [
-      "static/chunks/webpack.js",
-      "static/chunks/main.js",
-      "static/chunks/pages/admin.js"
-    ],
-    "/admin/system-configuration": [
-      "static/chunks/webpack.js",
-      "static/chunks/main.js",
-      "static/chunks/pages/admin/system-configuration.js"
-    ],
     "/afri-sage": [
       "static/chunks/webpack.js",
       "static/chunks/main.js",
       "static/chunks/pages/afri-sage.js"
     ],
-    "/profile": [
+    "/courses": [
       "static/chunks/webpack.js",
       "static/chunks/main.js",
-      "static/chunks/pages/profile.js"
+      "static/chunks/pages/courses.js"
     ]
   },
   "ampFirstPages": []
