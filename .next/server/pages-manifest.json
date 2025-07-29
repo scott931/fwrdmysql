@@ -4,7 +4,5 @@
   "/_document": "pages/_document.js",
   "/community": "pages/community.js",
   "/courses": "pages/courses.js",
-  "/home": "pages/home.js",
-  "/community/chat/[groupId]": "pages/community/chat/[groupId].js",
-  "/course/[courseId]/lesson/[lessonId]": "pages/course/[courseId]/lesson/[lessonId].js"
+  "/community/chat/[groupId]": "pages/community/chat/[groupId].js"
 }

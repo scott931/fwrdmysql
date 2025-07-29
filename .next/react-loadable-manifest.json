@@ -10,17 +10,5 @@
     "files": [
       "static/chunks/src_pages_ChatPage_tsx.js"
     ]
-  },
-  "pages\\courses.tsx -> ../src/pages/CoursesPage": {
-    "id": "pages\\courses.tsx -> ../src/pages/CoursesPage",
-    "files": [
-      "static/chunks/src_pages_CoursesPage_tsx.js"
-    ]
-  },
-  "pages\\home.tsx -> ../src/pages/HomePage": {
-    "id": "pages\\home.tsx -> ../src/pages/HomePage",
-    "files": [
-      "static/chunks/src_pages_HomePage_tsx.js"
-    ]
   }
 }
