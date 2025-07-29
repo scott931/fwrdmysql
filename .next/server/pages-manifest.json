@@ -2,8 +2,8 @@
   "/_app": "pages/_app.js",
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
-  "/courses": "pages/courses.js",
-  "/home": "pages/home.js",
-  "/login": "pages/login.js",
-  "/course/[courseId]/lesson/[lessonId]": "pages/course/[courseId]/lesson/[lessonId].js"
+  "/afri-sage": "pages/afri-sage.js",
+  "/admin": "pages/admin.js",
+  "/admin/system-configuration": "pages/admin/system-configuration.js",
+  "/profile": "pages/profile.js"
 }

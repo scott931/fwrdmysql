@@ -619,7 +619,7 @@ export interface GranularTrackingData {
  */
 export interface VideoInteraction {
   /** Type of interaction */
-  type: 'play' | 'pause' | 'seek' | 'volume_change' | 'fullscreen' | 'speed_change';
+  type: 'play' | 'pause' | 'seek' | 'volume_change' | 'fullscreen' | 'speed_change' | 'video_completed';
   /** Time when interaction occurred */
   timestamp: string;
   /** Additional data for the interaction */
@@ -628,6 +628,11 @@ export interface VideoInteraction {
     volume?: number;
     playbackRate?: number;
     isFullscreen?: boolean;
+    lessonId?: string;
+    courseId?: string;
+    completionTime?: number;
+    totalDuration?: number;
+    completionPercentage?: number;
   };
 }
 
@@ -732,4 +737,21 @@ export interface VideoAnalyticsSummary {
     multipleDevices: number;
     averageDevicesPerUser: number;
   };
+}
+
+/**
+ * Video Analytics
+ * Individual lesson analytics data
+ */
+export interface VideoAnalytics {
+  /** Total number of viewing sessions */
+  totalSessions: number;
+  /** Total watch time in seconds */
+  totalWatchTime: number;
+  /** Average session duration in seconds */
+  averageSessionDuration: number;
+  /** Completion rate percentage (0-100) */
+  completionRate: number;
+  /** Engagement score percentage (0-100) */
+  engagementScore: number;
 }

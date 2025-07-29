@@ -672,6 +672,82 @@ app.post('/api/init-db', async (req, res) => {
       )
     `);
 
+    // Create video progress tables
+    await executeQuery(`
+      CREATE TABLE IF NOT EXISTS video_progress_sessions (
+        id VARCHAR(36) PRIMARY KEY,
+        user_id VARCHAR(36) NOT NULL,
+        course_id VARCHAR(36) NOT NULL,
+        lesson_id VARCHAR(36) NOT NULL,
+        session_id VARCHAR(100) NOT NULL,
+        device_id VARCHAR(100),
+        device_type VARCHAR(50) DEFAULT 'desktop',
+        browser_info JSON,
+        start_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        end_time TIMESTAMP NULL,
+        total_watch_time INT DEFAULT 0,
+        engagement_rate DECIMAL(5,2) DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE,
+        FOREIGN KEY (lesson_id) REFERENCES lessons(id) ON DELETE CASCADE
+      )
+    `);
+
+    await executeQuery(`
+      CREATE TABLE IF NOT EXISTS video_progress_intervals (
+        id VARCHAR(36) PRIMARY KEY,
+        session_id VARCHAR(36) NOT NULL,
+        start_time_seconds INT NOT NULL,
+        end_time_seconds INT NOT NULL,
+        time_spent_seconds INT NOT NULL,
+        is_active BOOLEAN DEFAULT TRUE,
+        interactions JSON,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (session_id) REFERENCES video_progress_sessions(id) ON DELETE CASCADE
+      )
+    `);
+
+    await executeQuery(`
+      CREATE TABLE IF NOT EXISTS video_resume_points (
+        id VARCHAR(36) PRIMARY KEY,
+        user_id VARCHAR(36) NOT NULL,
+        course_id VARCHAR(36) NOT NULL,
+        lesson_id VARCHAR(36) NOT NULL,
+        resume_time_seconds INT NOT NULL,
+        buffer_time_seconds INT DEFAULT 10,
+        device_id VARCHAR(100),
+        session_id VARCHAR(100),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE,
+        FOREIGN KEY (lesson_id) REFERENCES lessons(id) ON DELETE CASCADE,
+        UNIQUE KEY unique_user_lesson (user_id, course_id, lesson_id)
+      )
+    `);
+
+    await executeQuery(`
+      CREATE TABLE IF NOT EXISTS video_analytics_summary (
+        id VARCHAR(36) PRIMARY KEY,
+        user_id VARCHAR(36) NOT NULL,
+        course_id VARCHAR(36) NOT NULL,
+        lesson_id VARCHAR(36) NOT NULL,
+        total_sessions INT DEFAULT 0,
+        total_watch_time INT DEFAULT 0,
+        average_session_duration INT DEFAULT 0,
+        completion_rate DECIMAL(5,2) DEFAULT 0,
+        engagement_score DECIMAL(5,2) DEFAULT 0,
+        last_accessed TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE,
+        FOREIGN KEY (lesson_id) REFERENCES lessons(id) ON DELETE CASCADE,
+        UNIQUE KEY unique_user_lesson_analytics (user_id, course_id, lesson_id)
+      )
+    `);
+
     // Insert default categories if they don't exist
     const defaultCategories = [
       { id: 'business', name: 'Business & Entrepreneurship' },
@@ -3186,8 +3262,14 @@ async function getSearchAnalytics(query) {
 // Import video content management routes
 const videoContentManagementRoutes = require('./routes/videoContentManagement');
 
+// Import video progress routes
+const videoProgressRoutes = require('./routes/videoProgress');
+
 // Mount video content management routes
 app.use('/api/video-content', videoContentManagementRoutes);
+
+// Mount video progress routes
+app.use('/api/video-progress', videoProgressRoutes);
 
 // Initialize job processor service
 const jobProcessorService = require('./services/jobProcessorService');

@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Users, MessageCircle, Bell, Search, Settings, BookOpen, Calendar, Folder, Star, Plus, MoreHorizontal, Phone, Video, Send, Mic } from 'lucide-react';
+import { Users, MessageCircle, Bell, Search, Settings, BookOpen, Calendar, Folder, Star, Plus, MoreHorizontal, Phone, Video, Send, Mic, Menu, X } from 'lucide-react';
 import Link from 'next/link';
-import Layout from '../components/layout/Layout';
 import Image from 'next/image';
 
 interface NetworkGroup {
@@ -135,6 +134,8 @@ const CommunityPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'all' | 'joined' | 'work' | 'personal' | 'saved'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [messageInput, setMessageInput] = useState('');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
 
   // Scroll to top on component mount
   useEffect(() => {
@@ -193,11 +194,49 @@ const CommunityPage: React.FC = () => {
     setMessageInput('');
   };
 
+  const handleGroupSelect = (group: NetworkGroup) => {
+    setSelectedGroup(group);
+    setChatOpen(true);
+    setSidebarOpen(false);
+  };
+
   return (
-    <Layout>
-      <div className="min-h-screen bg-gray-900">
+    <div className="min-h-screen bg-gray-900">
+      {/* Mobile Header */}
+      <div className="lg:hidden bg-gray-800 border-b border-gray-700 p-4">
+        <div className="flex items-center justify-between">
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="text-white p-2 hover:bg-gray-700 rounded-lg"
+            aria-label="Toggle sidebar"
+          >
+            <Menu className="h-6 w-6" />
+          </button>
+          <h1 className="text-xl font-semibold text-white">Communities</h1>
+          <button
+            onClick={() => setChatOpen(!chatOpen)}
+            className="text-white p-2 hover:bg-gray-700 rounded-lg"
+            aria-label="Toggle chat"
+          >
+            <MessageCircle className="h-6 w-6" />
+          </button>
+        </div>
+      </div>
+
+      <div className="flex h-[calc(100vh-4rem)] lg:h-[calc(100vh-4rem)]">
         {/* Left Sidebar - Navigation */}
-        <div className="w-64 bg-gray-800 border-r border-gray-700 flex flex-col">
+        <div className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 fixed lg:static inset-y-0 left-0 z-50 w-64 bg-gray-800 border-r border-gray-700 flex flex-col transition-transform duration-300 ease-in-out lg:transition-none`}>
+          {/* Close button for mobile */}
+          <div className="lg:hidden flex justify-end p-4">
+            <button
+              onClick={() => setSidebarOpen(false)}
+              className="text-white p-2 hover:bg-gray-700 rounded-lg"
+              aria-label="Close sidebar"
+            >
+              <X className="h-6 w-6" />
+            </button>
+          </div>
+
           {/* User Profile */}
           <div className="p-4 border-b border-gray-700">
             <div className="flex items-center space-x-3">
@@ -221,18 +260,20 @@ const CommunityPage: React.FC = () => {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-white placeholder-gray-400"
+                aria-label="Search communities"
               />
             </div>
           </div>
 
           {/* Navigation */}
-          <div className="flex-1 p-4">
+          <div className="flex-1 p-4 overflow-y-auto">
             <nav className="space-y-2">
               <button
                 onClick={() => setActiveTab('all')}
                 className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
                   activeTab === 'all' ? 'bg-red-600 text-white' : 'text-gray-300 hover:bg-gray-700'
                 }`}
+                aria-label="Show all communities"
               >
                 <MessageCircle className="h-5 w-5" />
                 <span>All Communities</span>
@@ -242,6 +283,7 @@ const CommunityPage: React.FC = () => {
                 className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
                   activeTab === 'joined' ? 'bg-red-600 text-white' : 'text-gray-300 hover:bg-gray-700'
                 }`}
+                aria-label="Show my communities"
               >
                 <Users className="h-5 w-5" />
                 <span>My Communities</span>
@@ -251,6 +293,7 @@ const CommunityPage: React.FC = () => {
                 className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
                   activeTab === 'work' ? 'bg-red-600 text-white' : 'text-gray-300 hover:bg-gray-700'
                 }`}
+                aria-label="Show work communities"
               >
                 <BookOpen className="h-5 w-5" />
                 <span>Work</span>
@@ -260,6 +303,7 @@ const CommunityPage: React.FC = () => {
                 className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
                   activeTab === 'personal' ? 'bg-red-600 text-white' : 'text-gray-300 hover:bg-gray-700'
                 }`}
+                aria-label="Show personal communities"
               >
                 <Users className="h-5 w-5" />
                 <span>Personal</span>
@@ -269,6 +313,7 @@ const CommunityPage: React.FC = () => {
                 className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
                   activeTab === 'saved' ? 'bg-red-600 text-white' : 'text-gray-300 hover:bg-gray-700'
                 }`}
+                aria-label="Show saved communities"
               >
                 <Star className="h-5 w-5" />
                 <span>Saved</span>
@@ -278,7 +323,10 @@ const CommunityPage: React.FC = () => {
 
           {/* Settings */}
           <div className="p-4 border-t border-gray-700">
-            <button className="w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-gray-300 hover:bg-gray-700 transition-colors">
+            <button
+              className="w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-gray-300 hover:bg-gray-700 transition-colors"
+              aria-label="Open settings"
+            >
               <Settings className="h-5 w-5" />
               <span>Settings</span>
             </button>
@@ -294,30 +342,44 @@ const CommunityPage: React.FC = () => {
                 <h1 className="text-xl font-semibold text-white">Communities</h1>
                 <p className="text-sm text-gray-400">{filteredGroups.length} communities available</p>
               </div>
-              <button className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center space-x-2">
+              <button
+                className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center space-x-2"
+                aria-label="Create new community"
+              >
                 <Plus className="h-4 w-4" />
-                <span>Create Community</span>
+                <span className="hidden sm:inline">Create Community</span>
               </button>
             </div>
           </div>
 
           {/* Groups Grid */}
           <div className="flex-1 overflow-y-auto p-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
               {filteredGroups.map((group) => (
                 <div
                   key={group.id}
                   className="bg-gray-800 rounded-lg border border-gray-700 p-4 hover:bg-gray-750 hover:border-gray-600 transition-all cursor-pointer"
-                  onClick={() => setSelectedGroup(group)}
+                  onClick={() => handleGroupSelect(group)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      handleGroupSelect(group);
+                    }
+                  }}
+                  aria-label={`Select ${group.name} community`}
                 >
                   <div className="flex items-start space-x-3">
-                    <Image
-                      src={group.image}
-                      alt={group.name}
-                      width={48}
-                      height={48}
-                      className="w-12 h-12 rounded-lg object-cover"
-                    />
+                    <div className="relative w-12 h-12 rounded-lg overflow-hidden bg-gray-700">
+                      <Image
+                        src={group.image}
+                        alt={group.name}
+                        fill
+                        className="object-cover"
+                        sizes="48px"
+                      />
+                    </div>
                     <div className="flex-1 min-w-0">
                       <h3 className="font-semibold text-white truncate">{group.name}</h3>
                       <p className="text-sm text-gray-400 line-clamp-2">{group.description}</p>
@@ -339,6 +401,7 @@ const CommunityPage: React.FC = () => {
                           ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                           : 'bg-red-600 text-white hover:bg-red-700'
                       }`}
+                      aria-label={group.joined ? `Leave ${group.name}` : `Join ${group.name}`}
                     >
                       {group.joined ? 'Joined' : 'Join'}
                     </button>
@@ -350,34 +413,47 @@ const CommunityPage: React.FC = () => {
         </div>
 
         {/* Right Column - Chat/Details */}
-        <div className="w-80 bg-gray-800 border-l border-gray-700 flex flex-col">
+        <div className={`${chatOpen ? 'translate-x-0' : 'translate-x-full'} lg:translate-x-0 fixed lg:static inset-y-0 right-0 z-50 w-80 bg-gray-800 border-l border-gray-700 flex flex-col transition-transform duration-300 ease-in-out lg:transition-none`}>
+          {/* Close button for mobile */}
+          <div className="lg:hidden flex justify-end p-4">
+            <button
+              onClick={() => setChatOpen(false)}
+              className="text-white p-2 hover:bg-gray-700 rounded-lg"
+              aria-label="Close chat"
+            >
+              <X className="h-6 w-6" />
+            </button>
+          </div>
+
           {selectedGroup ? (
             <>
               {/* Group Header */}
               <div className="p-4 border-b border-gray-700">
                 <div className="flex items-center space-x-3">
-                  <Image
-                    src={selectedGroup.image}
-                    alt={selectedGroup.name}
-                    width={40}
-                    height={40}
-                    className="w-10 h-10 rounded-lg object-cover"
-                  />
+                  <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-gray-700">
+                    <Image
+                      src={selectedGroup.image}
+                      alt={selectedGroup.name}
+                      fill
+                      className="object-cover"
+                      sizes="40px"
+                    />
+                  </div>
                   <div className="flex-1">
                     <h2 className="font-semibold text-white">{selectedGroup.name}</h2>
                     <p className="text-sm text-gray-400">{selectedGroup.members.toLocaleString()} members, <span className="text-green-400">{selectedGroup.onlineMembers} online</span></p>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <button className="p-2 text-gray-400 hover:text-gray-300 rounded-lg hover:bg-gray-700">
+                    <button className="p-2 text-gray-400 hover:text-gray-300 rounded-lg hover:bg-gray-700" aria-label="Search in chat">
                       <Search className="h-4 w-4" />
                     </button>
-                    <button className="p-2 text-gray-400 hover:text-gray-300 rounded-lg hover:bg-gray-700">
+                    <button className="p-2 text-gray-400 hover:text-gray-300 rounded-lg hover:bg-gray-700" aria-label="Voice call">
                       <Phone className="h-4 w-4" />
                     </button>
-                    <button className="p-2 text-gray-400 hover:text-gray-300 rounded-lg hover:bg-gray-700">
+                    <button className="p-2 text-gray-400 hover:text-gray-300 rounded-lg hover:bg-gray-700" aria-label="Video call">
                       <Video className="h-4 w-4" />
                     </button>
-                    <button className="p-2 text-gray-400 hover:text-gray-300 rounded-lg hover:bg-gray-700">
+                    <button className="p-2 text-gray-400 hover:text-gray-300 rounded-lg hover:bg-gray-700" aria-label="More options">
                       <MoreHorizontal className="h-4 w-4" />
                     </button>
                   </div>
@@ -391,13 +467,15 @@ const CommunityPage: React.FC = () => {
                 </div>
                 {sampleMessages.map((message) => (
                   <div key={message.id} className="flex space-x-3">
-                    <Image
-                      src={message.avatar}
-                      alt={message.sender}
-                      width={32}
-                      height={32}
-                      className="w-8 h-8 rounded-full object-cover"
-                    />
+                    <div className="relative w-8 h-8 rounded-full overflow-hidden bg-gray-700">
+                      <Image
+                        src={message.avatar}
+                        alt={message.sender}
+                        fill
+                        className="object-cover"
+                        sizes="32px"
+                      />
+                    </div>
                     <div className="flex-1">
                       <div className="bg-gray-700 rounded-lg p-3">
                         <p className="text-sm text-gray-100">{message.content}</p>
@@ -411,7 +489,7 @@ const CommunityPage: React.FC = () => {
               {/* Message Input */}
               <div className="p-4 border-t border-gray-700">
                 <form onSubmit={handleSendMessage} className="flex items-center space-x-2">
-                  <button type="button" className="p-2 text-gray-400 hover:text-gray-300 rounded-lg hover:bg-gray-700">
+                  <button type="button" className="p-2 text-gray-400 hover:text-gray-300 rounded-lg hover:bg-gray-700" aria-label="Voice message">
                     <Mic className="h-4 w-4" />
                   </button>
                   <input
@@ -420,10 +498,12 @@ const CommunityPage: React.FC = () => {
                     value={messageInput}
                     onChange={(e) => setMessageInput(e.target.value)}
                     className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-white placeholder-gray-400"
+                    aria-label="Message input"
                   />
                   <button
                     type="submit"
                     className="p-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                    aria-label="Send message"
                   >
                     <Send className="h-4 w-4" />
                   </button>
@@ -441,7 +521,18 @@ const CommunityPage: React.FC = () => {
           )}
         </div>
       </div>
-    </Layout>
+
+      {/* Mobile overlay */}
+      {(sidebarOpen || chatOpen) && (
+        <div
+          className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-40"
+          onClick={() => {
+            setSidebarOpen(false);
+            setChatOpen(false);
+          }}
+        />
+      )}
+    </div>
   );
 };
 

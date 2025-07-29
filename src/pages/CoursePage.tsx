@@ -8,6 +8,7 @@ import { Course, UserProgress, Certificate } from '../types';
 import { useCertificates } from '../hooks/useCertificates';
 import { downloadCertificate } from '../utils/certificateGenerator';
 import Image from 'next/image';
+import CourseProgressDashboard from '../components/ui/CourseProgressDashboard';
 
 const CoursePage: React.FC = () => {
   const router = useRouter();
@@ -23,6 +24,19 @@ const CoursePage: React.FC = () => {
   const [redirecting, setRedirecting] = useState(false);
   const [hasRedirected, setHasRedirected] = useState(false);
   const [isClient, setIsClient] = useState(false);
+  const [completedLessons, setCompletedLessons] = useState<string[]>([]);
+  const [courseCompletionStatus, setCourseCompletionStatus] = useState<{
+    isCompleted: boolean;
+    completedLessons: string[];
+    totalLessons: number;
+    completionPercentage: number;
+  }>({
+    isCompleted: false,
+    completedLessons: [],
+    totalLessons: 0,
+    completionPercentage: 0
+  });
+  const [showCompletionNotification, setShowCompletionNotification] = useState(false);
 
   // Set client flag on mount to prevent hydration issues
   useEffect(() => {
@@ -247,6 +261,27 @@ const CoursePage: React.FC = () => {
             setSelectedLesson(null);
             setProgress(0);
           }
+
+          // Load completion data from localStorage
+          useEffect(() => {
+            if (courseId && typeof window !== 'undefined') {
+              const storedCompletion = localStorage.getItem(`courseCompletion_${courseId}`);
+              if (storedCompletion) {
+                try {
+                  const completionData = JSON.parse(storedCompletion);
+                  setCompletedLessons(completionData.completedLessons || []);
+                  setCourseCompletionStatus({
+                    isCompleted: completionData.isCompleted || false,
+                    completedLessons: completionData.completedLessons || [],
+                    totalLessons: course?.lessons.length || 0,
+                    completionPercentage: completionData.completionPercentage || 0
+                  });
+                } catch (error) {
+                  console.error('Error parsing completion data:', error);
+                }
+              }
+            }
+          }, [courseId, course]);
         } catch (error) {
           console.error('Error fetching course:', error);
           // Redirect to courses page if course not found
@@ -266,9 +301,9 @@ const CoursePage: React.FC = () => {
     setRedirecting(false);
   }, [courseId]);
 
-  // Handle automatic redirect to first lesson after course data is loaded
+  // Handle automatic selection of first lesson after course data is loaded
   useEffect(() => {
-    if (course && course.lessons && course.lessons.length > 0 && isClient && !redirecting && !hasRedirected) {
+    if (course && course.lessons && course.lessons.length > 0 && isClient && !redirecting && !hasRedirected && !selectedLesson) {
       const firstLesson = course.lessons[0];
 
       // Validate that the first lesson exists and has a valid ID
@@ -289,43 +324,18 @@ const CoursePage: React.FC = () => {
         return;
       }
 
-      const targetUrl = `/course/${courseId}/lesson/${firstLesson.id}`;
-
-      // Prevent navigation if already on the target route
-      if (router.asPath === targetUrl) {
-        console.log('Already on target lesson, staying on course page');
-        setHasRedirected(true);
-        return;
-      }
-
-      console.log('🎯 Auto-redirecting to first lesson:', {
+      // Set the first lesson as selected instead of redirecting
+      console.log('🎯 Setting first lesson as selected:', {
         courseId,
         firstLessonId: firstLesson.id,
-        firstLessonIdType: typeof firstLesson.id,
         firstLessonTitle: firstLesson.title,
-        lessonsCount: course.lessons.length,
-        targetUrl,
-        currentPath: router.asPath,
-        allLessonIds: course.lessons.map(l => ({ id: l.id, title: l.title })),
-        allLessonIdsOnly: course.lessons.map(l => l.id),
-        allLessonIdTypes: course.lessons.map(l => ({ id: l.id, type: typeof l.id }))
+        lessonsCount: course.lessons.length
       });
 
-      setRedirecting(true);
+      setSelectedLesson(firstLesson.id);
       setHasRedirected(true);
-
-      // Use a small delay to ensure the component is fully mounted
-      setTimeout(() => {
-        try {
-          router.push(targetUrl);
-        } catch (error) {
-          console.error('Navigation error:', error);
-          setRedirecting(false);
-          setHasRedirected(false); // Reset if navigation fails
-        }
-      }, 100);
     }
-  }, [course, courseId, router, isClient, redirecting, hasRedirected]);
+  }, [course, courseId, isClient, redirecting, hasRedirected, selectedLesson]);
 
   const handleDownloadCertificate = async () => {
     if (!certificate || !course) return;
@@ -338,6 +348,60 @@ const CoursePage: React.FC = () => {
     } finally {
       setIsDownloading(false);
     }
+  };
+
+  const handleVideoComplete = (lessonId: string, completionData: {
+    lessonId: string;
+    courseId: string;
+    completionTime: number;
+    totalDuration: number;
+    completionPercentage: number;
+  }) => {
+    console.log('🎉 Video completed:', completionData);
+
+    // Add lesson to completed lessons if not already there
+    setCompletedLessons(prev => {
+      if (!prev.includes(lessonId)) {
+        const newCompletedLessons = [...prev, lessonId];
+
+        // Update course completion status
+        if (course) {
+          const completionPercentage = (newCompletedLessons.length / course.lessons.length) * 100;
+          const isCompleted = completionPercentage >= 100;
+
+          setCourseCompletionStatus({
+            isCompleted,
+            completedLessons: newCompletedLessons,
+            totalLessons: course.lessons.length,
+            completionPercentage
+          });
+
+          // Generate certificate if course is completed
+          if (isCompleted && !certificate) {
+            console.log('🏆 Course completed! Generating certificate...');
+            const newCertificate = generateCertificate(
+              courseId as string,
+              course.title,
+              'John Doe', // Replace with actual user name
+              typeof course.instructor === 'object' ? course.instructor.name : course.instructor
+            );
+            setCertificate(newCertificate);
+
+            // Show completion notification
+            setShowCompletionNotification(true);
+            console.log('🎉 Congratulations! You have completed the course and earned a certificate!');
+
+            // Auto-hide notification after 10 seconds
+            setTimeout(() => {
+              setShowCompletionNotification(false);
+            }, 10000);
+          }
+        }
+
+        return newCompletedLessons;
+      }
+      return prev;
+    });
   };
 
   const updateProgress = (lessonId: string) => {
@@ -378,6 +442,22 @@ const CoursePage: React.FC = () => {
     setSelectedLesson(lessonId);
     updateProgress(lessonId);
   };
+
+  // Save completion data to localStorage
+  useEffect(() => {
+    if (courseId && typeof window !== 'undefined' && course) {
+      const completionData = {
+        isCompleted: courseCompletionStatus.isCompleted,
+        completedLessons: courseCompletionStatus.completedLessons,
+        totalLessons: course.lessons.length,
+        completionPercentage: courseCompletionStatus.completionPercentage,
+        lastUpdated: new Date().toISOString()
+      };
+      localStorage.setItem(`courseCompletion_${courseId}`, JSON.stringify(completionData));
+    }
+  }, [courseCompletionStatus, courseId, course]);
+
+  // Load completion data from localStorage
 
   // Show loading state while redirecting or before client-side hydration
   if (loading || redirecting || !isClient) {
@@ -481,62 +561,143 @@ const CoursePage: React.FC = () => {
       )}
 
       <div className="pb-16">
+        {/* Course Completion Notification */}
+        {showCompletionNotification && (
+          <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-green-600 text-white p-6 rounded-lg shadow-lg max-w-md">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold">🎉 Course Completed!</h3>
+              <button
+                onClick={() => setShowCompletionNotification(false)}
+                className="text-white hover:text-gray-200"
+              >
+                ×
+              </button>
+            </div>
+            <p className="text-sm mb-4">
+              Congratulations! You have successfully completed "{course.title}" and earned a certificate.
+            </p>
+            <div className="flex space-x-2">
+              <button
+                onClick={handleDownloadCertificate}
+                disabled={isDownloading}
+                className="bg-white text-green-600 px-4 py-2 rounded-md hover:bg-gray-100 transition-colors text-sm font-medium"
+              >
+                {isDownloading ? 'Downloading...' : 'Download Certificate'}
+              </button>
+              <button
+                onClick={() => setShowCompletionNotification(false)}
+                className="bg-transparent border border-white text-white px-4 py-2 rounded-md hover:bg-white hover:text-green-600 transition-colors text-sm"
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Course Info Banner */}
         <div className="relative w-full bg-black py-12">
           <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex flex-col md:flex-row md:space-x-8">
-              {/* Left Column - Video Player */}
-              <div className="md:w-2/3 mb-8 md:mb-0">
-                <div className="flex flex-col items-center justify-center p-8 bg-gray-800 rounded-lg">
-                  <h2 className="text-white text-xl font-bold mb-4">Course Coming Soon</h2>
-                  <p className="text-gray-300 text-center mb-6">
-                    This course is currently being developed and will be available soon.
-                    We're working hard to bring you high-quality video lessons.
-                  </p>
+                                  {/* Left Column - Video Player */}
+                    <div className="md:w-2/3 mb-8 md:mb-0">
+                      {course.lessons.length > 0 && selectedLesson ? (
+                        // Show VideoPlayer when course has lessons and a lesson is selected
+                        <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+                          <VideoPlayer
+                            lesson={course.lessons.find(l => l.id === selectedLesson)!}
+                            courseId={courseId as string}
+                            showProgressPanel={true}
+                            onProgressUpdate={(progress) => {
+                              updateProgress(selectedLesson);
+                            }}
+                            onSessionStart={(sessionId) => {
+                              console.log('Video session started:', sessionId);
+                            }}
+                            onSessionEnd={(analytics) => {
+                              console.log('Video session ended:', analytics);
+                            }}
+                            onVideoComplete={handleVideoComplete}
+                          />
+                        </div>
+                      ) : course.lessons.length === 0 ? (
+                        // Show "Coming Soon" for courses without lessons
+                        <div className="flex flex-col items-center justify-center p-8 bg-gray-800 rounded-lg">
+                          <h2 className="text-white text-xl font-bold mb-4">Course Coming Soon</h2>
+                          <p className="text-gray-300 text-center mb-6">
+                            This course is currently being developed and will be available soon.
+                            We're working hard to bring you high-quality video lessons.
+                          </p>
 
-                  {/* Show alternative courses if available */}
-                  {course.lessons.length === 0 && (
-                    <div className="mb-6 p-4 bg-gray-700 rounded-lg">
-                      <p className="text-gray-300 text-sm mb-3">
-                        While you wait, check out these similar courses:
-                      </p>
-                      <div className="space-y-2">
-                        <button
-                          onClick={() => router.push('/course/76')}
-                          className="w-full text-left p-2 bg-gray-600 hover:bg-gray-500 rounded text-sm text-white transition-colors"
-                        >
-                          📚 Fundamentals for Entrepreneurs (Course 76) - 2 lessons available
-                        </button>
-                        <button
-                          onClick={() => router.push('/course/1')}
-                          className="w-full text-left p-2 bg-gray-600 hover:bg-gray-500 rounded text-sm text-white transition-colors"
-                        >
-                          📚 Business Fundamentals for Entrepreneurs (Course 1) - 3 lessons available
-                        </button>
-                      </div>
+                          <div className="mb-6 p-4 bg-gray-700 rounded-lg">
+                            <p className="text-gray-300 text-sm mb-3">
+                              While you wait, check out these similar courses:
+                            </p>
+                            <div className="space-y-2">
+                              <button
+                                onClick={() => router.push('/course/76')}
+                                className="w-full text-left p-2 bg-gray-600 hover:bg-gray-500 rounded text-sm text-white transition-colors"
+                              >
+                                📚 Fundamentals for Entrepreneurs (Course 76) - 2 lessons available
+                              </button>
+                              <button
+                                onClick={() => router.push('/course/1')}
+                                className="w-full text-left p-2 bg-gray-600 hover:bg-gray-500 rounded text-sm text-white transition-colors"
+                              >
+                                📚 Business Fundamentals for Entrepreneurs (Course 1) - 3 lessons available
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="flex space-x-4">
+                            <button
+                              onClick={() => router.push('/courses')}
+                              className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors"
+                            >
+                              Browse Other Courses
+                            </button>
+                            <button
+                              onClick={() => router.push('/home')}
+                              className="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 transition-colors"
+                            >
+                              Go to Home
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        // Show loading state when no lesson is selected
+                        <div className="flex flex-col items-center justify-center p-8 bg-gray-800 rounded-lg">
+                          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-red-600 mb-4"></div>
+                          <p className="text-gray-300">Loading course content...</p>
+                        </div>
+                      )}
                     </div>
-                  )}
 
-                  <div className="flex space-x-4">
-                    <button
-                      onClick={() => router.push('/courses')}
-                      className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors"
-                    >
-                      Browse Other Courses
-                    </button>
-                    <button
-                      onClick={() => router.push('/home')}
-                      className="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 transition-colors"
-                    >
-                      Go to Home
-                    </button>
-                  </div>
-                </div>
-              </div>
+                                  {/* Right Column - Course Info & Progress Dashboard */}
+                    <div className="md:w-1/3">
+                      {/* Course Progress Dashboard */}
+                      {course.lessons.length > 0 && (
+                        <div className="mb-6">
+                          <CourseProgressDashboard
+                            course={course}
+                            userProgress={{
+                              courseId: courseId as string,
+                              lessonId: selectedLesson || '',
+                              completed: courseCompletionStatus.isCompleted,
+                              progress: courseCompletionStatus.completionPercentage,
+                              lastWatched: new Date().toISOString(),
+                              xpEarned: 0,
+                              completedLessons: courseCompletionStatus.completedLessons
+                            }}
+                            onProgressUpdate={(progress: number) => {
+                              setProgress(progress);
+                            }}
+                            currentProgress={progress}
+                            selectedLessonId={selectedLesson || undefined}
+                          />
+                        </div>
+                      )}
 
-              {/* Right Column - Course Info & Lessons */}
-              <div className="md:w-1/3">
-                <div className="bg-gray-800 rounded-lg p-6">
+                      <div className="bg-gray-800 rounded-lg p-6">
                   <div className="flex items-center mb-4">
                     {instructorInfo.image.startsWith('http') ? (
                       <img

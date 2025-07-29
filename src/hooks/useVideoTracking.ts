@@ -21,7 +21,7 @@ interface UseVideoTrackingReturn {
   startTracking: () => void;
   stopTracking: () => void;
   updateProgress: (currentTime: number, isPlaying: boolean, isMuted?: boolean, playbackRate?: number) => void;
-  recordInteraction: (type: 'play' | 'pause' | 'seek' | 'volume_change' | 'fullscreen' | 'speed_change', data?: any) => void;
+  recordInteraction: (type: 'play' | 'pause' | 'seek' | 'volume_change' | 'fullscreen' | 'speed_change' | 'video_completed', data?: any) => void;
 
   // Smart resume
   getSmartResumeTime: () => number;
@@ -169,7 +169,7 @@ export const useVideoTracking = ({
 
   // Record user interaction
   const recordInteraction = useCallback((
-    type: 'play' | 'pause' | 'seek' | 'volume_change' | 'fullscreen' | 'speed_change',
+    type: 'play' | 'pause' | 'seek' | 'volume_change' | 'fullscreen' | 'speed_change' | 'video_completed',
     data?: any
   ) => {
     if (!isTracking) return;
