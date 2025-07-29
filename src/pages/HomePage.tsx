@@ -4,7 +4,7 @@ import Layout from '../components/layout/Layout';
 import HeroBanner from '../components/ui/HeroBanner';
 import CategoryRow from '../components/ui/CategoryRow';
 import ContinueLearningRow from '../components/ui/ContinueLearningRow';
-import ProfileCompletionPrompt from '../components/ui/ProfileCompletionPrompt';
+import CourseCard from '../components/ui/CourseCard';
 import { CourseProgress, Course } from '../types';
 import { Award, Users, Star, BookOpen } from 'lucide-react';
 import { useCourses, useUserProgress, useAnalytics } from '../hooks/useDatabase';
@@ -140,11 +140,6 @@ const HomePage: React.FC = () => {
         {/* Hero Banner - Always show with fallback data */}
         <HeroBanner course={featuredCourse} onPlay={handlePlayCourse} />
 
-        {/* Profile Completion Prompt - Show for users with incomplete profiles */}
-        <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8">
-          <ProfileCompletionPrompt user={user} variant="banner" />
-        </div>
-
         {/* Stats Section */}
         <div className="bg-gradient-to-b from-black to-gray-900">
           <div className="max-w-screen-xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
@@ -181,17 +176,24 @@ const HomePage: React.FC = () => {
 
         {/* Continue Learning Section */}
         {inProgressCourses.length > 0 && (
-          <div className="mt-8">
-            <ContinueLearningRow courses={inProgressCourses} />
+          <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <h2 className="text-white text-2xl font-bold mb-6">Continue Learning</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4 lg:gap-6">
+              {inProgressCourses.map(course => (
+                <CourseCard key={course.id} course={course} />
+              ))}
+            </div>
           </div>
         )}
 
-        {/* Featured Classes Row */}
-        <div className="mt-8">
-          <CategoryRow
-            title="Featured Classes"
-            courses={featuredCourses}
-          />
+        {/* Featured Classes Section */}
+        <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <h2 className="text-white text-2xl font-bold mb-6">Featured Classes</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4 lg:gap-6">
+            {featuredCourses.map(course => (
+              <CourseCard key={course.id} course={course} />
+            ))}
+          </div>
         </div>
 
         {/* Category Rows - Group courses by category */}
@@ -204,11 +206,14 @@ const HomePage: React.FC = () => {
           if (categoryCourses.length > 0 && categoryName !== 'Featured') {
               console.log(`Rendering category "${categoryName}" with:`, categoryCourses);
             return (
-              <CategoryRow
-                  key={categoryName}
-                  title={categoryName}
-                courses={categoryCourses}
-              />
+              <div key={categoryName} className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <h2 className="text-white text-2xl font-bold mb-6">{categoryName}</h2>
+                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4 lg:gap-6">
+                  {categoryCourses.map(course => (
+                    <CourseCard key={course.id} course={course} />
+                  ))}
+                </div>
+              </div>
             );
           }
 
