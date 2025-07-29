@@ -4,11 +4,5 @@
     "files": [
       "static/chunks/src_pages_CommunityPage_tsx.js"
     ]
-  },
-  "pages\\community\\chat\\[groupId].tsx -> ../../../src/pages/ChatPage": {
-    "id": "pages\\community\\chat\\[groupId].tsx -> ../../../src/pages/ChatPage",
-    "files": [
-      "static/chunks/src_pages_ChatPage_tsx.js"
-    ]
   }
 }

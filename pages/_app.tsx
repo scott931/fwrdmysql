@@ -55,7 +55,7 @@ const ClientOnlyComponents = () => {
           <TokenStatusIndicator
             showDetails={true}
             showRefreshButton={true}
-            className="bg-white border border-gray-300 rounded-lg shadow-lg p-3"
+            className=""
           />
         </div>
       )}

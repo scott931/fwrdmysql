@@ -1,6 +1,6 @@
 import React from 'react'
 import dynamic from 'next/dynamic'
-import Layout from '../src/components/layout/Layout'
+import CommunityLayout from '../src/components/layout/CommunityLayout'
 
 const CommunityPage = dynamic(() => import('../src/pages/CommunityPage'), {
   ssr: false
@@ -8,8 +8,8 @@ const CommunityPage = dynamic(() => import('../src/pages/CommunityPage'), {
 
 export default function Community() {
   return (
-    <Layout>
+    <CommunityLayout>
       <CommunityPage />
-    </Layout>
+    </CommunityLayout>
   )
 }

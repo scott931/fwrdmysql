@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Users, MessageCircle, Bell, Search, Settings, BookOpen, Calendar, Folder, Star, Plus, MoreHorizontal, Phone, Video, Send, Mic, Menu, X, TrendingUp, Users2, Sparkles, Hash, Globe, Shield, Crown } from 'lucide-react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { Users, MessageCircle, Bell, Search, Settings, BookOpen, Calendar, Folder, Star, Plus, MoreHorizontal, Phone, Video, Send, Mic, Menu, X, TrendingUp, Users2, Sparkles, Hash, Globe, Shield, Crown, AlertCircle, CheckCircle } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/router';
@@ -24,9 +24,16 @@ interface Message {
   id: string;
   content: string;
   sender: string;
+  senderId: string;
   timestamp: string;
   avatar: string;
   isVerified?: boolean;
+  status?: 'sending' | 'sent' | 'error';
+}
+
+interface ChatError {
+  message: string;
+  type: 'network' | 'validation' | 'permission' | 'general';
 }
 
 const initialNetworkGroups: NetworkGroup[] = [
@@ -123,31 +130,50 @@ const initialNetworkGroups: NetworkGroup[] = [
   },
 ];
 
-const sampleMessages: Message[] = [
-  {
-    id: '1',
-    content: 'Has anyone tried the new business registration process in Kenya?',
-    sender: 'Sarah Johnson',
-    timestamp: '10:30 AM',
-    avatar: 'https://images.pexels.com/photos/1181686/pexels-photo-1181686.jpeg',
-    isVerified: true
-  },
-  {
-    id: '2',
-    content: 'Yes! It\'s much faster now with the eCitizen portal. Takes about 2-3 days instead of weeks.',
-    sender: 'Mike Chen',
-    timestamp: '10:32 AM',
-    avatar: 'https://images.pexels.com/photos/5439367/pexels-photo-5439367.jpeg'
-  },
-  {
-    id: '3',
-    content: 'Great tip! I\'ll check it out. Thanks Mike!',
-    sender: 'Sarah Johnson',
-    timestamp: '10:35 AM',
-    avatar: 'https://images.pexels.com/photos/1181686/pexels-photo-1181686.jpeg',
-    isVerified: true
-  }
-];
+// Sample initial messages for each group
+const getInitialMessages = (groupId: string): Message[] => {
+  const messages: Record<string, Message[]> = {
+    'sme-network': [
+      {
+        id: '1',
+        content: 'Welcome to the SME Network! Feel free to introduce yourself and share your business experiences.',
+        sender: 'Community Bot',
+        senderId: 'bot-1',
+        timestamp: new Date(Date.now() - 3600000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        avatar: 'https://images.pexels.com/photos/1181686/pexels-photo-1181686.jpeg'
+      },
+      {
+        id: '2',
+        content: 'Has anyone tried the new business registration process in Kenya?',
+        sender: 'Sarah Johnson',
+        senderId: 'user-2',
+        timestamp: new Date(Date.now() - 1800000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        avatar: 'https://images.pexels.com/photos/1181686/pexels-photo-1181686.jpeg',
+        isVerified: true
+      },
+      {
+        id: '3',
+        content: 'Yes! It\'s much faster now with the eCitizen portal. Takes about 2-3 days instead of weeks.',
+        sender: 'Mike Chen',
+        senderId: 'user-3',
+        timestamp: new Date(Date.now() - 900000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        avatar: 'https://images.pexels.com/photos/5439367/pexels-photo-5439367.jpeg'
+      }
+    ],
+    'finance-network': [
+      {
+        id: '1',
+        content: 'Welcome to the Finance Professionals Network! Let\'s discuss investment strategies and market trends.',
+        sender: 'Community Bot',
+        senderId: 'bot-1',
+        timestamp: new Date(Date.now() - 3600000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        avatar: 'https://images.pexels.com/photos/1181686/pexels-photo-1181686.jpeg'
+      }
+    ]
+  };
+
+  return messages[groupId] || [];
+};
 
 const CommunityPage: React.FC = () => {
   const router = useRouter();
@@ -159,6 +185,26 @@ const CommunityPage: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Chat functionality state
+  const [chatMessages, setChatMessages] = useState<Message[]>([]);
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
+  const [typingUsers, setTypingUsers] = useState<string[]>([]);
+  const [chatError, setChatError] = useState<ChatError | null>(null);
+  const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
+
+  // Refs
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messageInputRef = useRef<HTMLInputElement>(null);
+
+  // Current user (in real app, get from auth context)
+  const currentUser = {
+    id: 'user-1',
+    name: 'John Doe',
+    avatar: 'https://images.pexels.com/photos/2182970/pexels-photo-2182970.jpeg',
+    isVerified: true
+  };
 
   // Scroll to top on component mount
   useEffect(() => {
@@ -176,32 +222,222 @@ const CommunityPage: React.FC = () => {
     })));
   }, []);
 
+  // Load chat messages when group is selected
+  useEffect(() => {
+    if (selectedGroup) {
+      loadChatMessages(selectedGroup.id);
+    }
+  }, [selectedGroup]);
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    scrollToBottom();
+  }, [chatMessages]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setSidebarOpen(false);
+        setChatOpen(false);
+      }
+      if (e.key === 'Enter' && e.ctrlKey) {
+        messageInputRef.current?.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  const loadChatMessages = useCallback((groupId: string) => {
+    try {
+      const storedMessages = localStorage.getItem(`chat-${groupId}`);
+      if (storedMessages) {
+        setChatMessages(JSON.parse(storedMessages));
+      } else {
+        // Load initial messages for the group
+        const initialMessages = getInitialMessages(groupId);
+        setChatMessages(initialMessages);
+        localStorage.setItem(`chat-${groupId}`, JSON.stringify(initialMessages));
+      }
+      setChatError(null);
+    } catch (error) {
+      console.error('Failed to load chat messages:', error);
+      setChatError({
+        message: 'Failed to load chat messages',
+        type: 'network'
+      });
+    }
+  }, []);
+
+  const scrollToBottom = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, []);
+
   const handleJoinGroup = async (groupId: string) => {
     setIsLoading(true);
+    setChatError(null);
 
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 500));
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 500));
 
-    const joinedGroups = localStorage.getItem('joinedGroups');
-    const joinedGroupIds = joinedGroups ? JSON.parse(joinedGroups) : [];
+      const joinedGroups = localStorage.getItem('joinedGroups');
+      const joinedGroupIds = joinedGroups ? JSON.parse(joinedGroups) : [];
 
-    if (joinedGroupIds.includes(groupId)) {
-      // Leave group
-      const updatedJoinedGroups = joinedGroupIds.filter((id: string) => id !== groupId);
-      localStorage.setItem('joinedGroups', JSON.stringify(updatedJoinedGroups));
-    } else {
-      // Join group
-      joinedGroupIds.push(groupId);
-      localStorage.setItem('joinedGroups', JSON.stringify(joinedGroupIds));
+      if (joinedGroupIds.includes(groupId)) {
+        // Leave group
+        const updatedJoinedGroups = joinedGroupIds.filter((id: string) => id !== groupId);
+        localStorage.setItem('joinedGroups', JSON.stringify(updatedJoinedGroups));
+      } else {
+        // Join group
+        joinedGroupIds.push(groupId);
+        localStorage.setItem('joinedGroups', JSON.stringify(joinedGroupIds));
+      }
+
+      setGroups(prevGroups =>
+        prevGroups.map(group =>
+          group.id === groupId ? { ...group, joined: !group.joined } : group
+        )
+      );
+    } catch (error) {
+      console.error('Failed to join/leave group:', error);
+      setChatError({
+        message: 'Failed to join/leave group',
+        type: 'network'
+      });
+    } finally {
+      setIsLoading(false);
     }
+  };
 
-    setGroups(prevGroups =>
-      prevGroups.map(group =>
-        group.id === groupId ? { ...group, joined: !group.joined } : group
-      )
-    );
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!messageInput.trim() || !selectedGroup || isSendingMessage) return;
 
-    setIsLoading(false);
+    const newMessage: Message = {
+      id: Date.now().toString(),
+      content: messageInput.trim(),
+      sender: currentUser.name,
+      senderId: currentUser.id,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      avatar: currentUser.avatar,
+      isVerified: currentUser.isVerified,
+      status: 'sending'
+    };
+
+    setIsSendingMessage(true);
+    setChatError(null);
+
+    try {
+      // Add message to chat immediately (optimistic update)
+      setChatMessages(prev => [...prev, newMessage]);
+      setMessageInput('');
+
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Update message status to sent
+      setChatMessages(prev =>
+        prev.map(msg =>
+          msg.id === newMessage.id ? { ...msg, status: 'sent' } : msg
+        )
+      );
+
+      // Save to localStorage
+      const updatedMessages = [...chatMessages, { ...newMessage, status: 'sent' }];
+      localStorage.setItem(`chat-${selectedGroup.id}`, JSON.stringify(updatedMessages));
+
+      // Simulate other users responding
+      setTimeout(() => {
+        simulateOtherUserResponse();
+      }, 2000);
+
+    } catch (error) {
+      console.error('Failed to send message:', error);
+
+      // Update message status to error
+      setChatMessages(prev =>
+        prev.map(msg =>
+          msg.id === newMessage.id ? { ...msg, status: 'error' } : msg
+        )
+      );
+
+      setChatError({
+        message: 'Failed to send message',
+        type: 'network'
+      });
+    } finally {
+      setIsSendingMessage(false);
+    }
+  };
+
+  const simulateOtherUserResponse = () => {
+    if (!selectedGroup) return;
+
+    const responses = [
+      'Great point! Thanks for sharing.',
+      'I agree with that approach.',
+      'Has anyone else tried this?',
+      'This is really helpful information.',
+      'I\'ll definitely look into this.',
+      'Thanks for the tip!',
+      'This community is so helpful.',
+      'I have a similar experience.'
+    ];
+
+    const randomResponse = responses[Math.floor(Math.random() * responses.length)];
+    const randomUsers = [
+      { name: 'Sarah Johnson', avatar: 'https://images.pexels.com/photos/1181686/pexels-photo-1181686.jpeg', isVerified: true },
+      { name: 'Mike Chen', avatar: 'https://images.pexels.com/photos/5439367/pexels-photo-5439367.jpeg' },
+      { name: 'Emma Wilson', avatar: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg' },
+      { name: 'David Brown', avatar: 'https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg' }
+    ];
+
+    const randomUser = randomUsers[Math.floor(Math.random() * randomUsers.length)];
+
+    const newMessage: Message = {
+      id: Date.now().toString(),
+      content: randomResponse,
+      sender: randomUser.name,
+      senderId: `user-${Math.floor(Math.random() * 1000)}`,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      avatar: randomUser.avatar,
+      isVerified: randomUser.isVerified,
+      status: 'sent'
+    };
+
+    setChatMessages(prev => [...prev, newMessage]);
+
+    // Save to localStorage
+    const updatedMessages = [...chatMessages, newMessage];
+    localStorage.setItem(`chat-${selectedGroup.id}`, JSON.stringify(updatedMessages));
+  };
+
+  const handleTyping = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setMessageInput(e.target.value);
+
+    // Simulate typing indicator
+    if (!isTyping) {
+      setIsTyping(true);
+      setTimeout(() => setIsTyping(false), 3000);
+    }
+  };
+
+  const handleImageError = (groupId: string) => {
+    setImageErrors(prev => ({ ...prev, [groupId]: true }));
+  };
+
+  const retryMessage = (messageId: string) => {
+    const message = chatMessages.find(msg => msg.id === messageId);
+    if (message) {
+      setMessageInput(message.content);
+      messageInputRef.current?.focus();
+
+      // Remove the failed message
+      setChatMessages(prev => prev.filter(msg => msg.id !== messageId));
+    }
   };
 
   const filteredGroups = groups.filter(group => {
@@ -216,19 +452,10 @@ const CommunityPage: React.FC = () => {
     return matchesSearch;
   });
 
-  const handleSendMessage = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!messageInput.trim()) return;
-
-    // Here you would typically send the message to your backend
-    console.log('Sending message:', messageInput);
-    setMessageInput('');
-  };
-
   const handleGroupSelect = (group: NetworkGroup) => {
-    // Set the selected group to show chat inline instead of navigating
     setSelectedGroup(group);
-    
+    setChatError(null);
+
     // On mobile, open the chat panel
     if (window.innerWidth < 1024) {
       setChatOpen(true);
@@ -254,6 +481,19 @@ const CommunityPage: React.FC = () => {
       case 'personal': return 'Personal';
       case 'saved': return 'Saved';
       default: return 'All';
+    }
+  };
+
+  const getMessageStatusIcon = (status: string) => {
+    switch (status) {
+      case 'sending':
+        return <div className="w-3 h-3 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />;
+      case 'sent':
+        return <CheckCircle className="h-3 w-3 text-green-400" />;
+      case 'error':
+        return <AlertCircle className="h-3 w-3 text-red-400" />;
+      default:
+        return null;
     }
   };
 
@@ -418,13 +658,20 @@ const CommunityPage: React.FC = () => {
                     <div className="flex items-start space-x-4">
                       <div className="relative">
                         <div className="relative w-16 h-16 rounded-xl overflow-hidden bg-gray-700 shadow-lg">
-                          <Image
-                            src={group.image}
-                            alt={group.name}
-                            fill
-                            className="object-cover transition-transform duration-300 group-hover:scale-110"
-                            sizes="64px"
-                          />
+                          {!imageErrors[group.id] ? (
+                            <Image
+                              src={group.image}
+                              alt={group.name}
+                              fill
+                              className="object-cover transition-transform duration-300 group-hover:scale-110"
+                              sizes="64px"
+                              onError={() => handleImageError(group.id)}
+                            />
+                          ) : (
+                            <div className="absolute inset-0 bg-gray-700 flex items-center justify-center">
+                              <Users className="h-8 w-8 text-gray-400" />
+                            </div>
+                          )}
                         </div>
                         {group.isVerified && (
                           <div className="absolute -top-1 -right-1 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center shadow-lg">
@@ -527,13 +774,20 @@ const CommunityPage: React.FC = () => {
                 <div className="flex items-center space-x-4">
                   <div className="relative">
                     <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-gray-700 shadow-lg">
-                      <Image
-                        src={selectedGroup.image}
-                        alt={selectedGroup.name}
-                        fill
-                        className="object-cover"
-                        sizes="48px"
-                      />
+                      {!imageErrors[selectedGroup.id] ? (
+                        <Image
+                          src={selectedGroup.image}
+                          alt={selectedGroup.name}
+                          fill
+                          className="object-cover"
+                          sizes="48px"
+                          onError={() => handleImageError(selectedGroup.id)}
+                        />
+                      ) : (
+                        <div className="absolute inset-0 bg-gray-700 flex items-center justify-center">
+                          <Users className="h-6 w-6 text-gray-400" />
+                        </div>
+                      )}
                     </div>
                     {selectedGroup.isVerified && (
                       <div className="absolute -top-1 -right-1 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
@@ -565,43 +819,107 @@ const CommunityPage: React.FC = () => {
                 </div>
               </div>
 
+              {/* Error Display */}
+              {chatError && (
+                <div className="p-4 bg-red-500/10 border-l-4 border-red-500">
+                  <div className="flex items-center space-x-2">
+                    <AlertCircle className="h-4 w-4 text-red-400" />
+                    <p className="text-sm text-red-400">{chatError.message}</p>
+                  </div>
+                </div>
+              )}
+
               {/* Chat Messages */}
               <div className="flex-1 overflow-y-auto p-6 space-y-4">
                 <div className="text-center">
                   <span className="text-xs text-gray-500 bg-gray-700/50 px-3 py-1 rounded-full">Today</span>
                 </div>
-                {sampleMessages.map((message) => (
-                  <div key={message.id} className="flex space-x-3 group">
-                    <div className="relative">
-                      <div className="relative w-10 h-10 rounded-full overflow-hidden bg-gray-700 shadow-lg">
-                        <Image
-                          src={message.avatar}
-                          alt={message.sender}
-                          fill
-                          className="object-cover"
-                          sizes="40px"
-                        />
-                      </div>
-                      {message.isVerified && (
-                        <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center">
-                          <Shield className="h-2 w-2 text-white" />
+
+                {chatMessages.map((message) => (
+                  <div key={message.id} className={`flex space-x-3 group ${message.senderId === currentUser.id ? 'justify-end' : ''}`}>
+                    {message.senderId !== currentUser.id && (
+                      <div className="relative">
+                        <div className="relative w-10 h-10 rounded-full overflow-hidden bg-gray-700 shadow-lg">
+                          <Image
+                            src={message.avatar}
+                            alt={message.sender}
+                            fill
+                            className="object-cover"
+                            sizes="40px"
+                          />
                         </div>
-                      )}
-                    </div>
-                    <div className="flex-1">
-                      <div className="bg-gray-700/50 backdrop-blur-sm rounded-2xl p-4 shadow-lg">
-                        <div className="flex items-center space-x-2 mb-2">
-                          <p className="text-sm font-medium text-white">{message.sender}</p>
-                          {message.isVerified && (
-                            <Shield className="h-3 w-3 text-blue-400" />
-                          )}
-                        </div>
-                        <p className="text-sm text-gray-100">{message.content}</p>
+                        {message.isVerified && (
+                          <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center">
+                            <Shield className="h-2 w-2 text-white" />
+                          </div>
+                        )}
                       </div>
-                      <p className="text-xs text-gray-500 mt-2">{message.timestamp}</p>
+                    )}
+
+                    <div className={`flex-1 max-w-[70%] ${message.senderId === currentUser.id ? 'order-first' : ''}`}>
+                      <div className={`rounded-2xl p-4 shadow-lg ${
+                        message.senderId === currentUser.id
+                          ? 'bg-gradient-to-r from-red-500 to-red-600 text-white'
+                          : 'bg-gray-700/50 backdrop-blur-sm'
+                      }`}>
+                        {message.senderId !== currentUser.id && (
+                          <div className="flex items-center space-x-2 mb-2">
+                            <p className="text-sm font-medium text-white">{message.sender}</p>
+                            {message.isVerified && (
+                              <Shield className="h-3 w-3 text-blue-400" />
+                            )}
+                          </div>
+                        )}
+                        <p className={`text-sm ${message.senderId === currentUser.id ? 'text-white' : 'text-gray-100'}`}>
+                          {message.content}
+                        </p>
+                      </div>
+                      <div className="flex items-center justify-between mt-2">
+                        <p className="text-xs text-gray-500">{message.timestamp}</p>
+                        {message.senderId === currentUser.id && message.status && (
+                          <div className="flex items-center space-x-1">
+                            {getMessageStatusIcon(message.status)}
+                            {message.status === 'error' && (
+                              <button
+                                onClick={() => retryMessage(message.id)}
+                                className="text-xs text-red-400 hover:text-red-300 underline"
+                              >
+                                Retry
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))}
+
+                {/* Typing indicator */}
+                {isTyping && (
+                  <div className="flex space-x-3">
+                    <div className="relative w-10 h-10 rounded-full overflow-hidden bg-gray-700 shadow-lg">
+                      <Image
+                        src="https://images.pexels.com/photos/5439367/pexels-photo-5439367.jpeg"
+                        alt="Typing"
+                        fill
+                        className="object-cover"
+                        sizes="40px"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <div className="bg-gray-700/50 backdrop-blur-sm rounded-2xl p-4">
+                        <div className="flex space-x-1">
+                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Auto-scroll anchor */}
+                <div ref={messagesEndRef} />
               </div>
 
               {/* Message Input */}
@@ -612,20 +930,31 @@ const CommunityPage: React.FC = () => {
                   </button>
                   <div className="flex-1 relative">
                     <input
+                      ref={messageInputRef}
                       type="text"
                       placeholder="Type a message..."
                       value={messageInput}
-                      onChange={(e) => setMessageInput(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-700/50 backdrop-blur-sm border border-gray-600/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-red-500/50 text-white placeholder-gray-400 transition-all duration-200"
+                      onChange={handleTyping}
+                      disabled={isSendingMessage}
+                      className="w-full px-4 py-3 bg-gray-700/50 backdrop-blur-sm border border-gray-600/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-red-500/50 text-white placeholder-gray-400 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                       aria-label="Message input"
                     />
                   </div>
                   <button
                     type="submit"
-                    className="p-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl hover:from-red-600 hover:to-red-700 transition-all duration-200 shadow-lg shadow-red-500/25 hover:shadow-xl hover:shadow-red-500/30 transform hover:scale-105"
+                    disabled={!messageInput.trim() || isSendingMessage}
+                    className={`p-3 rounded-xl transition-all duration-200 transform hover:scale-105 ${
+                      messageInput.trim() && !isSendingMessage
+                        ? 'bg-gradient-to-r from-red-500 to-red-600 text-white shadow-lg shadow-red-500/25 hover:shadow-xl hover:shadow-red-500/30'
+                        : 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                    }`}
                     aria-label="Send message"
                   >
-                    <Send className="h-4 w-4" />
+                    {isSendingMessage ? (
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
                   </button>
                 </form>
               </div>

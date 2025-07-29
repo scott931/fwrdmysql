@@ -23,11 +23,6 @@ self.__BUILD_MANIFEST = {
       "static/chunks/webpack.js",
       "static/chunks/main.js",
       "static/chunks/pages/community.js"
-    ],
-    "/community/chat/[groupId]": [
-      "static/chunks/webpack.js",
-      "static/chunks/main.js",
-      "static/chunks/pages/community/chat/[groupId].js"
     ]
   },
   "ampFirstPages": []
