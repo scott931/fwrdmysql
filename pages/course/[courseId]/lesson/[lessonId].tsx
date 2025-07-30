@@ -175,12 +175,82 @@ export default function LessonPage() {
           return;
         }
 
+        // Transform instructor data with dual fallback logic (same as CoursePage)
+        const instructorInfo = (() => {
+          let instructorName = 'Unknown Instructor';
+          let instructorTitle = 'Expert Educator';
+          let instructorImage = '/images/placeholder-avatar.jpg';
+          let instructorBio = 'Experienced professional in the field.';
+
+          DEBUG.log('🔍 Instructor transformation debug:', {
+            hasInstructorObject: !!foundCourse.instructor,
+            instructorType: typeof foundCourse.instructor,
+            hasInstructorName: !!foundCourse.instructor_name,
+            instructorNameValue: foundCourse.instructor_name,
+            instructorTitleValue: foundCourse.instructor_title,
+            instructorImageValue: foundCourse.instructor_image
+          });
+
+          try {
+            // First: Try to access the transformed instructor object (from useCourses hook)
+            if (foundCourse.instructor && typeof foundCourse.instructor === 'object' && foundCourse.instructor !== null) {
+              DEBUG.log('✅ Using instructor object');
+              instructorName = (foundCourse.instructor as any).name || 'Unknown Instructor';
+              instructorTitle = (foundCourse.instructor as any).title || 'Expert Educator';
+              instructorImage = (foundCourse.instructor as any).image || '/images/placeholder-avatar.jpg';
+              instructorBio = (foundCourse.instructor as any).bio || 'Experienced professional in the field.';
+            }
+            // Second: Fall back to raw API field (direct from API)
+            else if (foundCourse.instructor_name) {
+              DEBUG.log('✅ Using instructor_name field');
+              instructorName = foundCourse.instructor_name || 'Unknown Instructor';
+              instructorTitle = foundCourse.instructor_title || 'Expert Educator';
+              instructorImage = foundCourse.instructor_image || '/images/placeholder-avatar.jpg';
+              instructorBio = foundCourse.instructor_bio || 'Experienced professional in the field.';
+            }
+            // Third: Handle string instructor (legacy format)
+            else if (typeof foundCourse.instructor === 'string') {
+              DEBUG.log('✅ Using string instructor');
+              instructorName = foundCourse.instructor;
+              instructorTitle = 'Expert Educator';
+              instructorImage = '/images/placeholder-avatar.jpg';
+              instructorBio = 'Experienced professional in the field.';
+            }
+            // Fourth: Final fallback
+            else {
+              DEBUG.log('❌ Using final fallback - no instructor data found');
+              instructorName = 'Unknown Instructor';
+              instructorTitle = 'Expert Educator';
+              instructorImage = '/images/placeholder-avatar.jpg';
+              instructorBio = 'Experienced professional in the field.';
+            }
+          } catch (error) {
+            DEBUG.error('Error accessing instructor data:', error);
+            instructorName = 'Unknown Instructor';
+            instructorTitle = 'Expert Educator';
+            instructorImage = '/images/placeholder-avatar.jpg';
+            instructorBio = 'Experienced professional in the field.';
+          }
+
+          return {
+            id: foundCourse.instructor_id || `instructor-${foundCourse.id}`,
+            name: instructorName,
+            title: instructorTitle,
+            image: instructorImage,
+            bio: instructorBio,
+            email: foundCourse.instructor_email || 'instructor@forwardafrica.com',
+            expertise: foundCourse.instructor_expertise ? foundCourse.instructor_expertise.split(',').map((exp: string) => exp.trim()) : ['General Education'],
+            experience: foundCourse.instructor_experience || 5,
+            createdAt: new Date(foundCourse.created_at || Date.now())
+          };
+        })();
+
         // Transform course data and lessons to match frontend format
         const transformedCourse: Course = {
           id: foundCourse.id,
           title: foundCourse.title,
           description: foundCourse.description,
-          instructor: foundCourse.instructor,
+          instructor: instructorInfo,
           thumbnail: foundCourse.thumbnail,
           lessons: (foundCourse.lessons || []).map((lesson: any) => ({
             ...lesson,
