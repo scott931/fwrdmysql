@@ -3348,11 +3348,15 @@ app.post('/api/favorites', authenticateToken, async (req, res) => {
     const { course_id } = req.body;
     const user_id = req.user.id;
 
+    console.log('Adding favorite - User ID:', user_id, 'Course ID:', course_id);
+
     // Check if course exists
-    const [course] = await executeQuery('SELECT * FROM courses WHERE id = ?', [course_id]);
+    const [course] = await executeQuery('SELECT id, title FROM courses WHERE id = ?', [course_id]);
     if (!course) {
+      console.error('Course not found:', course_id);
       return res.status(404).json({ error: 'Course not found' });
     }
+    console.log('Course found:', course.title);
 
     // Check if already favorited
     const [existing] = await executeQuery(
@@ -3361,6 +3365,7 @@ app.post('/api/favorites', authenticateToken, async (req, res) => {
     );
 
     if (existing) {
+      console.log('Course already in favorites');
       return res.status(400).json({ error: 'Course already in favorites' });
     }
 
@@ -3371,9 +3376,16 @@ app.post('/api/favorites', authenticateToken, async (req, res) => {
       [id, user_id, course_id]
     );
 
+    console.log('Successfully added to favorites');
     res.status(201).json({ message: 'Course added to favorites' });
   } catch (error) {
     console.error('Add to favorites error:', error);
+    console.error('Error details:', {
+      message: error.message,
+      code: error.code,
+      sqlState: error.sqlState,
+      sqlMessage: error.sqlMessage
+    });
     res.status(500).json({ error: 'Failed to add to favorites' });
   }
 });
@@ -3400,7 +3412,26 @@ app.delete('/api/favorites/:courseId', authenticateToken, async (req, res) => {
 app.get('/api/favorites', authenticateToken, async (req, res) => {
   try {
     const user_id = req.user.id;
+    console.log('Fetching favorites for user:', user_id);
 
+    // First check if user exists
+    const [userCheck] = await executeQuery('SELECT id FROM users WHERE id = ?', [user_id]);
+    if (!userCheck) {
+      console.error('User not found:', user_id);
+      return res.status(404).json({ error: 'User not found' });
+    }
+    console.log('User found in database:', userCheck.id);
+
+    // Check if user has any favorites
+    const [favoritesCount] = await executeQuery('SELECT COUNT(*) as count FROM user_favorites WHERE user_id = ?', [user_id]);
+    console.log('User favorites count:', favoritesCount.count);
+
+    if (favoritesCount.count === 0) {
+      console.log('No favorites found for user, returning empty array');
+      return res.json([]);
+    }
+
+    // Get favorites with course and instructor details
     const [favorites] = await executeQuery(`
       SELECT c.*, i.name as instructor_name, i.title as instructor_title, i.image as instructor_image
       FROM user_favorites uf
@@ -3410,9 +3441,16 @@ app.get('/api/favorites', authenticateToken, async (req, res) => {
       ORDER BY uf.created_at DESC
     `, [user_id]);
 
+    console.log('Favorites found:', favorites.length);
     res.json(favorites);
   } catch (error) {
     console.error('Get favorites error:', error);
+    console.error('Error details:', {
+      message: error.message,
+      code: error.code,
+      sqlState: error.sqlState,
+      sqlMessage: error.sqlMessage
+    });
     res.status(500).json({ error: 'Failed to get favorites' });
   }
 });

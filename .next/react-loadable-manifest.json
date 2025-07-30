@@ -1,10 +1,4 @@
 {
-  "pages\\about.tsx -> ../src/pages/AboutPage": {
-    "id": "pages\\about.tsx -> ../src/pages/AboutPage",
-    "files": [
-      "static/chunks/src_pages_AboutPage_tsx.js"
-    ]
-  },
   "pages\\courses.tsx -> ../src/pages/CoursesPage": {
     "id": "pages\\courses.tsx -> ../src/pages/CoursesPage",
     "files": [

@@ -464,6 +464,34 @@ export default function LessonPage() {
                />
             </div>
 
+            {/* Instructor Details */}
+            <div className="mt-6 mb-6">
+              <div className="bg-gray-800 rounded-lg p-4">
+                <div className="flex items-center mb-4">
+                  <img
+                    src={course.instructor?.image || '/images/placeholder-avatar.jpg'}
+                    alt={course.instructor?.name || 'Instructor'}
+                    className="w-12 h-12 rounded-full object-cover mr-4"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      if (target.src !== '/images/placeholder-avatar.jpg') {
+                        target.src = '/images/placeholder-avatar.jpg';
+                      }
+                    }}
+                  />
+                  <div>
+                    <h3 className="text-white font-medium">{course.instructor?.name || 'Instructor'}</h3>
+                    <p className="text-gray-400 text-sm">{course.instructor?.title || 'Expert Educator'}</p>
+                  </div>
+                </div>
+                {course.instructor?.bio && (
+                  <p className="text-gray-300 text-sm">
+                    {course.instructor.bio}
+                  </p>
+                )}
+              </div>
+            </div>
+
             {/* Lesson Info */}
             <div className="mt-6">
               <h1 className="text-2xl font-bold text-white mb-4">

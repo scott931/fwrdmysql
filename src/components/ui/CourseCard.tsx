@@ -27,7 +27,16 @@ interface CourseCardProps {
 
 const CourseCard: React.FC<CourseCardProps> = ({ course, showFavoriteButton = true }) => {
   const router = useRouter();
-  const { favorites, addToFavorites, removeFromFavorites } = useFavorites();
+  const {
+    favorites,
+    addToFavorites,
+    removeFromFavorites,
+    loading: favoritesLoading,
+    error: favoritesError,
+    clearError,
+    fetchFavorites,
+    hasInitialized
+  } = useFavorites();
   const isFavorited = favorites.some(fav => fav.id === course.id);
 
   // Early return for null/undefined course
@@ -136,14 +145,35 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, showFavoriteButton = tr
     }
   };
 
-  const handleFavoriteClick = (e: React.MouseEvent) => {
+  const handleFavoriteClick = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
 
-    if (isFavorited) {
-      removeFromFavorites(course.id);
-    } else {
-      addToFavorites(course.id);
+    // Check if user is logged in
+    const token = localStorage.getItem('forward_africa_token');
+    if (!token) {
+      console.log('User not logged in, cannot add to favorites');
+      // You could show a login prompt here
+      return;
+    }
+
+    // Clear any previous errors
+    clearError();
+
+    try {
+      // If this is the first time clicking a favorite button, fetch favorites first
+      if (!hasInitialized) {
+        console.log('First time clicking favorite button, fetching favorites...');
+        await fetchFavorites();
+      }
+
+      if (isFavorited) {
+        await removeFromFavorites(course.id);
+      } else {
+        await addToFavorites(course.id);
+      }
+    } catch (error) {
+      console.error('Error handling favorite action:', error);
     }
   };
 
@@ -229,14 +259,52 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, showFavoriteButton = tr
 
           {/* Favorite Button */}
           {showFavoriteButton && (
-            <button
-              onClick={handleFavoriteClick}
-              className={`absolute top-3 ${isComingSoon ? 'right-3' : 'right-3'} z-20 p-2 bg-black/50 rounded-full hover:bg-black/70 transition-colors`}
-            >
-              <Heart
-                className={`h-5 w-5 ${isFavorited ? 'text-red-500 fill-current' : 'text-white'}`}
-              />
-            </button>
+            <div className="absolute top-3 right-3 z-20">
+              <button
+                onClick={handleFavoriteClick}
+                disabled={favoritesLoading}
+                className={`p-2 bg-black/50 rounded-full hover:bg-black/70 transition-colors ${
+                  favoritesLoading ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
+                title={
+                  favoritesError
+                    ? favoritesError
+                    : !localStorage.getItem('forward_africa_token')
+                      ? 'Please log in to add favorites'
+                      : !hasInitialized
+                        ? 'Click to load favorites'
+                        : isFavorited
+                          ? 'Remove from favorites'
+                          : 'Add to favorites'
+                }
+              >
+                {favoritesLoading ? (
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                ) : (
+                  <Heart
+                    className={`h-5 w-5 ${
+                      favoritesError
+                        ? 'text-yellow-500'
+                        : !localStorage.getItem('forward_africa_token')
+                          ? 'text-gray-500' // Gray when not logged in
+                          : !hasInitialized
+                            ? 'text-gray-400' // Gray when not initialized
+                            : isFavorited
+                              ? 'text-red-500 fill-current'
+                              : 'text-white'
+                    }`}
+                  />
+                )}
+              </button>
+              {/* Error Tooltip */}
+              {favoritesError && (
+                <div className="absolute top-full right-0 mt-2 px-3 py-2 bg-yellow-500 text-white text-xs rounded-lg shadow-lg z-50 max-w-xs">
+                  <div className="font-medium">Favorites Error</div>
+                  <div className="text-yellow-100">{favoritesError}</div>
+                  <div className="absolute bottom-full right-4 w-0 h-0 border-l-4 border-r-4 border-b-4 border-transparent border-b-yellow-500"></div>
+                </div>
+              )}
+            </div>
           )}
 
           {/* Course Information */}
@@ -252,10 +320,15 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, showFavoriteButton = tr
                 {course.description}
               </div>
 
-              {/* Course Description Tooltip */}
+              {/* Course Description Tooltip - Limited to 10 characters */}
               <div className="absolute bottom-full left-0 mb-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50 max-w-xs">
                 <div className="font-medium text-white mb-1">{title}</div>
-                <div className="text-gray-300 text-xs leading-relaxed">{course.description}</div>
+                <div className="text-gray-300 text-xs leading-relaxed">
+                  {course.description && course.description.length > 10
+                    ? `${course.description.substring(0, 10)}...`
+                    : course.description
+                  }
+                </div>
                 <div className="absolute top-full left-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
               </div>
             </div>
