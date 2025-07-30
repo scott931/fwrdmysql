@@ -1309,7 +1309,7 @@ app.get('/api/courses/:id', async (req, res) => {
     const [course] = await executeQuery(`
       SELECT c.*, i.name as instructor_name, i.title as instructor_title, i.image as instructor_image,
              i.bio as instructor_bio, i.email as instructor_email, i.phone as instructor_phone,
-             i.experience as instructor_experience, 
+             i.experience as instructor_experience,
              JSON_EXTRACT(i.social_links, '$') as instructor_social_links,
              cat.name as category_name
       FROM courses c
