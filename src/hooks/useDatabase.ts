@@ -12,12 +12,12 @@ export const useCourses = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchAllCourses = useCallback(async () => {
+  const fetchAllCourses = useCallback(async (includeComingSoon = false) => {
     setLoading(true);
     setError(null);
 
     try {
-      const data = await courseAPI.getAllCourses();
+      const data = await courseAPI.getAllCourses(includeComingSoon);
 
       // Transform backend data to frontend format with dual fallback logic
       const transformedCourses = data.map((course: any) => {

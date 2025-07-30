@@ -168,6 +168,13 @@ export default function LessonPage() {
           })) || []
         });
 
+        // Check if this course is coming soon - redirect if so
+        if (foundCourse.coming_soon) {
+          DEBUG.log('⚠️ Course is marked as coming soon, redirecting to courses page');
+          router.push('/courses');
+          return;
+        }
+
         // Transform course data and lessons to match frontend format
         const transformedCourse: Course = {
           id: foundCourse.id,

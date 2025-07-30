@@ -345,53 +345,7 @@ app.get('/api/analytics/platform/admin', authenticateToken, authorizeRole(['admi
   }
 }));
 
-// Mock featured courses endpoint (for development)
-app.get('/api/courses/featured', (req, res) => {
-  res.json([
-    {
-      id: '1',
-      title: 'Business Fundamentals for Entrepreneurs',
-      description: 'Learn the essential principles of business management and entrepreneurship.',
-      thumbnail: '/images/placeholder-course.jpg',
-      instructor: {
-        name: 'Dr. Sarah Johnson',
-        title: 'Business Professor'
-      },
-      rating: 4.8,
-      students: 1250,
-      duration: '8 hours',
-      featured: true
-    },
-    {
-      id: '2',
-      title: 'Digital Marketing Mastery',
-      description: 'Master digital marketing strategies for modern businesses.',
-      thumbnail: '/images/placeholder-course.jpg',
-      instructor: {
-        name: 'Mike Chen',
-        title: 'Marketing Expert'
-      },
-      rating: 4.7,
-      students: 890,
-      duration: '6 hours',
-      featured: true
-    },
-    {
-      id: '3',
-      title: 'Financial Planning for Startups',
-      description: 'Essential financial management skills for startup success.',
-      thumbnail: '/images/placeholder-course.jpg',
-      instructor: {
-        name: 'Lisa Rodriguez',
-        title: 'Financial Advisor'
-      },
-      rating: 4.9,
-      students: 650,
-      duration: '5 hours',
-      featured: true
-    }
-  ]);
-});
+// Note: Mock featured courses endpoint removed - now using real database endpoint below
 
 // Mock endpoint removed - using real database endpoint below
 
@@ -784,122 +738,8 @@ app.post('/api/init-db', async (req, res) => {
     }
 
     // Insert sample courses if they don't exist
-    const [existingCourses] = await executeQuery('SELECT COUNT(*) as count FROM courses');
-    if (existingCourses.count === 0) {
-      // Create sample courses that reference the demo instructor
-      const sampleCourses = [
-        {
-          id: 'course-1',
-          title: 'Business Fundamentals for Entrepreneurs',
-          instructor_id: 'instructor-1',
-          category_id: 'business',
-          thumbnail: 'https://images.pexels.com/photos/7681118/pexels-photo-7681118.jpeg',
-          banner: 'https://images.pexels.com/photos/3184292/pexels-photo-3184292.jpeg',
-          video_url: 'https://www.youtube.com/watch?v=8jPQjjsBbIc',
-          description: 'Learn the essential principles of business management and entrepreneurship from our expert instructor.',
-          featured: true,
-          total_xp: 500
-        },
-        {
-          id: 'course-2',
-          title: 'Digital Marketing Mastery',
-          instructor_id: 'instructor-1',
-          category_id: 'marketing',
-          thumbnail: 'https://images.pexels.com/photos/7681119/pexels-photo-7681119.jpeg',
-          banner: 'https://images.pexels.com/photos/3184293/pexels-photo-3184293.jpeg',
-          video_url: 'https://www.youtube.com/watch?v=9bZkp7q19f0',
-          description: 'Master digital marketing strategies for modern businesses with comprehensive lessons.',
-          featured: true,
-          total_xp: 600
-        },
-        {
-          id: 'course-3',
-          title: 'Financial Planning for Startups',
-          instructor_id: 'instructor-1',
-          category_id: 'finance',
-          thumbnail: 'https://images.pexels.com/photos/7681120/pexels-photo-7681120.jpeg',
-          banner: 'https://images.pexels.com/photos/3184294/pexels-photo-3184294.jpeg',
-          video_url: 'https://www.youtube.com/watch?v=kJQP7kiw5Fk',
-          description: 'Essential financial management skills for startup success and sustainable growth.',
-          featured: false,
-          total_xp: 450
-        }
-      ];
-
-      for (const course of sampleCourses) {
-        await executeQuery(
-          'INSERT INTO courses (id, title, instructor_id, category_id, thumbnail, banner, video_url, description, featured, total_xp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-          [
-            course.id,
-            course.title,
-            course.instructor_id,
-            course.category_id,
-            course.thumbnail,
-            course.banner,
-            course.video_url,
-            course.description,
-            course.featured,
-            course.total_xp
-          ]
-        );
-      }
-
-      // Create sample lessons for the first course
-      const sampleLessons = [
-        {
-          id: 'lesson-1',
-          course_id: 'course-1',
-          title: 'Introduction to Business Fundamentals',
-          duration: '25:30',
-          thumbnail: 'https://images.pexels.com/photos/7681891/pexels-photo-7681891.jpeg',
-          video_url: 'https://www.youtube.com/watch?v=8jPQjjsBbIc',
-          description: 'Learn the foundational principles of business management and entrepreneurship.',
-          xp_points: 100,
-          order_index: 1
-        },
-        {
-          id: 'lesson-2',
-          course_id: 'course-1',
-          title: 'Strategic Planning and Execution',
-          duration: '32:15',
-          thumbnail: 'https://images.pexels.com/photos/7681866/pexels-photo-7681866.jpeg',
-          video_url: 'https://www.youtube.com/watch?v=9bZkp7q19f0',
-          description: 'Master the art of strategic planning and effective execution in business.',
-          xp_points: 120,
-          order_index: 2
-        },
-        {
-          id: 'lesson-3',
-          course_id: 'course-1',
-          title: 'Financial Management Essentials',
-          duration: '28:45',
-          thumbnail: 'https://images.pexels.com/photos/7681892/pexels-photo-7681892.jpeg',
-          video_url: 'https://www.youtube.com/watch?v=kJQP7kiw5Fk',
-          description: 'Understand the fundamentals of financial management for business success.',
-          xp_points: 110,
-          order_index: 3
-        }
-      ];
-
-      for (const lesson of sampleLessons) {
-        await executeQuery(
-          'INSERT INTO lessons (id, course_id, title, duration, thumbnail, video_url, description, xp_points, order_index) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-          [
-            lesson.id,
-            lesson.course_id,
-            lesson.title,
-            lesson.duration,
-            lesson.thumbnail,
-            lesson.video_url,
-            lesson.description,
-            lesson.xp_points,
-            lesson.order_index
-          ]
-        );
-      }
-
-      console.log('✅ Sample courses and lessons created successfully');
-    }
+    // Note: Sample data creation removed - now using only real data from database
+    console.log('✅ Database initialized successfully - using real data only');
 
     // Create a test user if it doesn't exist
     const [existingUser] = await executeQuery('SELECT id FROM users WHERE email = ?', ['admin@forwardafrica.com']);
@@ -1396,12 +1236,21 @@ app.put('/api/users/:id/permissions', authenticateToken, async (req, res) => {
 // Courses API
 app.get('/api/courses', async (req, res) => {
   try {
+    const { include_coming_soon = 'false' } = req.query;
+    const includeComingSoon = include_coming_soon === 'true';
+
+    let whereClause = '';
+    if (!includeComingSoon) {
+      whereClause = 'WHERE c.coming_soon = false';
+    }
+
     const courses = await executeQuery(`
       SELECT c.*, i.name as instructor_name, i.title as instructor_title, i.image as instructor_image,
              cat.name as category_name
       FROM courses c
       JOIN instructors i ON c.instructor_id = i.id
       JOIN categories cat ON c.category_id = cat.id
+      ${whereClause}
       ORDER BY c.created_at DESC
     `);
 
@@ -1422,13 +1271,21 @@ app.get('/api/courses', async (req, res) => {
 
 app.get('/api/courses/featured', async (req, res) => {
   try {
+    const { include_coming_soon = 'false' } = req.query;
+    const includeComingSoon = include_coming_soon === 'true';
+
+    let whereClause = 'WHERE c.featured = true';
+    if (!includeComingSoon) {
+      whereClause += ' AND c.coming_soon = false';
+    }
+
     const courses = await executeQuery(`
       SELECT c.*, i.name as instructor_name, i.title as instructor_title, i.image as instructor_image,
              cat.name as category_name
       FROM courses c
       JOIN instructors i ON c.instructor_id = i.id
       JOIN categories cat ON c.category_id = cat.id
-      WHERE c.featured = true
+      ${whereClause}
       ORDER BY c.created_at DESC
     `);
 
@@ -1462,28 +1319,39 @@ app.get('/api/courses/:id', async (req, res) => {
       return res.status(404).json({ error: 'Course not found' });
     }
 
-    // Get lessons for this course
+    // Get lessons for this course with better error handling
     const lessons = await executeQuery(
-      'SELECT * FROM lessons WHERE course_id = ? ORDER BY order_index ASC',
+      'SELECT * FROM lessons WHERE course_id = ? ORDER BY order_index ASC, created_at ASC',
       [req.params.id]
     );
+
+    console.log(`Found ${lessons.length} lessons for course ${req.params.id}`);
 
     course.lessons = lessons;
     res.json(course);
   } catch (error) {
+    console.error('Error fetching course:', error);
     res.status(500).json({ error: 'Failed to fetch course' });
   }
 });
 
 app.get('/api/courses/category/:categoryId', async (req, res) => {
   try {
+    const { include_coming_soon = 'false' } = req.query;
+    const includeComingSoon = include_coming_soon === 'true';
+
+    let whereClause = 'WHERE c.category_id = ?';
+    if (!includeComingSoon) {
+      whereClause += ' AND c.coming_soon = false';
+    }
+
     const courses = await executeQuery(`
       SELECT c.*, i.name as instructor_name, i.title as instructor_title, i.image as instructor_image,
              cat.name as category_name
       FROM courses c
       JOIN instructors i ON c.instructor_id = i.id
       JOIN categories cat ON c.category_id = cat.id
-      WHERE c.category_id = ?
+      ${whereClause}
       ORDER BY c.created_at DESC
     `, [req.params.categoryId]);
     res.json(courses);
@@ -1494,12 +1362,12 @@ app.get('/api/courses/category/:categoryId', async (req, res) => {
 
 app.post('/api/courses', async (req, res) => {
   try {
-    const { title, instructor_id, category_id, thumbnail, banner, video_url, description, featured, total_xp } = req.body;
+    const { title, instructor_id, category_id, thumbnail, banner, video_url, description, featured, coming_soon, release_date, total_xp } = req.body;
     const id = uuidv4();
 
     const result = await executeQuery(
-      'INSERT INTO courses (id, title, instructor_id, category_id, thumbnail, banner, video_url, description, featured, total_xp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [id, title, instructor_id, category_id, thumbnail, banner, video_url, description, featured || false, total_xp || 0]
+      'INSERT INTO courses (id, title, instructor_id, category_id, thumbnail, banner, video_url, description, featured, coming_soon, release_date, total_xp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [id, title, instructor_id, category_id, thumbnail, banner, video_url, description, featured || false, coming_soon || false, release_date || null, total_xp || 0]
     );
 
     res.status(201).json({ id, message: 'Course created successfully' });
@@ -1559,6 +1427,14 @@ app.put('/api/courses/:id', async (req, res) => {
     if (req.body.total_xp !== undefined) {
       updateFields.push('total_xp = ?');
       updateValues.push(req.body.total_xp);
+    }
+    if (req.body.coming_soon !== undefined) {
+      updateFields.push('coming_soon = ?');
+      updateValues.push(req.body.coming_soon);
+    }
+    if (req.body.release_date !== undefined) {
+      updateFields.push('release_date = ?');
+      updateValues.push(req.body.release_date);
     }
 
     // Always update the updated_at timestamp
@@ -1646,21 +1522,132 @@ app.delete('/api/courses/:id', authenticateToken, authorizeRole(['super_admin', 
   }
 });
 
-// Lessons API
+// Lessons API with transaction support
 app.post('/api/lessons', async (req, res) => {
+  let connection;
   try {
     const { course_id, title, duration, thumbnail, video_url, description, xp_points, order_index } = req.body;
     const id = uuidv4();
 
-    const result = await executeQuery(
+    // Validate required fields
+    if (!course_id || !title || !video_url) {
+      return res.status(400).json({
+        error: 'Missing required fields: course_id, title, and video_url are required'
+      });
+    }
+
+    // Get database connection for transaction
+    connection = await mysql.createConnection(dbConfig);
+    await connection.beginTransaction();
+
+    // Check if course exists
+    const [existingCourse] = await connection.execute('SELECT id FROM courses WHERE id = ?', [course_id]);
+    if (!existingCourse) {
+      await connection.rollback();
+      return res.status(404).json({ error: 'Course not found' });
+    }
+
+    // Insert lesson within transaction
+    await connection.execute(
       'INSERT INTO lessons (id, course_id, title, duration, thumbnail, video_url, description, xp_points, order_index) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [id, course_id, title, duration || '10:00', thumbnail, video_url, description, xp_points || 100, order_index || 0]
+      [id, course_id, title, duration || '10:00', thumbnail || '', video_url, description || '', xp_points || 100, order_index || 0]
     );
 
+    // Commit transaction
+    await connection.commit();
+
+    console.log(`Lesson created successfully: ${id} for course ${course_id}`);
     res.status(201).json({ id, message: 'Lesson created successfully' });
   } catch (error) {
+    // Rollback transaction on error
+    if (connection) {
+      await connection.rollback();
+    }
     console.error('Lesson creation error:', error);
     res.status(500).json({ error: 'Failed to create lesson' });
+  } finally {
+    if (connection) {
+      await connection.end();
+    }
+  }
+});
+
+// Batch lesson creation endpoint with transaction support
+app.post('/api/lessons/batch', async (req, res) => {
+  let connection;
+  try {
+    const { course_id, lessons } = req.body;
+
+    if (!course_id || !lessons || !Array.isArray(lessons) || lessons.length === 0) {
+      return res.status(400).json({
+        error: 'Missing required fields: course_id and lessons array are required'
+      });
+    }
+
+    // Get database connection for transaction
+    connection = await mysql.createConnection(dbConfig);
+    await connection.beginTransaction();
+
+    // Check if course exists
+    const [existingCourse] = await connection.execute('SELECT id FROM courses WHERE id = ?', [course_id]);
+    if (!existingCourse) {
+      await connection.rollback();
+      return res.status(404).json({ error: 'Course not found' });
+    }
+
+    const createdLessons = [];
+
+    // Create all lessons within transaction
+    for (let i = 0; i < lessons.length; i++) {
+      const lesson = lessons[i];
+      const lessonId = uuidv4();
+
+      // Validate lesson data
+      if (!lesson.title || !lesson.video_url) {
+        await connection.rollback();
+        return res.status(400).json({
+          error: `Lesson ${i + 1} is missing required fields: title and video_url are required`
+        });
+      }
+
+              await connection.execute(
+          'INSERT INTO lessons (id, course_id, title, duration, thumbnail, video_url, description, xp_points, order_index) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [
+            lessonId,
+            course_id,
+            lesson.title,
+            lesson.duration || '10:00',
+            lesson.thumbnail || '',
+            lesson.video_url,
+            lesson.description || '',
+            lesson.xp_points || 100,
+            i // Use the loop index instead of lesson.order_index to ensure proper ordering
+          ]
+        );
+
+      createdLessons.push({ id: lessonId, title: lesson.title });
+    }
+
+    // Commit transaction
+    await connection.commit();
+
+    console.log(`Batch created ${createdLessons.length} lessons for course ${course_id}`);
+    res.status(201).json({
+      message: 'Lessons created successfully',
+      lessons: createdLessons,
+      count: createdLessons.length
+    });
+  } catch (error) {
+    // Rollback transaction on error
+    if (connection) {
+      await connection.rollback();
+    }
+    console.error('Batch lesson creation error:', error);
+    res.status(500).json({ error: 'Failed to create lessons' });
+  } finally {
+    if (connection) {
+      await connection.end();
+    }
   }
 });
 
@@ -1742,6 +1729,27 @@ app.put('/api/lessons/:id', async (req, res) => {
   } catch (error) {
     console.error('Lesson update error:', error);
     res.status(500).json({ error: 'Failed to update lesson' });
+  }
+});
+
+// Delete lessons by course ID
+app.delete('/api/lessons/:courseId', async (req, res) => {
+  try {
+    const courseId = req.params.courseId;
+
+    // Check if course exists
+    const [existingCourse] = await executeQuery('SELECT id FROM courses WHERE id = ?', [courseId]);
+    if (!existingCourse) {
+      return res.status(404).json({ error: 'Course not found' });
+    }
+
+    // Delete all lessons for this course
+    await executeQuery('DELETE FROM lessons WHERE course_id = ?', [courseId]);
+
+    res.json({ message: 'Lessons deleted successfully' });
+  } catch (error) {
+    console.error('Lesson deletion error:', error);
+    res.status(500).json({ error: 'Failed to delete lessons' });
   }
 });
 
@@ -1842,6 +1850,14 @@ app.get('/api/instructors/:id', async (req, res) => {
 // Get all courses for a specific instructor
 app.get('/api/instructors/:id/courses', async (req, res) => {
   try {
+    const { include_coming_soon = 'false' } = req.query;
+    const includeComingSoon = include_coming_soon === 'true';
+
+    let whereClause = 'WHERE c.instructor_id = ?';
+    if (!includeComingSoon) {
+      whereClause += ' AND c.coming_soon = false';
+    }
+
     const courses = await executeQuery(`
       SELECT c.*, i.name as instructor_name, i.title as instructor_title, i.image as instructor_image,
              i.bio as instructor_bio, i.email as instructor_email, i.expertise as instructor_expertise,
@@ -1850,7 +1866,7 @@ app.get('/api/instructors/:id/courses', async (req, res) => {
       FROM courses c
       JOIN instructors i ON c.instructor_id = i.id
       JOIN categories cat ON c.category_id = cat.id
-      WHERE c.instructor_id = ?
+      ${whereClause}
       ORDER BY c.created_at DESC
     `, [req.params.id]);
 
@@ -3041,7 +3057,8 @@ process.on('SIGINT', () => {
 // Simple Search API - No prepared statements
 app.get('/api/search', async (req, res) => {
   try {
-    const { q: query, limit = 20, offset = 0 } = req.query;
+    const { q: query, limit = 20, offset = 0, include_coming_soon = 'false' } = req.query;
+    const includeComingSoon = include_coming_soon === 'true';
 
     if (!query || !query.trim()) {
       return res.json({
@@ -3053,6 +3070,10 @@ app.get('/api/search', async (req, res) => {
     }
 
     const searchTerm = `%${query.trim()}%`;
+    let comingSoonFilter = '';
+    if (!includeComingSoon) {
+      comingSoonFilter = 'AND c.coming_soon = false';
+    }
 
     // Use direct database connection with query instead of execute
     const connection = await pool.getConnection();
@@ -3077,7 +3098,7 @@ app.get('/api/search', async (req, res) => {
         FROM courses c
         JOIN instructors i ON c.instructor_id = i.id
         JOIN categories cat ON c.category_id = cat.id
-        WHERE c.title LIKE '${searchTerm}' OR c.description LIKE '${searchTerm}' OR i.name LIKE '${searchTerm}' OR cat.name LIKE '${searchTerm}'
+        WHERE (c.title LIKE '${searchTerm}' OR c.description LIKE '${searchTerm}' OR i.name LIKE '${searchTerm}' OR cat.name LIKE '${searchTerm}') ${comingSoonFilter}
         ORDER BY c.featured DESC, c.title ASC
         LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}
       `;
@@ -3091,7 +3112,7 @@ app.get('/api/search', async (req, res) => {
         FROM courses c
         JOIN instructors i ON c.instructor_id = i.id
         JOIN categories cat ON c.category_id = cat.id
-        WHERE c.title LIKE '${searchTerm}' OR c.description LIKE '${searchTerm}' OR i.name LIKE '${searchTerm}' OR cat.name LIKE '${searchTerm}'
+        WHERE (c.title LIKE '${searchTerm}' OR c.description LIKE '${searchTerm}' OR i.name LIKE '${searchTerm}' OR cat.name LIKE '${searchTerm}') ${comingSoonFilter}
       `;
 
       const [countResult] = await connection.query(countQuery);
@@ -3316,5 +3337,157 @@ process.on('SIGINT', async () => {
   } catch (error) {
     console.error('Error during shutdown:', error);
     process.exit(1);
+  }
+});
+
+// Add these endpoints after the existing course endpoints
+
+// Add course to favorites
+app.post('/api/favorites', authenticateToken, async (req, res) => {
+  try {
+    const { course_id } = req.body;
+    const user_id = req.user.id;
+
+    // Check if course exists
+    const [course] = await executeQuery('SELECT * FROM courses WHERE id = ?', [course_id]);
+    if (!course) {
+      return res.status(404).json({ error: 'Course not found' });
+    }
+
+    // Check if already favorited
+    const [existing] = await executeQuery(
+      'SELECT * FROM user_favorites WHERE user_id = ? AND course_id = ?',
+      [user_id, course_id]
+    );
+
+    if (existing) {
+      return res.status(400).json({ error: 'Course already in favorites' });
+    }
+
+    // Add to favorites
+    const id = uuidv4();
+    await executeQuery(
+      'INSERT INTO user_favorites (id, user_id, course_id) VALUES (?, ?, ?)',
+      [id, user_id, course_id]
+    );
+
+    res.status(201).json({ message: 'Course added to favorites' });
+  } catch (error) {
+    console.error('Add to favorites error:', error);
+    res.status(500).json({ error: 'Failed to add to favorites' });
+  }
+});
+
+// Remove course from favorites
+app.delete('/api/favorites/:courseId', authenticateToken, async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const user_id = req.user.id;
+
+    await executeQuery(
+      'DELETE FROM user_favorites WHERE user_id = ? AND course_id = ?',
+      [user_id, courseId]
+    );
+
+    res.json({ message: 'Course removed from favorites' });
+  } catch (error) {
+    console.error('Remove from favorites error:', error);
+    res.status(500).json({ error: 'Failed to remove from favorites' });
+  }
+});
+
+// Get user favorites
+app.get('/api/favorites', authenticateToken, async (req, res) => {
+  try {
+    const user_id = req.user.id;
+
+    const [favorites] = await executeQuery(`
+      SELECT c.*, i.name as instructor_name, i.title as instructor_title, i.image as instructor_image
+      FROM user_favorites uf
+      JOIN courses c ON uf.course_id = c.id
+      JOIN instructors i ON c.instructor_id = i.id
+      WHERE uf.user_id = ?
+      ORDER BY uf.created_at DESC
+    `, [user_id]);
+
+    res.json(favorites);
+  } catch (error) {
+    console.error('Get favorites error:', error);
+    res.status(500).json({ error: 'Failed to get favorites' });
+  }
+});
+
+// Debug endpoint to check lessons for a course
+app.get('/api/debug/lessons/:courseId', async (req, res) => {
+  try {
+    const courseId = req.params.courseId;
+
+    // Check if course exists
+    const [course] = await executeQuery('SELECT id, title FROM courses WHERE id = ?', [courseId]);
+    if (!course) {
+      return res.status(404).json({ error: 'Course not found' });
+    }
+
+    // Get lessons with detailed info
+    const lessons = await executeQuery(`
+      SELECT id, title, order_index, created_at, video_url, thumbnail, description
+      FROM lessons
+      WHERE course_id = ?
+      ORDER BY order_index ASC, created_at ASC
+    `, [courseId]);
+
+    // Get course details with instructor and category
+    const [courseDetails] = await executeQuery(`
+      SELECT c.*, i.name as instructor_name, cat.name as category_name
+      FROM courses c
+      JOIN instructors i ON c.instructor_id = i.id
+      JOIN categories cat ON c.category_id = cat.id
+      WHERE c.id = ?
+    `, [courseId]);
+
+    res.json({
+      course: courseDetails || course,
+      lessons: lessons,
+      lessonCount: lessons.length,
+      debugInfo: {
+        courseId,
+        timestamp: new Date().toISOString(),
+        serverTime: new Date().toISOString()
+      }
+    });
+  } catch (error) {
+    console.error('Debug error:', error);
+    res.status(500).json({ error: 'Failed to fetch debug info' });
+  }
+});
+
+// Health check endpoint for lesson creation
+app.get('/api/health/lessons', async (req, res) => {
+  try {
+    // Check database connection
+    const [result] = await executeQuery('SELECT 1 as test');
+
+    // Check lessons table
+    const [lessonCount] = await executeQuery('SELECT COUNT(*) as count FROM lessons');
+
+    // Check courses table
+    const [courseCount] = await executeQuery('SELECT COUNT(*) as count FROM courses');
+
+    res.json({
+      status: 'healthy',
+      database: 'connected',
+      tables: {
+        lessons: lessonCount.count,
+        courses: courseCount.count
+      },
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Health check error:', error);
+    res.status(500).json({
+      status: 'unhealthy',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
   }
 });

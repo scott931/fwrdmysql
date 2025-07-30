@@ -2,6 +2,21 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Send, Bot, User, Loader2, Plus, Search, Settings, FileText, Trash2, Edit, MoreVertical, ThumbsUp, ThumbsDown, Copy, Share, RotateCcw, LogOut } from 'lucide-react';
 import Header from '../components/layout/Header';
 
+// Import AIService with error handling
+let AIService: any;
+try {
+  AIService = require('../lib/aiService').AIService;
+} catch (error) {
+  console.error('Failed to load AIService:', error);
+  // Fallback AIService
+  AIService = {
+    generateResponse: async (message: string) => ({
+      content: "I'm sorry, I'm experiencing technical difficulties. Please try again later.",
+      confidence: 0.0,
+    })
+  };
+}
+
 interface Message {
   id: string;
   content: string;
@@ -27,6 +42,7 @@ const AfrisagePage: React.FC = () => {
   ]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [conversations] = useState<Conversation[]>([
     { id: '1', title: 'How to register business in Kenya?', isActive: true, timestamp: new Date() },
     { id: '2', title: 'Investment opportunities in East Africa', isActive: false, timestamp: new Date() },
@@ -42,6 +58,7 @@ const AfrisagePage: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    console.log('AfrisagePage mounted');
     window.scrollTo({ top: 0, behavior: 'instant' });
   }, []);
 
@@ -67,41 +84,58 @@ const AfrisagePage: React.FC = () => {
     setMessages(prev => [...prev, userMessage]);
     setInputMessage('');
     setIsLoading(true);
+    setError(null);
 
-    // Simulate AI response
-    setTimeout(() => {
-      const aiResponse: Message = {
+    try {
+      // Use real AI service
+      const aiResponse = await AIService.generateResponse(inputMessage);
+
+      const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
-        content: generateAfrisageResponse(inputMessage),
+        content: aiResponse.content,
         sender: 'afrisage',
         timestamp: new Date()
       };
-      setMessages(prev => [...prev, aiResponse]);
+
+      setMessages(prev => [...prev, aiMessage]);
+    } catch (error) {
+      console.error('AI Error:', error);
+      setError('Failed to get AI response');
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        content: "I'm sorry, I'm experiencing technical difficulties. Please try again later.",
+        sender: 'afrisage',
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
       setIsLoading(false);
-    }, 1500);
+    }
   };
 
-  const generateAfrisageResponse = (userInput: string): string => {
-    const input = userInput.toLowerCase();
-
-    if (input.includes('business') && input.includes('kenya')) {
-      return "Kenya offers excellent business opportunities! Key considerations include: 1) Business registration through eCitizen portal, 2) Understanding the Kenya Revenue Authority (KRA) tax requirements, 3) Leveraging M-Pesa for digital payments, 4) Considering the growing tech sector in Nairobi's Silicon Savannah. Would you like specific guidance on any of these areas?";
-    }
-
-    if (input.includes('investment') || input.includes('funding')) {
-      return "African investment landscape is evolving rapidly! Consider these opportunities: 1) Fintech solutions addressing financial inclusion, 2) Agtech innovations for food security, 3) Renewable energy projects, 4) E-commerce platforms. Key funding sources include development finance institutions, impact investors, and local venture capital. What sector interests you most?";
-    }
-
-    if (input.includes('market') && input.includes('africa')) {
-      return "The African market presents immense potential with 1.4 billion people and growing middle class. Key insights: 1) Mobile-first approach is crucial, 2) Local partnerships are essential, 3) Understanding cultural nuances varies by region, 4) Regulatory frameworks differ significantly between countries. Which specific market are you targeting?";
-    }
-
-    if (input.includes('legal') || input.includes('regulation')) {
-      return "Legal frameworks across Africa vary significantly. General considerations: 1) Business registration requirements differ by country, 2) Tax obligations and incentives vary, 3) Employment laws have local nuances, 4) Intellectual property protection varies. I recommend consulting local legal experts. Which country's regulations are you interested in?";
-    }
-
-    return "That's an interesting question about African business! Based on my knowledge of African markets, I'd recommend considering local market dynamics, regulatory requirements, and cultural factors. Could you provide more specific details about your business context or the particular African market you're interested in? This will help me give you more targeted advice.";
-  };
+  // Show error if component fails to load
+  if (error) {
+    return (
+      <div className="flex flex-col min-h-screen bg-gray-900">
+        <Header />
+        <main className="flex-grow pt-16">
+          <div className="flex items-center justify-center min-h-screen">
+            <div className="text-center">
+              <div className="text-red-500 text-6xl mb-4">⚠️</div>
+              <h2 className="text-2xl font-bold text-white mb-2">Error Loading AI Assistant</h2>
+              <p className="text-gray-400 mb-4">{error}</p>
+              <button
+                onClick={() => window.location.reload()}
+                className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Retry
+              </button>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-900">

@@ -20,6 +20,7 @@ DROP TABLE IF EXISTS courses;
 DROP TABLE IF EXISTS categories;
 DROP TABLE IF EXISTS instructors;
 DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS user_favorites;
 
 -- Users table
 CREATE TABLE users (
@@ -176,6 +177,17 @@ CREATE TABLE achievements (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+-- Add after the existing tables
+CREATE TABLE user_favorites (
+    id VARCHAR(36) PRIMARY KEY,
+    user_id VARCHAR(36) NOT NULL,
+    course_id VARCHAR(36) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_user_course (user_id, course_id)
+);
+
 -- Insert sample data
 
 -- Users
@@ -208,7 +220,8 @@ INSERT INTO courses (id, title, instructor_id, category_id, thumbnail, banner, v
 ('course2', 'Innovation & Technology Leadership', 'inst5', 'cat5', 'https://images.pexels.com/photos/3861958/pexels-photo-3861958.jpeg', 'https://images.pexels.com/photos/3861959/pexels-photo-3861959.jpeg', 'https://www.youtube.com/watch?v=cdiD-9MMpb0', 'Learn from Elon Musk about innovation, technology leadership, and building companies that change the world. Discover the mindset and strategies behind Tesla, SpaceX, and other revolutionary ventures.', TRUE, 600, FALSE),
 ('course3', 'Entrepreneurial Success Strategies', 'inst2', 'cat2', 'https://images.pexels.com/photos/7681119/pexels-photo-7681119.jpeg', 'https://images.pexels.com/photos/3184293/pexels-photo-3184293.jpeg', 'https://www.youtube.com/watch?v=8jPQjjsBbIc', 'Discover the entrepreneurial journey with Sara Blakely. Learn how to build a successful business from the ground up with innovative thinking and strategic planning.', FALSE, 450, FALSE),
 ('course4', 'Investment Strategy Masterclass', 'inst3', 'cat3', 'https://images.pexels.com/photos/7681120/pexels-photo-7681120.jpeg', 'https://images.pexels.com/photos/3184294/pexels-photo-3184294.jpeg', 'https://www.youtube.com/watch?v=9bZkp7q19f0', 'Master investment strategies with Howard Marks. Learn about market cycles, risk assessment, and building a successful investment portfolio.', FALSE, 550, FALSE),
-('course5', 'Leadership & Vulnerability', 'inst4', 'cat4', 'https://images.pexels.com/photos/7681121/pexels-photo-7681121.jpeg', 'https://images.pexels.com/photos/3184295/pexels-photo-3184295.jpeg', 'https://www.youtube.com/watch?v=kJQP7kiw5Fk', 'Transform your leadership style with Brené Brown. Learn how vulnerability and courage can create stronger teams and more effective leadership.', FALSE, 400, FALSE);
+('course5', 'Leadership & Vulnerability', 'inst4', 'cat4', 'https://images.pexels.com/photos/7681121/pexels-photo-7681121.jpeg', 'https://images.pexels.com/photos/3184295/pexels-photo-3184295.jpeg', 'https://www.youtube.com/watch?v=kJQP7kiw5Fk', 'Transform your leadership style with Brené Brown. Learn how vulnerability and courage can create stronger teams and more effective leadership.', FALSE, 400, FALSE),
+('course6', 'Advanced AI & Machine Learning', 'inst5', 'cat5', 'https://images.pexels.com/photos/3861965/pexels-photo-3861965.jpeg', 'https://images.pexels.com/photos/3861966/pexels-photo-3861966.jpeg', 'https://www.youtube.com/watch?v=test123', 'Advanced course on artificial intelligence and machine learning. Coming soon with comprehensive content.', FALSE, 800, TRUE);
 
 -- Lessons
 INSERT INTO lessons (id, course_id, title, duration, thumbnail, video_url, description, xp_points, order_index) VALUES

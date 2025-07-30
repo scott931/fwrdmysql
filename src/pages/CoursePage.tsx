@@ -78,6 +78,13 @@ const CoursePage: React.FC = () => {
           });
           console.log('Raw lessons from API:', foundCourse.lessons);
 
+          // Check if this course is coming soon - redirect if so
+          if (foundCourse.coming_soon) {
+            console.log('⚠️ Course is marked as coming soon, redirecting to courses page');
+            router.push('/courses');
+            return;
+          }
+
           // Check if this course has no lessons but there might be another course with the same title
           if (!foundCourse.lessons || foundCourse.lessons.length === 0) {
             console.log('⚠️ Course has no lessons, checking for alternative course with same title');
@@ -619,8 +626,8 @@ const CoursePage: React.FC = () => {
                             onVideoComplete={handleVideoComplete}
                           />
                         </div>
-                      ) : course.lessons.length === 0 ? (
-                        // Show "Coming Soon" for courses without lessons
+                      ) : course.comingSoon ? (
+                        // Show "Coming Soon" for courses explicitly marked as coming soon
                         <div className="flex flex-col items-center justify-center p-8 bg-gray-800 rounded-lg">
                           <h2 className="text-white text-xl font-bold mb-4">Course Coming Soon</h2>
                           <p className="text-gray-300 text-center mb-6">

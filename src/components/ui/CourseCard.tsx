@@ -17,14 +17,18 @@ import { Course } from '../../types';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
+import { useFavorites } from '../../hooks/useFavorites';
 
 interface CourseCardProps {
   /** Course data to display */
   course: Course;
+  showFavoriteButton?: boolean;
 }
 
-const CourseCard: React.FC<CourseCardProps> = ({ course }) => {
+const CourseCard: React.FC<CourseCardProps> = ({ course, showFavoriteButton = true }) => {
   const router = useRouter();
+  const { favorites, addToFavorites, removeFromFavorites } = useFavorites();
+  const isFavorited = favorites.some(fav => fav.id === course.id);
 
   // Early return for null/undefined course
   if (!course) {
@@ -103,11 +107,11 @@ const CourseCard: React.FC<CourseCardProps> = ({ course }) => {
     image: instructorImage
   });
 
-  // Check if course is playable
-  const isPlayable = course.lessons && course.lessons.length > 0 && !course.comingSoon;
+  // Check if course is coming soon (only when explicitly marked)
+  const isComingSoon = course.comingSoon === true;
 
-  // Check if course is coming soon (no lessons or explicitly marked as coming soon)
-  const isComingSoon = course.comingSoon || !course.lessons || course.lessons.length === 0;
+  // Check if course is playable (has lessons and not coming soon)
+  const isPlayable = course.lessons && course.lessons.length > 0 && !isComingSoon;
 
   // Handle course card click
   const handleCardClick = (e: React.MouseEvent) => {
@@ -157,6 +161,17 @@ const CourseCard: React.FC<CourseCardProps> = ({ course }) => {
 
       // Navigate to course page if no lessons
       router.replace(courseUrl);
+    }
+  };
+
+  const handleFavoriteClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (isFavorited) {
+      removeFromFavorites(course.id);
+    } else {
+      addToFavorites(course.id);
     }
   };
 
@@ -240,9 +255,36 @@ const CourseCard: React.FC<CourseCardProps> = ({ course }) => {
             </div>
           )}
 
+          {/* Favorite Button */}
+          {showFavoriteButton && (
+            <button
+              onClick={handleFavoriteClick}
+              className="absolute top-3 right-3 z-20 p-2 bg-black/50 rounded-full hover:bg-black/70 transition-colors"
+            >
+              <Heart
+                className={`h-5 w-5 ${isFavorited ? 'text-red-500 fill-current' : 'text-white'}`}
+              />
+            </button>
+          )}
+
           {/* Course Information */}
           <div className="absolute bottom-0 left-0 right-0 p-3">
             <h3 className="text-white font-bold text-base leading-tight mb-1 line-clamp-2">{title}</h3>
+
+            {/* Course Description with Tooltip */}
+            <div className="relative group">
+              <div className="text-sm text-gray-400 line-clamp-1 mb-2">
+                {course.description}
+              </div>
+
+              {/* Course Description Tooltip */}
+              <div className="absolute bottom-full left-0 mb-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50 max-w-xs">
+                <div className="font-medium text-white mb-1">{title}</div>
+                <div className="text-gray-300 text-xs leading-relaxed">{course.description}</div>
+                <div className="absolute top-full left-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
+              </div>
+            </div>
+
             <div className="flex items-center space-x-2 mb-2">
               {instructorImage.startsWith('http') ? (
                 // Use regular img tag for external URLs
@@ -287,6 +329,7 @@ const CourseCard: React.FC<CourseCardProps> = ({ course }) => {
               )}
               <p className="text-gray-300 text-sm font-medium line-clamp-1">{instructorName}</p>
             </div>
+
             {/* Course Status Indicator */}
             {course.lessons && course.lessons.length > 0 ? (
               <div className="flex items-center space-x-1">

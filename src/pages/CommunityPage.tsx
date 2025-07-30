@@ -1,8 +1,10 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { Users, MessageCircle, Bell, Search, Settings, BookOpen, Calendar, Folder, Star, Plus, MoreHorizontal, Phone, Video, Send, Mic, Menu, X, TrendingUp, Users2, Sparkles, Hash, Globe, Shield, Crown, AlertCircle, CheckCircle } from 'lucide-react';
+import { Users, MessageCircle, Bell, Search, Settings, BookOpen, Calendar, Folder, Star, Plus, MoreHorizontal, Phone, Video, Send, Mic, Menu, X, TrendingUp, Users2, Sparkles, Hash, Globe, Shield, Crown, AlertCircle, CheckCircle, Paperclip } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/router';
+import { useAuth } from '../contexts/AuthContext'; // Adjust path as needed
+import { authService } from '../lib/auth';
 
 interface NetworkGroup {
   id: string;
@@ -134,25 +136,25 @@ const initialNetworkGroups: NetworkGroup[] = [
 const getInitialMessages = (groupId: string): Message[] => {
   const messages: Record<string, Message[]> = {
     'sme-network': [
-      {
-        id: '1',
+  {
+    id: '1',
         content: 'Welcome to the SME Network! Feel free to introduce yourself and share your business experiences.',
         sender: 'Community Bot',
         senderId: 'bot-1',
         timestamp: new Date(Date.now() - 3600000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        avatar: 'https://images.pexels.com/photos/1181686/pexels-photo-1181686.jpeg'
-      },
-      {
-        id: '2',
+    avatar: 'https://images.pexels.com/photos/1181686/pexels-photo-1181686.jpeg'
+  },
+  {
+    id: '2',
         content: 'Has anyone tried the new business registration process in Kenya?',
         sender: 'Sarah Johnson',
         senderId: 'user-2',
         timestamp: new Date(Date.now() - 1800000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         avatar: 'https://images.pexels.com/photos/1181686/pexels-photo-1181686.jpeg',
         isVerified: true
-      },
-      {
-        id: '3',
+  },
+  {
+    id: '3',
         content: 'Yes! It\'s much faster now with the eCitizen portal. Takes about 2-3 days instead of weeks.',
         sender: 'Mike Chen',
         senderId: 'user-3',
@@ -167,17 +169,25 @@ const getInitialMessages = (groupId: string): Message[] => {
         sender: 'Community Bot',
         senderId: 'bot-1',
         timestamp: new Date(Date.now() - 3600000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        avatar: 'https://images.pexels.com/photos/1181686/pexels-photo-1181686.jpeg'
-      }
+    avatar: 'https://images.pexels.com/photos/1181686/pexels-photo-1181686.jpeg'
+  }
     ]
   };
 
   return messages[groupId] || [];
 };
 
+// Add WebSocket connection state
+interface ChatState {
+  isConnected: boolean;
+  isConnecting: boolean;
+  connectionError: string | null;
+}
+
 const CommunityPage: React.FC = () => {
   const router = useRouter();
-  const [groups, setGroups] = useState<NetworkGroup[]>([]);
+  const { user } = useAuth();
+  const [groups, setGroups] = useState<NetworkGroup[]>(initialNetworkGroups);
   const [selectedGroup, setSelectedGroup] = useState<NetworkGroup | null>(null);
   const [activeTab, setActiveTab] = useState<'all' | 'joined' | 'work' | 'personal' | 'saved'>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -193,6 +203,16 @@ const CommunityPage: React.FC = () => {
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
   const [chatError, setChatError] = useState<ChatError | null>(null);
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
+
+  // Add WebSocket state
+  const [chatState, setChatState] = useState<ChatState>({
+    isConnected: false,
+    isConnecting: false,
+    connectionError: null
+  });
+
+  // WebSocket connection
+  const [wsConnection, setWsConnection] = useState<WebSocket | null>(null);
 
   // Refs
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -234,6 +254,19 @@ const CommunityPage: React.FC = () => {
     scrollToBottom();
   }, [chatMessages]);
 
+  // Initialize WebSocket connection
+  useEffect(() => {
+    if (selectedGroup) {
+      connectToChat(selectedGroup.id);
+    }
+
+    return () => {
+      if (wsConnection) {
+        wsConnection.close();
+      }
+    };
+  }, [selectedGroup]);
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -252,15 +285,10 @@ const CommunityPage: React.FC = () => {
 
   const loadChatMessages = useCallback((groupId: string) => {
     try {
-      const storedMessages = localStorage.getItem(`chat-${groupId}`);
-      if (storedMessages) {
-        setChatMessages(JSON.parse(storedMessages));
-      } else {
-        // Load initial messages for the group
-        const initialMessages = getInitialMessages(groupId);
-        setChatMessages(initialMessages);
-        localStorage.setItem(`chat-${groupId}`, JSON.stringify(initialMessages));
-      }
+      // Load initial messages for the group
+      const initialMessages = getInitialMessages(groupId);
+      setChatMessages(initialMessages);
+      localStorage.setItem(`chat-${groupId}`, JSON.stringify(initialMessages));
       setChatError(null);
     } catch (error) {
       console.error('Failed to load chat messages:', error);
@@ -283,24 +311,24 @@ const CommunityPage: React.FC = () => {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 500));
 
-      const joinedGroups = localStorage.getItem('joinedGroups');
-      const joinedGroupIds = joinedGroups ? JSON.parse(joinedGroups) : [];
+    const joinedGroups = localStorage.getItem('joinedGroups');
+    const joinedGroupIds = joinedGroups ? JSON.parse(joinedGroups) : [];
 
-      if (joinedGroupIds.includes(groupId)) {
-        // Leave group
-        const updatedJoinedGroups = joinedGroupIds.filter((id: string) => id !== groupId);
-        localStorage.setItem('joinedGroups', JSON.stringify(updatedJoinedGroups));
-      } else {
-        // Join group
-        joinedGroupIds.push(groupId);
-        localStorage.setItem('joinedGroups', JSON.stringify(joinedGroupIds));
-      }
+    if (joinedGroupIds.includes(groupId)) {
+      // Leave group
+      const updatedJoinedGroups = joinedGroupIds.filter((id: string) => id !== groupId);
+      localStorage.setItem('joinedGroups', JSON.stringify(updatedJoinedGroups));
+    } else {
+      // Join group
+      joinedGroupIds.push(groupId);
+      localStorage.setItem('joinedGroups', JSON.stringify(joinedGroupIds));
+    }
 
-      setGroups(prevGroups =>
-        prevGroups.map(group =>
-          group.id === groupId ? { ...group, joined: !group.joined } : group
-        )
-      );
+    setGroups(prevGroups =>
+      prevGroups.map(group =>
+        group.id === groupId ? { ...group, joined: !group.joined } : group
+      )
+    );
     } catch (error) {
       console.error('Failed to join/leave group:', error);
       setChatError({
@@ -310,6 +338,112 @@ const CommunityPage: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const getWebSocketUrl = (groupId: string) => {
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    const baseUrl = isDevelopment ? 'ws://localhost:3001' : 'wss://your-domain.com';
+    const token = authService.getToken();
+    return `${baseUrl}/group/${groupId}?token=${token}`;
+  };
+
+  const connectToChat = (groupId: string) => {
+    const token = authService.getToken();
+    if (!token) {
+      setChatState(prev => ({
+        ...prev,
+        connectionError: 'Please log in to chat'
+      }));
+      return;
+    }
+
+    setChatState(prev => ({ ...prev, isConnecting: true, connectionError: null }));
+
+    try {
+      const wsUrl = getWebSocketUrl(groupId);
+      const ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => {
+        console.log('Connected to chat server');
+        setChatState(prev => ({
+          ...prev,
+          isConnected: true,
+          isConnecting: false
+        }));
+        setWsConnection(ws);
+      };
+
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        handleIncomingMessage(data);
+      };
+
+      ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+        setChatState(prev => ({
+          ...prev,
+          isConnecting: false,
+          connectionError: 'Failed to connect to chat server. Please check your connection.'
+        }));
+      };
+
+      ws.onclose = () => {
+        console.log('Disconnected from chat server');
+        setChatState(prev => ({
+          ...prev,
+          isConnected: false,
+          isConnecting: false
+        }));
+        setWsConnection(null);
+      };
+
+    } catch (error) {
+      console.error('Failed to connect to chat:', error);
+      setChatState(prev => ({
+        ...prev,
+        isConnecting: false,
+        connectionError: 'Failed to connect to chat server'
+      }));
+    }
+  };
+
+  const handleIncomingMessage = (data: any) => {
+    if (data.type === 'recent_messages') {
+      // ✅ Messages from database
+      setChatMessages(data.messages);
+    } else if (data.type === 'message') {
+      // ✅ New message saved to database
+      const newMessage: Message = {
+        id: data.messageId,
+        content: data.content,
+        sender: data.sender.full_name,
+        senderId: data.sender.id,
+        timestamp: new Date(data.timestamp).toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit'
+        }),
+        avatar: data.sender.avatar,
+        isVerified: data.sender.isVerified,
+        status: 'sent'
+      };
+
+      setChatMessages(prev => [...prev, newMessage]);
+    }
+  };
+
+  const sendMessageToServer = async (message: Message): Promise<boolean> => {
+    if (!wsConnection || wsConnection.readyState !== WebSocket.OPEN) {
+      throw new Error('WebSocket connection not available');
+    }
+
+    // ✅ Correct format that will save to database
+    const messageData = {
+      content: message.content,
+      messageType: 'text' // or get from message
+    };
+
+    wsConnection.send(JSON.stringify(messageData));
+    return true;
   };
 
   const handleSendMessage = async (e: React.FormEvent) => {
@@ -335,8 +469,13 @@ const CommunityPage: React.FC = () => {
       setChatMessages(prev => [...prev, newMessage]);
       setMessageInput('');
 
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // ✅ Send to server (will save to database)
+      if (wsConnection && wsConnection.readyState === WebSocket.OPEN) {
+        wsConnection.send(JSON.stringify({
+          content: newMessage.content,
+          messageType: 'text'
+        }));
+      }
 
       // Update message status to sent
       setChatMessages(prev =>
@@ -345,74 +484,20 @@ const CommunityPage: React.FC = () => {
         )
       );
 
-      // Save to localStorage
-      const updatedMessages = [...chatMessages, { ...newMessage, status: 'sent' }];
-      localStorage.setItem(`chat-${selectedGroup.id}`, JSON.stringify(updatedMessages));
-
-      // Simulate other users responding
-      setTimeout(() => {
-        simulateOtherUserResponse();
-      }, 2000);
-
     } catch (error) {
       console.error('Failed to send message:', error);
-
-      // Update message status to error
       setChatMessages(prev =>
         prev.map(msg =>
           msg.id === newMessage.id ? { ...msg, status: 'error' } : msg
         )
       );
-
       setChatError({
-        message: 'Failed to send message',
+        message: 'Failed to send message. Please check your connection.',
         type: 'network'
       });
     } finally {
       setIsSendingMessage(false);
     }
-  };
-
-  const simulateOtherUserResponse = () => {
-    if (!selectedGroup) return;
-
-    const responses = [
-      'Great point! Thanks for sharing.',
-      'I agree with that approach.',
-      'Has anyone else tried this?',
-      'This is really helpful information.',
-      'I\'ll definitely look into this.',
-      'Thanks for the tip!',
-      'This community is so helpful.',
-      'I have a similar experience.'
-    ];
-
-    const randomResponse = responses[Math.floor(Math.random() * responses.length)];
-    const randomUsers = [
-      { name: 'Sarah Johnson', avatar: 'https://images.pexels.com/photos/1181686/pexels-photo-1181686.jpeg', isVerified: true },
-      { name: 'Mike Chen', avatar: 'https://images.pexels.com/photos/5439367/pexels-photo-5439367.jpeg' },
-      { name: 'Emma Wilson', avatar: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg' },
-      { name: 'David Brown', avatar: 'https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg' }
-    ];
-
-    const randomUser = randomUsers[Math.floor(Math.random() * randomUsers.length)];
-
-    const newMessage: Message = {
-      id: Date.now().toString(),
-      content: randomResponse,
-      sender: randomUser.name,
-      senderId: `user-${Math.floor(Math.random() * 1000)}`,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      avatar: randomUser.avatar,
-      isVerified: randomUser.isVerified,
-      status: 'sent'
-    };
-
-    setChatMessages(prev => [...prev, newMessage]);
-
-    // Save to localStorage
-    const updatedMessages = [...chatMessages, newMessage];
-    localStorage.setItem(`chat-${selectedGroup.id}`, JSON.stringify(updatedMessages));
   };
 
   const handleTyping = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -499,8 +584,8 @@ const CommunityPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
-      {/* Mobile Header */}
-      <div className="lg:hidden bg-gray-800/95 backdrop-blur-sm border-b border-gray-700/50 p-4 sticky top-0 z-40">
+      {/* Mobile Header - Highest z-index to stay on top */}
+      <div className="lg:hidden bg-gray-800/95 backdrop-blur-sm border-b border-gray-700/50 p-4 sticky top-0 z-[9999]">
         <div className="flex items-center justify-between">
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -524,8 +609,8 @@ const CommunityPage: React.FC = () => {
       </div>
 
       <div className="flex h-[calc(100vh-4rem)] lg:h-[calc(100vh-4rem)]">
-        {/* Left Sidebar - Navigation */}
-        <div className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 fixed lg:static inset-y-0 left-0 z-50 w-64 bg-gray-800/95 backdrop-blur-sm border-r border-gray-700/50 flex flex-col transition-all duration-300 ease-in-out lg:transition-none shadow-2xl`}>
+        {/* Left Sidebar - Navigation - Fixed positioning to account for mobile header */}
+        <div className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 fixed lg:static top-[8rem] lg:top-0 left-0 bottom-0 z-[60] w-64 bg-gray-800/95 backdrop-blur-sm border-r border-gray-700/50 flex flex-col transition-all duration-300 ease-in-out lg:transition-none shadow-2xl`}>
           {/* Close button for mobile */}
           <div className="lg:hidden flex justify-end p-4">
             <button
@@ -575,7 +660,7 @@ const CommunityPage: React.FC = () => {
           <div className="flex-1 p-4 overflow-y-auto">
             <nav className="space-y-2">
               {(['all', 'joined', 'work', 'personal', 'saved'] as const).map((tab) => (
-                <button
+              <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
                   className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 group ${
@@ -589,7 +674,7 @@ const CommunityPage: React.FC = () => {
                     {getTabIcon(tab)}
                   </div>
                   <span className="font-medium">{getTabLabel(tab)}</span>
-                </button>
+              </button>
               ))}
             </nav>
           </div>
@@ -640,29 +725,29 @@ const CommunityPage: React.FC = () => {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {filteredGroups.map((group) => (
-                  <div
-                    key={group.id}
+              {filteredGroups.map((group) => (
+                <div
+                  key={group.id}
                     className="group bg-gray-800/50 backdrop-blur-sm rounded-2xl border border-gray-700/50 p-6 hover:bg-gray-700/50 hover:border-gray-600/50 transition-all duration-300 cursor-pointer transform hover:scale-105 hover:shadow-xl hover:shadow-black/20"
-                    onClick={() => handleGroupSelect(group)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        handleGroupSelect(group);
-                      }
-                    }}
-                    aria-label={`Select ${group.name} community`}
-                  >
+                  onClick={() => handleGroupSelect(group)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      handleGroupSelect(group);
+                    }
+                  }}
+                  aria-label={`Select ${group.name} community`}
+                >
                     <div className="flex items-start space-x-4">
                       <div className="relative">
                         <div className="relative w-16 h-16 rounded-xl overflow-hidden bg-gray-700 shadow-lg">
                           {!imageErrors[group.id] ? (
-                            <Image
-                              src={group.image}
-                              alt={group.name}
-                              fill
+                      <Image
+                        src={group.image}
+                        alt={group.name}
+                        fill
                               className="object-cover transition-transform duration-300 group-hover:scale-110"
                               sizes="64px"
                               onError={() => handleImageError(group.id)}
@@ -683,8 +768,8 @@ const CommunityPage: React.FC = () => {
                             <Crown className="h-3 w-3 text-white" />
                           </div>
                         )}
-                      </div>
-                      <div className="flex-1 min-w-0">
+                    </div>
+                    <div className="flex-1 min-w-0">
                         <div className="flex items-center space-x-2 mb-2">
                           <h3 className="font-bold text-white text-lg truncate">{group.name}</h3>
                           {group.isVerified && (
@@ -729,33 +814,33 @@ const CommunityPage: React.FC = () => {
                         <div className="flex items-center space-x-2">
                           <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
                           <span className="text-xs text-red-400">{group.unreadMessages} new</span>
-                        </div>
+                  </div>
                       )}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleJoinGroup(group.id);
-                        }}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleJoinGroup(group.id);
+                      }}
                         disabled={isLoading}
                         className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 transform hover:scale-105 ${
-                          group.joined
+                        group.joined
                             ? 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50'
                             : 'bg-gradient-to-r from-red-500 to-red-600 text-white hover:from-red-600 hover:to-red-700 shadow-lg shadow-red-500/25'
                         } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-                        aria-label={group.joined ? `Leave ${group.name}` : `Join ${group.name}`}
-                      >
+                      aria-label={group.joined ? `Leave ${group.name}` : `Join ${group.name}`}
+                    >
                         {isLoading ? '...' : (group.joined ? 'Joined' : 'Join')}
-                      </button>
-                    </div>
+                    </button>
                   </div>
-                ))}
-              </div>
+                </div>
+              ))}
+            </div>
             )}
           </div>
         </div>
 
-        {/* Right Column - Chat/Details */}
-        <div className={`${chatOpen ? 'translate-x-0' : 'translate-x-full'} lg:translate-x-0 fixed lg:static inset-y-0 right-0 z-50 w-80 bg-gray-800/95 backdrop-blur-sm border-l border-gray-700/50 flex flex-col transition-all duration-300 ease-in-out lg:transition-none shadow-2xl`}>
+        {/* Right Column - Chat/Details - Fixed positioning that doesn't move with scroll */}
+        <div className={`${chatOpen ? 'translate-x-0' : 'translate-x-full'} lg:translate-x-0 fixed lg:static top-[8rem] lg:top-0 right-0 bottom-0 z-[60] w-80 bg-gray-800/95 backdrop-blur-sm border-l border-gray-700/50 flex flex-col transition-all duration-300 ease-in-out lg:transition-none shadow-2xl`}>
           {/* Close button for mobile */}
           <div className="lg:hidden flex justify-end p-4">
             <button
@@ -769,17 +854,17 @@ const CommunityPage: React.FC = () => {
 
           {selectedGroup ? (
             <>
-              {/* Group Header */}
-              <div className="p-6 border-b border-gray-700/50">
+              {/* Group Header - Fixed at top */}
+              <div className="p-6 border-b border-gray-700/50 flex-shrink-0">
                 <div className="flex items-center space-x-4">
                   <div className="relative">
                     <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-gray-700 shadow-lg">
                       {!imageErrors[selectedGroup.id] ? (
-                        <Image
-                          src={selectedGroup.image}
-                          alt={selectedGroup.name}
-                          fill
-                          className="object-cover"
+                    <Image
+                      src={selectedGroup.image}
+                      alt={selectedGroup.name}
+                      fill
+                      className="object-cover"
                           sizes="48px"
                           onError={() => handleImageError(selectedGroup.id)}
                         />
@@ -829,8 +914,24 @@ const CommunityPage: React.FC = () => {
                 </div>
               )}
 
-              {/* Chat Messages */}
-              <div className="flex-1 overflow-y-auto p-6 space-y-4">
+              {/* Connection Error - Fixed below header */}
+              {chatState.connectionError && (
+                <div className="p-4 bg-red-500/10 border-l-4 border-red-500 flex-shrink-0">
+                  <div className="flex items-center space-x-2">
+                    <AlertCircle className="h-4 w-4 text-red-400" />
+                    <p className="text-sm text-red-400">{chatState.connectionError}</p>
+                    <button
+                      onClick={() => connectToChat(selectedGroup.id)}
+                      className="text-xs text-red-400 hover:text-red-300 underline"
+                    >
+                      Retry
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Chat Messages - Scrollable area */}
+              <div className="flex-1 overflow-y-auto p-6 space-y-4 min-h-0">
                 <div className="text-center">
                   <span className="text-xs text-gray-500 bg-gray-700/50 px-3 py-1 rounded-full">Today</span>
                 </div>
@@ -840,9 +941,9 @@ const CommunityPage: React.FC = () => {
                     {message.senderId !== currentUser.id && (
                       <div className="relative">
                         <div className="relative w-10 h-10 rounded-full overflow-hidden bg-gray-700 shadow-lg">
-                          <Image
-                            src={message.avatar}
-                            alt={message.sender}
+                      <Image
+                        src={message.avatar}
+                        alt={message.sender}
                             fill
                             className="object-cover"
                             sizes="40px"
@@ -899,15 +1000,15 @@ const CommunityPage: React.FC = () => {
                   <div className="flex space-x-3">
                     <div className="relative w-10 h-10 rounded-full overflow-hidden bg-gray-700 shadow-lg">
                       <Image
-                        src="https://images.pexels.com/photos/5439367/pexels-photo-5439367.jpeg"
+                        src="https://images.pexels.com/photos/1181686/pexels-photo-1181686.jpeg"
                         alt="Typing"
                         fill
                         className="object-cover"
                         sizes="40px"
                       />
                     </div>
-                    <div className="flex-1">
-                      <div className="bg-gray-700/50 backdrop-blur-sm rounded-2xl p-4">
+                    <div className="flex-1 max-w-[70%]">
+                      <div className="rounded-2xl p-4 bg-gray-700/50 backdrop-blur-sm">
                         <div className="flex space-x-1">
                           <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
                           <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
@@ -918,42 +1019,42 @@ const CommunityPage: React.FC = () => {
                   </div>
                 )}
 
-                {/* Auto-scroll anchor */}
+                {/* Auto-scroll to bottom */}
                 <div ref={messagesEndRef} />
               </div>
 
-              {/* Message Input */}
-              <div className="p-6 border-t border-gray-700/50">
+              {/* Message Input - Fixed at bottom */}
+              <div className="p-6 border-t border-gray-700/50 flex-shrink-0">
                 <form onSubmit={handleSendMessage} className="flex items-center space-x-3">
-                  <button type="button" className="p-2 text-gray-400 hover:text-gray-300 rounded-lg hover:bg-gray-700/50 transition-all duration-200" aria-label="Voice message">
-                    <Mic className="h-4 w-4" />
+                  <button
+                    type="button"
+                    className="p-2 text-gray-400 hover:text-gray-300 rounded-lg hover:bg-gray-700/50 transition-all duration-200"
+                    aria-label="Add attachment"
+                  >
+                    <Paperclip className="h-4 w-4" />
                   </button>
                   <div className="flex-1 relative">
-                    <input
+                  <input
                       ref={messageInputRef}
-                      type="text"
-                      placeholder="Type a message..."
-                      value={messageInput}
+                    type="text"
+                    placeholder="Type a message..."
+                    value={messageInput}
                       onChange={handleTyping}
                       disabled={isSendingMessage}
                       className="w-full px-4 py-3 bg-gray-700/50 backdrop-blur-sm border border-gray-600/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-red-500/50 text-white placeholder-gray-400 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                      aria-label="Message input"
-                    />
+                    aria-label="Message input"
+                  />
                   </div>
                   <button
                     type="submit"
                     disabled={!messageInput.trim() || isSendingMessage}
-                    className={`p-3 rounded-xl transition-all duration-200 transform hover:scale-105 ${
-                      messageInput.trim() && !isSendingMessage
-                        ? 'bg-gradient-to-r from-red-500 to-red-600 text-white shadow-lg shadow-red-500/25 hover:shadow-xl hover:shadow-red-500/30'
-                        : 'bg-gray-600 text-gray-400 cursor-not-allowed'
-                    }`}
+                    className="p-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl hover:from-red-600 hover:to-red-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105"
                     aria-label="Send message"
                   >
                     {isSendingMessage ? (
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                     ) : (
-                      <Send className="h-4 w-4" />
+                    <Send className="h-4 w-4" />
                     )}
                   </button>
                 </form>

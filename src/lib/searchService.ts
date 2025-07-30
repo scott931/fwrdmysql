@@ -39,46 +39,8 @@ export interface SearchOptions {
   sortOrder?: 'asc' | 'desc';
 }
 
-// Mock transcript data (in real app, this would come from speech-to-text processing)
-const mockTranscripts: Record<string, string> = {
-  'lesson1': `Welcome to this comprehensive course on business fundamentals. Today we'll be covering the essential principles that every entrepreneur needs to understand. Let's start with the basics of market analysis and customer segmentation. Understanding your target audience is crucial for any successful business venture.`,
-  'lesson2': `In this lesson, we'll dive deep into financial management strategies. We'll cover budgeting, cash flow management, and investment planning. These skills are fundamental for sustainable business growth.`,
-  'lesson3': `Marketing and branding are essential components of business success. We'll explore digital marketing strategies, social media presence, and building a strong brand identity.`,
-  'lesson4': `Leadership and team management are critical skills for any business leader. We'll discuss effective communication, conflict resolution, and building high-performing teams.`,
-  'lesson5': `Technology and innovation are driving forces in modern business. We'll examine how to leverage technology for competitive advantage and stay ahead of industry trends.`
-};
-
-// Mock course content for full-text search
-const mockCourseContent: Record<string, any> = {
-  'course1': {
-    title: 'Business Fundamentals',
-    description: 'Learn the essential principles of business management, including strategy, operations, and leadership.',
-    content: `This comprehensive course covers all aspects of business fundamentals. From market analysis to financial management, you'll gain the skills needed to succeed in today's competitive business environment. The course includes practical exercises, case studies, and real-world examples to reinforce your learning.`,
-    tags: ['business', 'management', 'strategy', 'leadership', 'finance'],
-    difficulty: 'beginner',
-    duration: '6 hours',
-    language: 'english',
-    rating: 4.5,
-    isFree: false,
-    isFeatured: true,
-    hasTranscript: true,
-    hasSubtitles: true
-  },
-  'course2': {
-    title: 'Advanced Entrepreneurship',
-    description: 'Master advanced entrepreneurial skills including scaling, fundraising, and exit strategies.',
-    content: `Take your entrepreneurial journey to the next level with this advanced course. Learn about scaling strategies, fundraising techniques, and preparing for successful exits. This course is designed for experienced entrepreneurs who want to grow their businesses to the next level.`,
-    tags: ['entrepreneurship', 'scaling', 'fundraising', 'exit-strategy', 'growth'],
-    difficulty: 'advanced',
-    duration: '8 hours',
-    language: 'english',
-    rating: 4.8,
-    isFree: false,
-    isFeatured: true,
-    hasTranscript: true,
-    hasSubtitles: true
-  }
-};
+// Note: Mock data removed - now using real data from database
+// Transcript data and course content will be fetched from the database
 
 class SearchService {
   private courses: Course[] = [];
@@ -148,7 +110,6 @@ class SearchService {
   private searchCourses(queryWords: string[], filters: SearchFilters): SearchResult[] {
     return this.courses
       .map(course => {
-        const courseContent = mockCourseContent[course.id] || {};
         let relevance = 0;
         const highlights: string[] = [];
 
@@ -166,22 +127,19 @@ class SearchService {
           highlights.push(`Description: ${descMatch.highlight}`);
         }
 
-        // Search in content
-        const contentMatch = this.calculateWordMatch(queryWords, courseContent.content?.toLowerCase() || '');
-        if (contentMatch.score > 0) {
-          relevance += contentMatch.score;
-          highlights.push(`Content: ${contentMatch.highlight}`);
-        }
+        // Search in lessons
+        const lessonMatches = course.lessons?.map(lesson => {
+          const lessonMatch = this.calculateWordMatch(queryWords, lesson.title.toLowerCase());
+          if (lessonMatch.score > 0) {
+            return `Lesson: ${lessonMatch.highlight}`;
+          }
+          return null;
+        }).filter(Boolean) || [];
 
-        // Search in tags
-        const tagMatch = this.calculateTagMatch(queryWords, courseContent.tags || []);
-        if (tagMatch.score > 0) {
-          relevance += tagMatch.score * 1.5;
-          highlights.push(`Tags: ${tagMatch.highlight}`);
-        }
+        highlights.push(...lessonMatches);
 
         // Apply filters
-        if (!this.applyFilters(course, courseContent, filters)) {
+        if (!this.applyFilters(course, {}, filters)) {
           return null;
         }
 
@@ -314,44 +272,9 @@ class SearchService {
 
   // Search transcripts
   private searchTranscripts(queryWords: string[], filters: SearchFilters): SearchResult[] {
-    const results: SearchResult[] = [];
-
-    Object.entries(mockTranscripts).forEach(([lessonId, transcript]) => {
-      const transcriptMatch = this.calculateWordMatch(queryWords, transcript.toLowerCase());
-
-      if (transcriptMatch.score > 0) {
-        // Find the lesson and course for this transcript
-        let lessonTitle = 'Unknown Lesson';
-        let courseTitle = 'Unknown Course';
-        let courseId = '';
-
-        this.courses.forEach(course => {
-          const lesson = course.lessons.find(l => l.id === lessonId);
-          if (lesson) {
-            lessonTitle = lesson.title;
-            courseTitle = course.title;
-            courseId = course.id;
-          }
-        });
-
-        results.push({
-          id: `transcript-${lessonId}`,
-          type: 'transcript' as const,
-          title: lessonTitle,
-          description: `Transcript from ${courseTitle}`,
-          relevance: transcriptMatch.score * 0.8, // Slightly lower weight for transcripts
-          highlights: [`Transcript: ${transcriptMatch.highlight}`],
-          metadata: {
-            courseId,
-            courseTitle,
-            lessonId,
-            fullTranscript: transcript
-          }
-        });
-      }
-    });
-
-    return results;
+    // Note: Transcript search removed - will be implemented when real transcript data is available
+    // For now, return empty array as we're using real data only
+    return [];
   }
 
   // Calculate word match relevance

@@ -208,10 +208,20 @@ const CoursesPage: React.FC = () => {
   const allCategories = Array.from(new Set(courses.map(course => course.category)))
     .map(categoryName => ({ id: categoryName, name: categoryName }));
 
-  // Filter courses to only show those with lessons or are ready
-  const availableCourses = courses.filter(course =>
-    course.lessons.length > 0 || !course.comingSoon
-  );
+  // Filter courses to show those with lessons, but also show courses that might be in progress
+  const availableCourses = courses.filter(course => {
+    // Show courses that have lessons
+    if (course.lessons && course.lessons.length > 0) {
+      return true;
+    }
+    
+    // Also show courses that are not coming soon (they might be in progress)
+    if (!course.comingSoon) {
+      return true;
+    }
+    
+    return false;
+  });
 
   console.log('CoursesPage Debug:', {
     totalCourses: courses.length,

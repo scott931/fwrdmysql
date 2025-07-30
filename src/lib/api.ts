@@ -81,17 +81,19 @@ export const userAPI = {
 // Course API
 export const courseAPI = {
   // Get all courses
-  getAllCourses: () => apiRequest('/courses'),
+  getAllCourses: (includeComingSoon = false) =>
+    apiRequest(`/courses${includeComingSoon ? '?include_coming_soon=true' : ''}`),
 
   // Get course by ID
   getCourse: (courseId: string) => apiRequest(`/courses/${courseId}`),
 
   // Get featured courses
-  getFeaturedCourses: () => apiRequest('/courses/featured'),
+  getFeaturedCourses: (includeComingSoon = false) =>
+    apiRequest(`/courses/featured${includeComingSoon ? '?include_coming_soon=true' : ''}`),
 
   // Get courses by category
-  getCoursesByCategory: (categoryId: string) =>
-    apiRequest(`/courses/category/${categoryId}`),
+  getCoursesByCategory: (categoryId: string, includeComingSoon = false) =>
+    apiRequest(`/courses/category/${categoryId}${includeComingSoon ? '?include_coming_soon=true' : ''}`),
 
   // Create new course
   createCourse: (courseData: Partial<Course>) =>
@@ -112,6 +114,16 @@ export const courseAPI = {
     apiRequest(`/courses/${courseId}`, {
       method: 'DELETE',
     }),
+
+  // Search courses
+  searchCourses: (query: string, options?: { limit?: number; offset?: number; includeComingSoon?: boolean }) => {
+    const params = new URLSearchParams();
+    params.append('q', query);
+    if (options?.limit) params.append('limit', options.limit.toString());
+    if (options?.offset) params.append('offset', options.offset.toString());
+    if (options?.includeComingSoon) params.append('include_coming_soon', 'true');
+    return apiRequest(`/search?${params.toString()}`);
+  },
 };
 
 // Category API
@@ -152,7 +164,8 @@ export const instructorAPI = {
   getInstructor: (instructorId: string) => apiRequest(`/instructors/${instructorId}`),
 
   // Get instructor courses
-  getInstructorCourses: (instructorId: string) => apiRequest(`/instructors/${instructorId}/courses`),
+  getInstructorCourses: (instructorId: string, includeComingSoon = false) =>
+    apiRequest(`/instructors/${instructorId}/courses${includeComingSoon ? '?include_coming_soon=true' : ''}`),
 
   // Create new instructor
   createInstructor: (instructorData: Partial<Instructor>) =>

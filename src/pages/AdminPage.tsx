@@ -30,7 +30,8 @@ import {
   GraduationCap,
   MessageSquare,
   Globe,
-  Crown
+  Crown,
+  X
 } from 'lucide-react';
 import { useNavigate } from '../lib/router';
 import Button from '../components/ui/Button';
@@ -52,6 +53,8 @@ const AdminPage: React.FC = () => {
   const [permissionError, setPermissionError] = useState<string | null>(null);
   const [analyticsTimeRange, setAnalyticsTimeRange] = useState<'7d' | '30d' | '90d' | '1y'>('30d');
   const [isClient, setIsClient] = useState(false);
+  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+  const [showCourseModal, setShowCourseModal] = useState(false);
 
   // Get user permissions
   const { userRole, hasPermission } = usePermissions();
@@ -146,7 +149,7 @@ const AdminPage: React.FC = () => {
     console.log('👤 User role:', userRole);
     console.log('🔑 Auth token:', typeof window !== 'undefined' ? localStorage.getItem('forward_africa_token') : 'SSR');
 
-    fetchAllCourses();
+    fetchAllCourses(true); // Include coming soon courses for admin management
     fetchAllCategories();
     fetchAllInstructors();
     fetchPlatformStats();
@@ -225,7 +228,7 @@ const AdminPage: React.FC = () => {
         logAuditEvent('course_deleted', `Deleted course: ${course?.title}`);
 
         // Refresh the courses list from the database
-        await fetchAllCourses();
+        await fetchAllCourses(true); // Include coming soon courses for admin management
 
         // Show success message
         alert('Course deleted successfully');
@@ -271,6 +274,11 @@ const AdminPage: React.FC = () => {
         alert(`Failed to delete instructor: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     }
+  };
+
+  const handleViewCourse = (course: Course) => {
+    setSelectedCourse(course);
+    setShowCourseModal(true);
   };
 
   // Show loading state during SSR
@@ -908,7 +916,11 @@ const AdminPage: React.FC = () => {
                                 {course.title}
                                 {course.featured && <Star className="h-4 w-4 text-yellow-500 ml-2" />}
                               </div>
-                              <div className="text-sm text-gray-400 line-clamp-1">{course.description}</div>
+                              <div className="text-sm text-gray-400">
+                                {course.description?.length > 10
+                                  ? `${course.description.substring(0, 20)}...`
+                                  : course.description}
+                              </div>
                             </div>
                           </div>
                         </td>
@@ -958,7 +970,7 @@ const AdminPage: React.FC = () => {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => navigate(`/course/${course.id}`)}
+                              onClick={() => handleViewCourse(course)}
                             >
                               <Eye className="h-3 w-3 mr-1" />
                               View
@@ -1533,6 +1545,106 @@ const AdminPage: React.FC = () => {
             </div>
           </div>
         </PermissionGuard>
+      )}
+      {showCourseModal && selectedCourse && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-lg p-6 w-full max-w-2xl max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold text-white">Course Details</h3>
+              <button
+                onClick={() => setShowCourseModal(false)}
+                className="text-gray-400 hover:text-white p-1"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {/* Course Thumbnail */}
+              <div className="flex justify-center">
+                <img
+                  src={selectedCourse.thumbnail}
+                  alt={selectedCourse.title}
+                  className="h-48 w-48 object-cover rounded-lg"
+                />
+              </div>
+
+              {/* Course Title */}
+              <div>
+                <h4 className="text-lg font-semibold text-white mb-2">{selectedCourse.title}</h4>
+              </div>
+
+              {/* Course Description */}
+              <div>
+                <h5 className="text-sm font-medium text-gray-300 mb-2">Description</h5>
+                <p className="text-gray-400 text-sm leading-relaxed">{selectedCourse.description}</p>
+              </div>
+
+              {/* Course Details */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <h5 className="text-sm font-medium text-gray-300 mb-1">Category</h5>
+                  <p className="text-gray-400 text-sm">
+                    {categories.find(c => c.id === selectedCourse.category)?.name || 'Uncategorized'}
+                  </p>
+                </div>
+                <div>
+                  <h5 className="text-sm font-medium text-gray-300 mb-1">Status</h5>
+                  <p className="text-gray-400 text-sm">
+                    {selectedCourse.comingSoon ? 'Coming Soon' : 'Published'}
+                  </p>
+                </div>
+                <div>
+                  <h5 className="text-sm font-medium text-gray-300 mb-1">Lessons</h5>
+                  <p className="text-gray-400 text-sm">
+                    {selectedCourse.lessons?.length || 0} lessons
+                  </p>
+                </div>
+                <div>
+                  <h5 className="text-sm font-medium text-gray-300 mb-1">Featured</h5>
+                  <p className="text-gray-400 text-sm">
+                    {selectedCourse.featured ? 'Yes' : 'No'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Instructor Info */}
+              <div>
+                <h5 className="text-sm font-medium text-gray-300 mb-2">Instructor</h5>
+                <div className="flex items-center space-x-3">
+                  <img
+                    src={selectedCourse.instructor?.image || (selectedCourse as any).instructor_image || '/images/placeholder-avatar.jpg'}
+                    alt={selectedCourse.instructor?.name || (selectedCourse as any).instructor_name || 'Instructor'}
+                    className="h-10 w-10 rounded-full object-cover"
+                  />
+                  <div>
+                    <p className="text-white font-medium">
+                      {selectedCourse.instructor?.name || (selectedCourse as any).instructor_name || 'Unknown Instructor'}
+                    </p>
+                    <p className="text-gray-400 text-sm">
+                      {selectedCourse.instructor?.title || (selectedCourse as any).instructor_title || 'Instructor'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end mt-6 space-x-3">
+              <Button
+                variant="outline"
+                onClick={() => setShowCourseModal(false)}
+              >
+                Close
+              </Button>
+              {/* <Button
+                variant="primary"
+                onClick={() => navigate(`/course/${selectedCourse.id}`)}
+              >
+                Go to Course
+              </Button> */}
+            </div>
+          </div>
+        </div>
       )}
       </div>
     </Layout>
