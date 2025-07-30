@@ -165,7 +165,16 @@ export default function LessonPage() {
             course_id: l.course_id,
             duration: l.duration,
             video_url: l.video_url
-          })) || []
+          })) || [],
+          instructor: {
+            name: foundCourse.instructor_name,
+            title: foundCourse.instructor_title,
+            email: foundCourse.instructor_email,
+            phone: foundCourse.instructor_phone,
+            experience: foundCourse.instructor_experience,
+            bio: foundCourse.instructor_bio,
+            social_links: foundCourse.instructor_social_links
+          }
         });
 
         // Check if this course is coming soon - redirect if so
@@ -180,7 +189,11 @@ export default function LessonPage() {
           let instructorName = 'Unknown Instructor';
           let instructorTitle = 'Expert Educator';
           let instructorImage = '/images/placeholder-avatar.jpg';
-          let instructorBio = 'Experienced professional in the field.';
+          let instructorBio = 'No biography available.';
+          let instructorEmail = 'instructor@forwardafrica.com';
+          let instructorPhone = '';
+          let instructorExperience = 5;
+          let instructorSocialLinks = {};
 
           DEBUG.log('🔍 Instructor transformation debug:', {
             hasInstructorObject: !!foundCourse.instructor,
@@ -188,7 +201,12 @@ export default function LessonPage() {
             hasInstructorName: !!foundCourse.instructor_name,
             instructorNameValue: foundCourse.instructor_name,
             instructorTitleValue: foundCourse.instructor_title,
-            instructorImageValue: foundCourse.instructor_image
+            instructorImageValue: foundCourse.instructor_image,
+            instructorBioValue: foundCourse.instructor_bio,
+            instructorEmailValue: foundCourse.instructor_email,
+            instructorPhoneValue: foundCourse.instructor_phone,
+            instructorExperienceValue: foundCourse.instructor_experience,
+            instructorSocialLinksValue: foundCourse.instructor_social_links
           });
 
           try {
@@ -198,7 +216,11 @@ export default function LessonPage() {
               instructorName = (foundCourse.instructor as any).name || 'Unknown Instructor';
               instructorTitle = (foundCourse.instructor as any).title || 'Expert Educator';
               instructorImage = (foundCourse.instructor as any).image || '/images/placeholder-avatar.jpg';
-              instructorBio = (foundCourse.instructor as any).bio || 'Experienced professional in the field.';
+              instructorBio = (foundCourse.instructor as any).bio || 'No biography available.';
+              instructorEmail = (foundCourse.instructor as any).email || 'instructor@forwardafrica.com';
+              instructorPhone = (foundCourse.instructor as any).phone || '';
+              instructorExperience = (foundCourse.instructor as any).experience || 5;
+              instructorSocialLinks = (foundCourse.instructor as any).social_links || {};
             }
             // Second: Fall back to raw API field (direct from API)
             else if (foundCourse.instructor_name) {
@@ -206,7 +228,33 @@ export default function LessonPage() {
               instructorName = foundCourse.instructor_name || 'Unknown Instructor';
               instructorTitle = foundCourse.instructor_title || 'Expert Educator';
               instructorImage = foundCourse.instructor_image || '/images/placeholder-avatar.jpg';
-              instructorBio = foundCourse.instructor_bio || 'Experienced professional in the field.';
+              instructorBio = foundCourse.instructor_bio || 'No biography available.';
+              instructorEmail = foundCourse.instructor_email || 'instructor@forwardafrica.com';
+              instructorPhone = foundCourse.instructor_phone || '';
+              instructorExperience = foundCourse.instructor_experience || 5;
+                            try {
+                if (foundCourse.instructor_social_links) {
+                  if (typeof foundCourse.instructor_social_links === 'string') {
+                    // If it's a string, try to parse it
+                    if (foundCourse.instructor_social_links === '[object Object]') {
+                      // Handle the MySQL JSON object issue
+                      instructorSocialLinks = {};
+                    } else {
+                      instructorSocialLinks = JSON.parse(foundCourse.instructor_social_links);
+                    }
+                  } else if (typeof foundCourse.instructor_social_links === 'object') {
+                    // If it's already an object, use it directly
+                    instructorSocialLinks = foundCourse.instructor_social_links;
+                  } else {
+                    instructorSocialLinks = {};
+                  }
+                } else {
+                  instructorSocialLinks = {};
+                }
+              } catch (error) {
+                DEBUG.error('Error parsing social links:', error);
+                instructorSocialLinks = {};
+              }
             }
             // Third: Handle string instructor (legacy format)
             else if (typeof foundCourse.instructor === 'string') {
@@ -214,7 +262,11 @@ export default function LessonPage() {
               instructorName = foundCourse.instructor;
               instructorTitle = 'Expert Educator';
               instructorImage = '/images/placeholder-avatar.jpg';
-              instructorBio = 'Experienced professional in the field.';
+              instructorBio = 'No biography available.';
+              instructorEmail = 'instructor@forwardafrica.com';
+              instructorPhone = '';
+              instructorExperience = 5;
+              instructorSocialLinks = {};
             }
             // Fourth: Final fallback
             else {
@@ -222,14 +274,22 @@ export default function LessonPage() {
               instructorName = 'Unknown Instructor';
               instructorTitle = 'Expert Educator';
               instructorImage = '/images/placeholder-avatar.jpg';
-              instructorBio = 'Experienced professional in the field.';
+              instructorBio = 'No biography available.';
+              instructorEmail = 'instructor@forwardafrica.com';
+              instructorPhone = '';
+              instructorExperience = 5;
+              instructorSocialLinks = {};
             }
           } catch (error) {
             DEBUG.error('Error accessing instructor data:', error);
             instructorName = 'Unknown Instructor';
             instructorTitle = 'Expert Educator';
             instructorImage = '/images/placeholder-avatar.jpg';
-            instructorBio = 'Experienced professional in the field.';
+            instructorBio = 'No biography available.';
+            instructorEmail = 'instructor@forwardafrica.com';
+            instructorPhone = '';
+            instructorExperience = 5;
+            instructorSocialLinks = {};
           }
 
           return {
@@ -238,9 +298,11 @@ export default function LessonPage() {
             title: instructorTitle,
             image: instructorImage,
             bio: instructorBio,
-            email: foundCourse.instructor_email || 'instructor@forwardafrica.com',
+            email: instructorEmail,
+            phone: instructorPhone,
+            experience: instructorExperience,
+            socialLinks: instructorSocialLinks,
             expertise: foundCourse.instructor_expertise ? foundCourse.instructor_expertise.split(',').map((exp: string) => exp.trim()) : ['General Education'],
-            experience: foundCourse.instructor_experience || 5,
             createdAt: new Date(foundCourse.created_at || Date.now())
           };
         })();
@@ -536,12 +598,12 @@ export default function LessonPage() {
 
             {/* Instructor Details */}
             <div className="mt-6 mb-6">
-              <div className="bg-gray-800 rounded-lg p-4">
+              <div className="bg-gray-800 rounded-lg p-6">
                 <div className="flex items-center mb-4">
                   <img
                     src={course.instructor?.image || '/images/placeholder-avatar.jpg'}
                     alt={course.instructor?.name || 'Instructor'}
-                    className="w-12 h-12 rounded-full object-cover mr-4"
+                    className="w-16 h-16 rounded-full object-cover mr-4"
                     onError={(e) => {
                       const target = e.target as HTMLImageElement;
                       if (target.src !== '/images/placeholder-avatar.jpg') {
@@ -550,14 +612,90 @@ export default function LessonPage() {
                     }}
                   />
                   <div>
-                    <h3 className="text-white font-medium">{course.instructor?.name || 'Instructor'}</h3>
+                    <h3 className="text-white font-medium text-lg">{course.instructor?.name || 'Instructor'}</h3>
                     <p className="text-gray-400 text-sm">{course.instructor?.title || 'Expert Educator'}</p>
                   </div>
                 </div>
+
+                {/* Professional Details */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center text-sm">
+                      <span className="text-gray-400 w-24">Professional Title:</span>
+                      <span className="text-white">{course.instructor?.title || 'Expert Educator'}</span>
+                    </div>
+                    <div className="flex items-center text-sm">
+                      <span className="text-gray-400 w-24">Email Address:</span>
+                      <span className="text-white">{course.instructor?.email || 'instructor@forwardafrica.com'}</span>
+                    </div>
+                    <div className="flex items-center text-sm">
+                      <span className="text-gray-400 w-24">Phone Number:</span>
+                      <span className="text-white">{course.instructor?.phone || 'Not provided'}</span>
+                    </div>
+                    <div className="flex items-center text-sm">
+                      <span className="text-gray-400 w-24">Experience:</span>
+                      <span className="text-white">{course.instructor?.experience || 5} years</span>
+                    </div>
+                  </div>
+
+                  {/* Social Links */}
+                  <div className="space-y-2">
+                    <div className="flex items-center text-sm">
+                      <span className="text-gray-400 w-24">LinkedIn:</span>
+                      {course.instructor?.socialLinks?.linkedin ? (
+                        <a
+                          href={course.instructor.socialLinks.linkedin}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-400 hover:text-blue-300 transition-colors"
+                        >
+                          View Profile
+                        </a>
+                      ) : (
+                        <span className="text-gray-500">Not provided</span>
+                      )}
+                    </div>
+                    <div className="flex items-center text-sm">
+                      <span className="text-gray-400 w-24">Twitter:</span>
+                      {course.instructor?.socialLinks?.twitter ? (
+                        <a
+                          href={course.instructor.socialLinks.twitter}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-400 hover:text-blue-300 transition-colors"
+                        >
+                          @{course.instructor.socialLinks.twitter.split('/').pop()}
+                        </a>
+                      ) : (
+                        <span className="text-gray-500">Not provided</span>
+                      )}
+                    </div>
+                    <div className="flex items-center text-sm">
+                      <span className="text-gray-400 w-24">Website:</span>
+                      {course.instructor?.socialLinks?.website ? (
+                        <a
+                          href={course.instructor.socialLinks.website}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-400 hover:text-blue-300 transition-colors"
+                        >
+                          Visit Website
+                        </a>
+                      ) : (
+                        <span className="text-gray-500">Not provided</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Biography */}
                 {course.instructor?.bio && (
-                  <p className="text-gray-300 text-sm">
-                    {course.instructor.bio}
-                  </p>
+                  <div className="mt-4">
+                    <h4 className="text-white font-medium mb-2">Professional Biography</h4>
+                    <p className="text-gray-300 text-sm leading-relaxed">
+                      {course.instructor.bio}
+                    </p>
+                  </div>
                 )}
               </div>
             </div>

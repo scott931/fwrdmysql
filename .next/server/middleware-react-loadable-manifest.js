@@ -1,1 +1,1 @@
-self.__REACT_LOADABLE_MANIFEST="{\"pages\\\\home.tsx -> ../src/pages/HomePage\":{\"id\":\"pages\\\\home.tsx -> ../src/pages/HomePage\",\"files\":[\"static/chunks/src_pages_HomePage_tsx.js\"]}}"
+self.__REACT_LOADABLE_MANIFEST="{\"pages\\\\admin\\\\add-instructor.tsx -> ../../src/pages/AddFacilitatorPage\":{\"id\":\"pages\\\\admin\\\\add-instructor.tsx -> ../../src/pages/AddFacilitatorPage\",\"files\":[\"static/chunks/src_pages_AddFacilitatorPage_tsx.js\"]}}"
