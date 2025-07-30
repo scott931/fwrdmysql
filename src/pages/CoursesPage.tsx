@@ -4,178 +4,27 @@ import CourseCard from '../components/ui/CourseCard';
 import { useCourses } from '../hooks/useDatabase';
 import { Course } from '../types';
 
-// Transform backend course data to frontend format
-const transformCourseData = (backendCourse: any): Course => {
-  console.log('Transform Course Data - Backend:', backendCourse);
-
-  // Transform instructor data with dual fallback logic
-  let instructorName = 'Unknown Instructor';
-  let instructorTitle = 'Instructor';
-  let instructorImage = '/images/placeholder-avatar.jpg';
-  let instructorBio = 'Experienced instructor';
-  let instructorEmail = 'instructor@forwardafrica.com';
-  let instructorExpertise = ['Education'];
-  let instructorExperience = 5;
-  let instructorCreatedAt = new Date();
-
-  console.log('🔍 TransformCourseData instructor debug:', {
-    courseId: backendCourse.id,
-    hasInstructorObject: !!backendCourse.instructor,
-    instructorType: typeof backendCourse.instructor,
-    hasInstructorName: !!backendCourse.instructor_name,
-    instructorNameValue: backendCourse.instructor_name,
-    instructorTitleValue: backendCourse.instructor_title,
-    instructorImageValue: backendCourse.instructor_image
-  });
-
-  try {
-    // First: Try to access the transformed instructor object (from useCourses hook)
-    if (backendCourse.instructor && typeof backendCourse.instructor === 'object' && backendCourse.instructor !== null) {
-      console.log('✅ TransformCourseData: Using instructor object');
-      instructorName = (backendCourse.instructor as any).name || 'Unknown Instructor';
-      instructorTitle = (backendCourse.instructor as any).title || 'Instructor';
-      instructorImage = (backendCourse.instructor as any).image || '/images/placeholder-avatar.jpg';
-      instructorBio = (backendCourse.instructor as any).bio || 'Experienced instructor';
-      instructorEmail = (backendCourse.instructor as any).email || 'instructor@forwardafrica.com';
-      instructorExpertise = (backendCourse.instructor as any).expertise || ['Education'];
-      instructorExperience = (backendCourse.instructor as any).experience || 5;
-      instructorCreatedAt = new Date((backendCourse.instructor as any).createdAt || Date.now());
-    }
-    // Second: Fall back to raw API field (direct from API)
-    else if (backendCourse.instructor_name) {
-      console.log('✅ TransformCourseData: Using instructor_name field');
-      instructorName = backendCourse.instructor_name || 'Unknown Instructor';
-      instructorTitle = backendCourse.instructor_title || 'Instructor';
-      instructorImage = backendCourse.instructor_image || '/images/placeholder-avatar.jpg';
-      instructorBio = backendCourse.instructor_bio || 'Experienced instructor';
-      instructorEmail = backendCourse.instructor_email || 'instructor@forwardafrica.com';
-      instructorExpertise = backendCourse.instructor_expertise ? JSON.parse(backendCourse.instructor_expertise) : ['Education'];
-      instructorExperience = backendCourse.instructor_experience || 5;
-      instructorCreatedAt = new Date(backendCourse.instructor_created_at || Date.now());
-    }
-    // Third: Handle string instructor (legacy format)
-    else if (typeof backendCourse.instructor === 'string') {
-      console.log('✅ TransformCourseData: Using string instructor');
-      instructorName = backendCourse.instructor;
-      instructorTitle = 'Instructor';
-      instructorImage = '/images/placeholder-avatar.jpg';
-      instructorBio = 'Experienced instructor';
-      instructorEmail = 'instructor@forwardafrica.com';
-      instructorExpertise = ['Education'];
-      instructorExperience = 5;
-      instructorCreatedAt = new Date();
-    }
-    // Fourth: Final fallback
-    else {
-      console.log('❌ TransformCourseData: Using final fallback - no instructor data found');
-      instructorName = 'Unknown Instructor';
-      instructorTitle = 'Instructor';
-      instructorImage = '/images/placeholder-avatar.jpg';
-      instructorBio = 'Experienced instructor';
-      instructorEmail = 'instructor@forwardafrica.com';
-      instructorExpertise = ['Education'];
-      instructorExperience = 5;
-      instructorCreatedAt = new Date();
-    }
-  } catch (error) {
-    console.error('Error accessing instructor data:', error);
-    instructorName = 'Unknown Instructor';
-    instructorTitle = 'Instructor';
-    instructorImage = '/images/placeholder-avatar.jpg';
-    instructorBio = 'Experienced instructor';
-    instructorEmail = 'instructor@forwardafrica.com';
-    instructorExpertise = ['Education'];
-    instructorExperience = 5;
-    instructorCreatedAt = new Date();
-  }
-
-  console.log('🎯 TransformCourseData final instructor data:', {
-    name: instructorName,
-    title: instructorTitle,
-    image: instructorImage
-  });
-
-  const instructor = {
-    id: backendCourse.instructor_id || 'unknown',
-    name: instructorName,
-    title: instructorTitle,
-    image: instructorImage,
-    bio: instructorBio,
-    email: instructorEmail,
-    expertise: instructorExpertise,
-    experience: instructorExperience,
-    createdAt: instructorCreatedAt
-  };
-
-  // Note: Instructor data parsing is now handled in the dual fallback logic above
-
-  const transformed = {
-    id: backendCourse.id,
-    title: backendCourse.title,
-    instructor: instructor,
-    instructorId: backendCourse.instructor_id,
-    category: backendCourse.category_name || backendCourse.category || 'General',
-            thumbnail: backendCourse.thumbnail || '/images/placeholder-course.jpg',
-        banner: backendCourse.banner || '/images/placeholder-course.jpg',
-    videoUrl: backendCourse.video_url,
-    description: backendCourse.description || 'Course description coming soon.',
-    lessons: (backendCourse.lessons || []).map((lesson: any) => ({
-      ...lesson,
-      // Transform snake_case to camelCase for video URL
-      videoUrl: lesson.video_url || lesson.videoUrl,
-      // Ensure other fields are properly formatted
-      id: lesson.id,
-      title: lesson.title,
-      description: lesson.description || '',
-      duration: lesson.duration || '0:00',
-      course_id: lesson.course_id,
-      order: lesson.order || 0,
-              thumbnail: lesson.thumbnail || lesson.lesson_thumbnail || '/images/placeholder-course.jpg'
-    })).slice().sort((a: any, b: any) => {
-      // Sort by order_index if present, then by title
-      if (a.orderIndex !== undefined && b.orderIndex !== undefined) {
-        return a.orderIndex - b.orderIndex;
-      }
-      if (a.order_index !== undefined && b.order_index !== undefined) {
-        return a.order_index - b.order_index;
-      }
-      // fallback: sort by title
-      return (a.title || '').localeCompare(b.title || '');
-    }),
-    featured: backendCourse.featured || false,
-    totalXP: backendCourse.total_xp || 1000,
-    comingSoon: backendCourse.coming_soon === 1 || backendCourse.coming_soon === true,
-    releaseDate: backendCourse.release_date
-  };
-
-  console.log('Transform Course Data - Transformed:', transformed);
-  console.log('Instructor data:', transformed.instructor);
-  console.log('Lessons data:', transformed.lessons);
-  return transformed;
-};
-
 const CoursesPage: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Database hooks
+  // Database hooks - same as HomePage
   const {
-    courses: apiCourses,
+    courses: allCourses,
     loading: apiLoading,
     error: apiError,
     fetchAllCourses
   } = useCourses();
 
-  // Fetch data on component mount
+  // Fetch data on component mount - same as HomePage
   useEffect(() => {
     const loadCourses = async () => {
       setLoading(true);
       setError(null);
 
       try {
-        // Fetch from API
+        // Fetch from API - same as HomePage
         await fetchAllCourses();
       } catch (err) {
         console.error('Failed to load courses:', err);
@@ -187,52 +36,61 @@ const CoursesPage: React.FC = () => {
     loadCourses();
   }, [fetchAllCourses]);
 
-  // Update courses when API data is available
+  // Update loading state based on API loading - same as HomePage
   useEffect(() => {
-    if (apiCourses.length > 0) {
-      // Transform backend data to frontend format
-      const transformedCourses = apiCourses.map(transformCourseData);
-      setCourses(transformedCourses);
+    console.log('🔄 CoursesPage Loading State:', {
+      apiLoading,
+      localLoading: loading,
+      allCoursesLength: allCourses.length,
+      apiError
+    });
+
+    if (!apiLoading) {
       setLoading(false);
     }
-  }, [apiCourses]);
+  }, [apiLoading, allCourses, apiError]);
 
-  // Update loading state based on API loading
-  useEffect(() => {
-    if (!apiLoading && apiCourses.length === 0 && !apiError) {
-      setLoading(false);
-    }
-  }, [apiLoading, apiCourses, apiError]);
-
-  // Get unique categories from courses
-  const allCategories = Array.from(new Set(courses.map(course => course.category)))
+  // Get unique categories from courses - same as HomePage
+  const allCategories = Array.from(new Set(allCourses.map(course => course.category)))
     .map(categoryName => ({ id: categoryName, name: categoryName }));
 
-  // Show all courses including coming soon courses
-  const availableCourses = courses.filter(course => {
+  // Show all courses including coming soon courses - same as HomePage
+  const availableCourses = allCourses.filter(course => {
     // Show all courses, including coming soon courses
     return true;
   });
 
-  console.log('CoursesPage Debug:', {
-    totalCourses: courses.length,
-    availableCourses: availableCourses.length,
-    coursesWithLessons: courses.filter(c => c.lessons && c.lessons.length > 0).length,
-    courseDetails: courses.map(c => ({
-      id: c.id,
-      title: c.title,
-      lessonsCount: c.lessons?.length || 0,
-      comingSoon: c.comingSoon,
-      lessons: c.lessons || []
-    }))
-  });
+  // Debug logging for coming soon courses
+  useEffect(() => {
+    console.log('🔍 CoursesPage: Courses loaded:', {
+      totalCourses: allCourses.length,
+      comingSoonCourses: allCourses.filter(c => c.comingSoon).map(c => ({
+        id: c.id,
+        title: c.title,
+        comingSoon: c.comingSoon
+      }))
+    });
+  }, [allCourses]);
 
   const filteredCourses = selectedCategory === 'all'
     ? availableCourses
     : availableCourses.filter(course => course.category === selectedCategory);
 
+  // Debug logging for filtered courses
+  console.log('🎨 CoursesPage Filtered Courses:', {
+    selectedCategory,
+    totalFiltered: filteredCourses.length,
+    filteredCourseDetails: filteredCourses.map(c => ({
+      id: c.id,
+      title: c.title,
+      comingSoon: c.comingSoon,
+      lessonsCount: c.lessons?.length || 0,
+    }))
+  });
+
   // Show loading state
   if (loading) {
+    console.log('🎬 CoursesPage: Showing loading state');
     return (
       <Layout>
         <div className="max-w-screen-xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
@@ -249,6 +107,7 @@ const CoursesPage: React.FC = () => {
 
   // Show error state
   if (error) {
+    console.log('🎬 CoursesPage: Showing error state');
     return (
       <Layout>
         <div className="max-w-screen-xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
@@ -271,7 +130,8 @@ const CoursesPage: React.FC = () => {
   }
 
   // Show empty state
-  if (courses.length === 0) {
+  if (allCourses.length === 0) {
+    console.log('🎬 CoursesPage: Showing empty state');
     return (
       <Layout>
         <div className="max-w-screen-xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
@@ -286,6 +146,8 @@ const CoursesPage: React.FC = () => {
       </Layout>
     );
   }
+
+  console.log('🎬 CoursesPage: Rendering courses grid with', filteredCourses.length, 'courses');
 
   return (
     <Layout>

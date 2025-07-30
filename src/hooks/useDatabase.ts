@@ -13,16 +13,31 @@ export const useCourses = () => {
   const [error, setError] = useState<string | null>(null);
 
   const fetchAllCourses = useCallback(async (includeComingSoon = true) => {
+    console.log('🔄 useDatabase: fetchAllCourses called with includeComingSoon:', includeComingSoon);
     setLoading(true);
     setError(null);
 
     try {
+      console.log('📡 useDatabase: Making API call to getAllCourses...');
       const data = await courseAPI.getAllCourses(includeComingSoon);
-
-
+      console.log('✅ useDatabase: API call successful, received data:', {
+        dataLength: data.length,
+        dataType: typeof data,
+        isArray: Array.isArray(data),
+        firstItem: data[0] ? { id: data[0].id, title: data[0].title, coming_soon: data[0].coming_soon } : null
+      });
 
       // Transform backend data to frontend format with dual fallback logic
+      console.log('🔄 useDatabase: Starting data transformation...');
       const transformedCourses = data.map((course: any) => {
+        console.log('🎯 useDatabase: Transforming course:', {
+          id: course.id,
+          title: course.title,
+          coming_soon: course.coming_soon,
+          instructor_name: course.instructor_name,
+          lessons_count: course.lessons?.length || 0
+        });
+
         // DUAL FALLBACK instructor handling - same logic as admin page
         let instructorName = 'Unknown Instructor';
         let instructorTitle = 'Instructor';
@@ -90,7 +105,7 @@ export const useCourses = () => {
           instructorCreatedAt = new Date();
         }
 
-        return {
+        const transformed = {
           id: course.id,
           title: course.title,
           instructor: {
@@ -116,13 +131,26 @@ export const useCourses = () => {
           comingSoon: course.coming_soon === 1 || course.coming_soon === true,
           releaseDate: course.release_date
         };
+
+        console.log('✅ useDatabase: Course transformed:', {
+          id: transformed.id,
+          title: transformed.title,
+          comingSoon: transformed.comingSoon,
+          lessonsCount: transformed.lessons.length
+        });
+
+        return transformed;
       });
 
-
+      console.log('🎉 useDatabase: All courses transformed successfully:', {
+        totalCourses: transformedCourses.length,
+        comingSoonCount: transformedCourses.filter((c: Course) => c.comingSoon).length,
+        regularCount: transformedCourses.filter((c: Course) => !c.comingSoon).length
+      });
 
       setCourses(transformedCourses);
     } catch (err) {
-      console.error('Failed to fetch courses from API:', err);
+      console.error('❌ useDatabase: Failed to fetch courses from API:', err);
       setError('Failed to load courses from server');
       setCourses([]); // Set empty array instead of mock data
     } finally {

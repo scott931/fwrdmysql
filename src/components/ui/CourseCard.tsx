@@ -61,38 +61,24 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, showFavoriteButton = tr
   let instructorName = 'Unknown Instructor';
   let instructorImage = '/images/placeholder-avatar.jpg';
 
-  console.log('🔍 CourseCard instructor debug:', {
-    courseId: course.id,
-    hasInstructorObject: !!course.instructor,
-    instructorType: typeof course.instructor,
-    instructorObject: course.instructor,
-    hasInstructorName: !!(course as any).instructor_name,
-    instructorNameValue: (course as any).instructor_name,
-    instructorImageValue: (course as any).instructor_image
-  });
-
   try {
     // First: Try to access the transformed instructor object (from useCourses hook)
     if (course.instructor && typeof course.instructor === 'object' && course.instructor !== null) {
-      console.log('✅ CourseCard: Using instructor object');
       instructorName = (course.instructor as any).name || 'Unknown Instructor';
       instructorImage = (course.instructor as any).image || '/images/placeholder-avatar.jpg';
     }
     // Second: Fall back to raw API field (direct from API)
     else if ((course as any).instructor_name) {
-      console.log('✅ CourseCard: Using instructor_name field');
       instructorName = (course as any).instructor_name || 'Unknown Instructor';
       instructorImage = (course as any).instructor_image || '/images/placeholder-avatar.jpg';
     }
     // Third: Handle string instructor (legacy format)
     else if (typeof course.instructor === 'string') {
-      console.log('✅ CourseCard: Using string instructor');
       instructorName = course.instructor;
       instructorImage = '/images/placeholder-avatar.jpg';
     }
     // Fourth: Final fallback
     else {
-      console.log('❌ CourseCard: Using final fallback - no instructor data found');
       instructorName = 'Unknown Instructor';
       instructorImage = '/images/placeholder-avatar.jpg';
     }
@@ -102,15 +88,8 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, showFavoriteButton = tr
     instructorImage = '/images/placeholder-avatar.jpg';
   }
 
-  console.log('🎯 CourseCard final instructor data:', {
-    name: instructorName,
-    image: instructorImage
-  });
-
   // Check if course is coming soon (only when explicitly marked)
   const isComingSoon = course.comingSoon === true;
-
-
 
   // Check if course is playable (has lessons and not coming soon)
   const isPlayable = course.lessons && course.lessons.length > 0 && !isComingSoon;
@@ -120,16 +99,7 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, showFavoriteButton = tr
     e.preventDefault();
     e.stopPropagation();
 
-    console.log('CourseCard Clicked:', {
-      courseId,
-      title,
-      lessonsCount: course.lessons?.length || 0,
-      hasLessons: course.lessons && course.lessons.length > 0,
-      firstLessonId: course.lessons?.[0]?.id,
-      comingSoon: course.comingSoon,
-      isComingSoon,
-      isPlayable
-    });
+
 
     // Don't navigate if course is coming soon
     if (isComingSoon) {
@@ -177,16 +147,7 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, showFavoriteButton = tr
     }
   };
 
-  // Debug logging
-  console.log('CourseCard Debug:', {
-    courseId,
-    title,
-    lessonsCount: course.lessons?.length || 0,
-    comingSoon: course.comingSoon,
-    isComingSoon,
-    isPlayable,
-    lessons: course.lessons || []
-  });
+
 
   return (
     <div onClick={handleCardClick} className={`group ${isComingSoon ? 'cursor-default' : 'cursor-pointer'}`}>
@@ -345,7 +306,12 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, showFavoriteButton = tr
             </div>
 
             {/* Course Status Indicator */}
-            {course.lessons && course.lessons.length > 0 ? (
+            {isComingSoon ? (
+              <div className="flex items-center space-x-1 bg-yellow-500/10 px-2 py-1 rounded">
+                <Clock className="h-3 w-3 text-yellow-500" />
+                <span className="text-yellow-500 text-xs font-medium">Coming Soon</span>
+              </div>
+            ) : course.lessons && course.lessons.length > 0 ? (
               <div className="flex items-center space-x-1">
                 <Play className="h-3 w-3 text-red-500" />
                 <span className="text-red-500 text-xs font-medium">
@@ -353,9 +319,9 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, showFavoriteButton = tr
                 </span>
               </div>
             ) : (
-              <div className="flex items-center space-x-1 bg-yellow-500/10 px-2 py-1 rounded">
-                <Clock className="h-3 w-3 text-yellow-500" />
-                <span className="text-yellow-500 text-xs font-medium">Coming Soon</span>
+              <div className="flex items-center space-x-1 bg-gray-500/10 px-2 py-1 rounded">
+                <AlertTriangle className="h-3 w-3 text-gray-500" />
+                <span className="text-gray-500 text-xs font-medium">No Lessons</span>
               </div>
             )}
           </div>
