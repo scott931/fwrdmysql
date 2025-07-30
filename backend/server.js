@@ -1236,7 +1236,7 @@ app.put('/api/users/:id/permissions', authenticateToken, async (req, res) => {
 // Courses API
 app.get('/api/courses', async (req, res) => {
   try {
-    const { include_coming_soon = 'false' } = req.query;
+    const { include_coming_soon = 'true' } = req.query;
     const includeComingSoon = include_coming_soon === 'true';
 
     let whereClause = '';
@@ -1271,7 +1271,7 @@ app.get('/api/courses', async (req, res) => {
 
 app.get('/api/courses/featured', async (req, res) => {
   try {
-    const { include_coming_soon = 'false' } = req.query;
+    const { include_coming_soon = 'true' } = req.query;
     const includeComingSoon = include_coming_soon === 'true';
 
     let whereClause = 'WHERE c.featured = true';
@@ -1882,7 +1882,7 @@ app.get('/api/instructors/:id/courses', async (req, res) => {
       description: course.description,
       featured: course.featured,
       totalXP: course.total_xp,
-      comingSoon: course.coming_soon,
+      comingSoon: course.coming_soon || false,
       releaseDate: course.release_date,
               instructor: {
           id: course.instructor_id,

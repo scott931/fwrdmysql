@@ -87,7 +87,7 @@ const UploadCoursePage: React.FC = () => {
             setCategory(existingCourse.category_id);
             setThumbnail(existingCourse.thumbnail);
             setBanner(existingCourse.banner);
-            setIsComingSoon(existingCourse.coming_soon || false);
+            setIsComingSoon(existingCourse.coming_soon === 1 || existingCourse.coming_soon === true);
             setIsFeatured(existingCourse.featured || false);
             setReleaseDate(existingCourse.release_date || '');
 

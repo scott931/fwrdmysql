@@ -81,14 +81,14 @@ export const userAPI = {
 // Course API
 export const courseAPI = {
   // Get all courses
-  getAllCourses: (includeComingSoon = false) =>
+  getAllCourses: (includeComingSoon = true) =>
     apiRequest(`/courses${includeComingSoon ? '?include_coming_soon=true' : ''}`),
 
   // Get course by ID
   getCourse: (courseId: string) => apiRequest(`/courses/${courseId}`),
 
   // Get featured courses
-  getFeaturedCourses: (includeComingSoon = false) =>
+  getFeaturedCourses: (includeComingSoon = true) =>
     apiRequest(`/courses/featured${includeComingSoon ? '?include_coming_soon=true' : ''}`),
 
   // Get courses by category

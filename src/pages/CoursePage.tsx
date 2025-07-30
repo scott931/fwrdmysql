@@ -239,7 +239,7 @@ const CoursePage: React.FC = () => {
             })),
             featured: foundCourse.featured || false,
             totalXP: foundCourse.total_xp || 1000,
-            comingSoon: foundCourse.coming_soon || false,
+            comingSoon: foundCourse.coming_soon === 1 || foundCourse.coming_soon === true,
             releaseDate: foundCourse.release_date
           };
 

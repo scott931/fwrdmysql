@@ -117,6 +117,8 @@ const HomePage: React.FC = () => {
     );
   }
 
+
+
   // Show empty state
   if (allCourses.length === 0) {
     return (
@@ -203,21 +205,20 @@ const HomePage: React.FC = () => {
           return categories.map((categoryName) => {
             const categoryCourses = allCourses.filter((course: Course) => course.category === categoryName);
 
-          if (categoryCourses.length > 0 && categoryName !== 'Featured') {
-              console.log(`Rendering category "${categoryName}" with:`, categoryCourses);
-            return (
-              <div key={categoryName} className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                <h2 className="text-white text-2xl font-bold mb-6">{categoryName}</h2>
-                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4 lg:gap-6">
-                  {categoryCourses.map(course => (
-                    <CourseCard key={course.id} course={course} />
-                  ))}
+            if (categoryCourses.length > 0 && categoryName !== 'Featured') {
+              return (
+                <div key={categoryName} className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                  <h2 className="text-white text-2xl font-bold mb-6">{categoryName}</h2>
+                  <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4 lg:gap-6">
+                    {categoryCourses.map(course => (
+                      <CourseCard key={course.id} course={course} />
+                    ))}
+                  </div>
                 </div>
-              </div>
-            );
-          }
+              );
+            }
 
-          return null;
+            return null;
           });
         })()}
       </div>

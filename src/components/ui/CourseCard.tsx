@@ -110,6 +110,8 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, showFavoriteButton = tr
   // Check if course is coming soon (only when explicitly marked)
   const isComingSoon = course.comingSoon === true;
 
+
+
   // Check if course is playable (has lessons and not coming soon)
   const isPlayable = course.lessons && course.lessons.length > 0 && !isComingSoon;
 
@@ -181,6 +183,7 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, showFavoriteButton = tr
     title,
     lessonsCount: course.lessons?.length || 0,
     comingSoon: course.comingSoon,
+    isComingSoon,
     isPlayable,
     lessons: course.lessons || []
   });
@@ -238,10 +241,10 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, showFavoriteButton = tr
 
           {/* Coming Soon Overlay */}
           {isComingSoon && (
-            <div className="absolute inset-0 flex items-center justify-center z-10 bg-black bg-opacity-50">
-              <div className="bg-yellow-600 text-white px-4 py-2 rounded-lg shadow-lg">
-                <Clock className="h-6 w-6 inline mr-2" />
-                <span className="font-semibold">Coming Soon</span>
+            <div className="absolute inset-0 flex items-center justify-center z-30 bg-black bg-opacity-50">
+              <div className="bg-yellow-500 text-white px-4 py-2 rounded-lg shadow-lg border border-yellow-300">
+                <Clock className="h-5 w-5 inline mr-2" />
+                <span className="font-semibold text-sm">Coming Soon</span>
               </div>
             </div>
           )}
@@ -255,11 +258,19 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, showFavoriteButton = tr
             </div>
           )}
 
+          {/* Coming Soon Badge - Top Left */}
+          {isComingSoon && (
+            <div className="absolute top-2 left-2 z-20 bg-yellow-500 text-white px-2 py-1 rounded-full shadow-md border border-yellow-300">
+              <Clock className="h-3 w-3 inline mr-1" />
+              <span className="text-xs font-semibold">SOON</span>
+            </div>
+          )}
+
           {/* Favorite Button */}
           {showFavoriteButton && (
             <button
               onClick={handleFavoriteClick}
-              className="absolute top-3 right-3 z-20 p-2 bg-black/50 rounded-full hover:bg-black/70 transition-colors"
+              className={`absolute top-3 ${isComingSoon ? 'right-3' : 'right-3'} z-20 p-2 bg-black/50 rounded-full hover:bg-black/70 transition-colors`}
             >
               <Heart
                 className={`h-5 w-5 ${isFavorited ? 'text-red-500 fill-current' : 'text-white'}`}
@@ -269,7 +280,10 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, showFavoriteButton = tr
 
           {/* Course Information */}
           <div className="absolute bottom-0 left-0 right-0 p-3">
-            <h3 className="text-white font-bold text-base leading-tight mb-1 line-clamp-2">{title}</h3>
+            <h3 className={`font-bold text-base leading-tight mb-1 line-clamp-2 ${isComingSoon ? 'text-yellow-100' : 'text-white'}`}>
+              {title}
+              {isComingSoon && <span className="text-yellow-300 ml-1">⏳</span>}
+            </h3>
 
             {/* Course Description with Tooltip */}
             <div className="relative group">
@@ -339,7 +353,7 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, showFavoriteButton = tr
                 </span>
               </div>
             ) : (
-              <div className="flex items-center space-x-1">
+              <div className="flex items-center space-x-1 bg-yellow-500/10 px-2 py-1 rounded">
                 <Clock className="h-3 w-3 text-yellow-500" />
                 <span className="text-yellow-500 text-xs font-medium">Coming Soon</span>
               </div>

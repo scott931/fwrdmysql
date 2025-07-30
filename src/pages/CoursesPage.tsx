@@ -144,7 +144,7 @@ const transformCourseData = (backendCourse: any): Course => {
     }),
     featured: backendCourse.featured || false,
     totalXP: backendCourse.total_xp || 1000,
-    comingSoon: backendCourse.coming_soon || false,
+    comingSoon: backendCourse.coming_soon === 1 || backendCourse.coming_soon === true,
     releaseDate: backendCourse.release_date
   };
 
@@ -208,19 +208,10 @@ const CoursesPage: React.FC = () => {
   const allCategories = Array.from(new Set(courses.map(course => course.category)))
     .map(categoryName => ({ id: categoryName, name: categoryName }));
 
-  // Filter courses to show those with lessons, but also show courses that might be in progress
+  // Show all courses including coming soon courses
   const availableCourses = courses.filter(course => {
-    // Show courses that have lessons
-    if (course.lessons && course.lessons.length > 0) {
-      return true;
-    }
-    
-    // Also show courses that are not coming soon (they might be in progress)
-    if (!course.comingSoon) {
-      return true;
-    }
-    
-    return false;
+    // Show all courses, including coming soon courses
+    return true;
   });
 
   console.log('CoursesPage Debug:', {

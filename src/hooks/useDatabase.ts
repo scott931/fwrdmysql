@@ -12,12 +12,14 @@ export const useCourses = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchAllCourses = useCallback(async (includeComingSoon = false) => {
+  const fetchAllCourses = useCallback(async (includeComingSoon = true) => {
     setLoading(true);
     setError(null);
 
     try {
       const data = await courseAPI.getAllCourses(includeComingSoon);
+
+
 
       // Transform backend data to frontend format with dual fallback logic
       const transformedCourses = data.map((course: any) => {
@@ -111,10 +113,12 @@ export const useCourses = () => {
           lessons: course.lessons || [],
           featured: course.featured || false,
           totalXP: course.total_xp || 1000,
-          comingSoon: course.coming_soon || false,
+          comingSoon: course.coming_soon === 1 || course.coming_soon === true,
           releaseDate: course.release_date
         };
       });
+
+
 
       setCourses(transformedCourses);
     } catch (err) {
@@ -222,7 +226,7 @@ export const useCourses = () => {
           lessons: course.lessons || [],
           featured: course.featured || false,
           totalXP: course.total_xp || 1000,
-          comingSoon: course.coming_soon || false,
+          comingSoon: course.coming_soon === 1 || course.coming_soon === true,
           releaseDate: course.release_date
         };
       });
