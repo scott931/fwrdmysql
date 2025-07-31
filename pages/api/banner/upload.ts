@@ -149,6 +149,57 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     console.log(`✅ File uploaded successfully: ${publicUrl}`);
 
+    // Update banner configuration with the new file
+    try {
+      const configPath = path.join(process.cwd(), 'data', 'banner-config.json');
+      let currentConfig = {};
+
+      try {
+        const configData = await fsPromises.readFile(configPath, 'utf8');
+        currentConfig = JSON.parse(configData);
+      } catch {
+        // Use default config if file doesn't exist
+        currentConfig = {
+          homepage_banner_enabled: false,
+          homepage_banner_type: 'course',
+          homepage_banner_video_url: null,
+          homepage_banner_image_url: null,
+          homepage_banner_title: null,
+          homepage_banner_subtitle: null,
+          homepage_banner_description: null,
+          homepage_banner_button_text: 'Get Started',
+          homepage_banner_button_url: null,
+          homepage_banner_overlay_opacity: 0.70
+        };
+      }
+
+      // Update the appropriate URL based on file type
+      const updatedConfig = {
+        ...currentConfig,
+        homepage_banner_enabled: true,
+        homepage_banner_type: fileType,
+        ...(fileType === 'video'
+          ? { homepage_banner_video_url: publicUrl }
+          : { homepage_banner_image_url: publicUrl }
+        )
+      };
+
+      // Ensure data directory exists
+      const dataDir = path.dirname(configPath);
+      try {
+        await fsPromises.access(dataDir);
+      } catch {
+        await fsPromises.mkdir(dataDir, { recursive: true });
+      }
+
+      // Save updated configuration
+      await fsPromises.writeFile(configPath, JSON.stringify(updatedConfig, null, 2));
+      console.log('✅ Banner configuration updated with new file');
+    } catch (configError) {
+      console.error('⚠️ Failed to update banner configuration:', configError);
+      // Continue with upload even if config update fails
+    }
+
     // Return success response
     res.status(200).json({
       success: true,

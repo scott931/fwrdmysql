@@ -33,10 +33,13 @@ const HeroBanner: React.FC<HeroBannerProps> = ({ course, onPlay }) => {
   // Load banner configuration with periodic refresh
   const loadBannerConfig = async () => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002/api'}/banner/config`);
+      const response = await fetch('/api/banner/config');
       if (response.ok) {
         const config = await response.json();
+        console.log('📋 Loaded banner config:', config);
         setBannerConfig(config);
+      } else {
+        console.error('Failed to load banner config:', response.status);
       }
     } catch (error) {
       console.error('Error loading banner config:', error);
@@ -72,8 +75,19 @@ const HeroBanner: React.FC<HeroBannerProps> = ({ course, onPlay }) => {
     // Listen for custom event
     window.addEventListener('banner-updated', handleBannerUpdate);
 
+    // Also listen for storage events (in case config is updated via API)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'banner-config-updated') {
+        console.log('🔄 Banner config updated via storage event');
+        loadBannerConfig();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+
     return () => {
       window.removeEventListener('banner-updated', handleBannerUpdate);
+      window.removeEventListener('storage', handleStorageChange);
     };
   }, []);
 
@@ -110,6 +124,14 @@ const HeroBanner: React.FC<HeroBannerProps> = ({ course, onPlay }) => {
   const customBannerVideoUrl = bannerConfig?.homepage_banner_video_url;
   const customBannerImageUrl = bannerConfig?.homepage_banner_image_url;
 
+  console.log('🎬 Banner debug:', {
+    bannerConfig,
+    shouldUseCustomBanner,
+    customBannerType,
+    customBannerVideoUrl,
+    customBannerImageUrl
+  });
+
   // Show loading state while banner config is loading
   if (loadingBannerConfig) {
     return (
@@ -120,6 +142,13 @@ const HeroBanner: React.FC<HeroBannerProps> = ({ course, onPlay }) => {
       </div>
     );
   }
+
+  console.log('🎬 Rendering banner with:', {
+    shouldUseCustomBanner,
+    customBannerType,
+    customBannerVideoUrl,
+    customBannerImageUrl
+  });
 
   return (
     <div className="relative w-full h-[70vh] min-h-[500px] overflow-hidden">
@@ -135,6 +164,9 @@ const HeroBanner: React.FC<HeroBannerProps> = ({ course, onPlay }) => {
                 muted
                 loop
                 playsInline
+                onLoadStart={() => console.log('🎬 Video loading started')}
+                onLoadedData={() => console.log('🎬 Video loaded successfully')}
+                onError={(e) => console.error('🎬 Video error:', e)}
               />
             ) : customBannerType === 'image' && customBannerImageUrl ? (
               customBannerImageUrl.startsWith('http') ? (
@@ -142,7 +174,9 @@ const HeroBanner: React.FC<HeroBannerProps> = ({ course, onPlay }) => {
                   src={customBannerImageUrl}
                   alt="Custom Banner"
                   className="object-cover w-full h-full"
+                  onLoad={() => console.log('🎬 Image loaded successfully:', customBannerImageUrl)}
                   onError={(e) => {
+                    console.error('🎬 Image error:', customBannerImageUrl);
                     const target = e.target as HTMLImageElement;
                     target.src = '/images/placeholder-course.jpg';
                   }}
@@ -154,7 +188,9 @@ const HeroBanner: React.FC<HeroBannerProps> = ({ course, onPlay }) => {
                   width={1920}
                   height={1080}
                   className="object-cover w-full h-full"
+                  onLoad={() => console.log('🎬 Next.js Image loaded successfully:', customBannerImageUrl)}
                   onError={(e) => {
+                    console.error('🎬 Next.js Image error:', customBannerImageUrl);
                     const target = e.target as HTMLImageElement;
                     target.src = '/images/placeholder-course.jpg';
                   }}
