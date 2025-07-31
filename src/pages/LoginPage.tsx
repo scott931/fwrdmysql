@@ -9,7 +9,7 @@ import { Eye, EyeOff, Mail, Lock, ArrowRight, HelpCircle, ExternalLink } from 'l
 
 const LoginPage: React.FC = () => {
   const router = useRouter();
-  const { signIn } = useAuth();
+  const { signIn, error: authError, clearError } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -18,14 +18,17 @@ const LoginPage: React.FC = () => {
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [showHelp, setShowHelp] = useState(false);
 
+  // Use auth error if available, otherwise use local error
+  const displayError = authError || error;
+
   // Enhanced error handling
   useEffect(() => {
-    if (error) {
-      const errorCode = extractErrorCode(error);
-      const enhancedMessage = getAuthErrorMessage(errorCode, error);
+    if (displayError) {
+      const errorCode = extractErrorCode(displayError);
+      const enhancedMessage = getAuthErrorMessage(errorCode, displayError);
       setError(enhancedMessage);
     }
-  }, [error]);
+  }, [displayError]);
 
   // Real-time validation
   const validateField = (field: string, value: string) => {
@@ -46,6 +49,7 @@ const LoginPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    clearError(); // Clear any existing auth errors
     setValidationErrors({});
 
     // Validate fields
@@ -159,9 +163,12 @@ const LoginPage: React.FC = () => {
 
             {/* Error Message */}
             <ErrorDisplay
-              error={error}
+              error={displayError}
               type="error"
-              onClose={() => setError('')}
+              onClose={() => {
+                setError('');
+                clearError();
+              }}
               className="mb-4"
             />
 
