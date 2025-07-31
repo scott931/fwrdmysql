@@ -49,7 +49,10 @@ class AuthInterceptor {
           // If token refresh fails, redirect to login
           if (retryCount === 0) {
             authService.clearAuthData();
-            window.location.href = '/login';
+            // Use router for better navigation (if available)
+            if (typeof window !== 'undefined') {
+              window.location.href = '/login';
+            }
             throw new Error('Session expired. Please login again.');
           }
           throw error;
@@ -98,7 +101,10 @@ class AuthInterceptor {
 
           // Clear auth data and redirect to login
           authService.clearAuthData();
-          window.location.href = '/login';
+          // Use router for better navigation (if available)
+          if (typeof window !== 'undefined') {
+            window.location.href = '/login';
+          }
           throw new Error('Session expired. Please login again.');
         } finally {
           this.isRefreshing = false;

@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { useRouter } from 'next/router';
 import { authService, AuthUser, LoginCredentials, RegisterData } from '../lib/auth';
 
 interface AuthContextType {
@@ -37,6 +38,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isClient, setIsClient] = useState(false);
+  const router = useRouter();
 
   // Check authentication status
   const checkAuthStatus = useCallback(async () => {
@@ -136,6 +138,69 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     });
   }, [checkAuthStatus, isClient]);
 
+  // Watch for authentication state changes and handle navigation
+  useEffect(() => {
+    if (!isClient) return;
+
+    // If user becomes unauthenticated, redirect to appropriate page
+    if (!user && !loading) {
+      const currentPath = router.pathname;
+
+      // Don't redirect if already on login/register pages or public pages
+      const publicPaths = [
+        '/login',
+        '/register',
+        '/',
+        '/landing',
+        '/about',
+        '/afri-sage',
+        '/community',
+        '/courses', // Allow access to course listing
+        '/category'
+      ];
+      const isPublicPath = publicPaths.some(path => currentPath === path || currentPath.startsWith(path));
+
+      if (!isPublicPath) {
+        console.log('🚪 AuthContext: User logged out, redirecting from', currentPath);
+
+        // Show a brief notification to the user
+        if (typeof window !== 'undefined') {
+          // Create a simple notification
+          const notification = document.createElement('div');
+          notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #dc2626;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            z-index: 9999;
+            font-family: system-ui, sans-serif;
+            font-size: 14px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            animation: slideIn 0.3s ease-out;
+          `;
+          notification.textContent = 'Session expired. Redirecting to login...';
+          document.body.appendChild(notification);
+
+          // Remove notification after 3 seconds
+          setTimeout(() => {
+            if (notification.parentNode) {
+              notification.parentNode.removeChild(notification);
+            }
+          }, 3000);
+        }
+
+        // Redirect to login page, preserving the current path for post-login redirect
+        router.push({
+          pathname: '/login',
+          query: { redirect: currentPath }
+        });
+      }
+    }
+  }, [user, loading, isClient, router]);
+
   const signIn = async (credentials: LoginCredentials) => {
     try {
       setLoading(true);
@@ -231,11 +296,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setUser(null);
       setError(null);
       console.log('✅ AuthContext: Sign out successful');
+
+      // Redirect to home page after logout
+      router.push('/');
     } catch (error) {
       console.error('❌ AuthContext: Sign out error:', error);
       // Even if logout fails, clear local state
       setUser(null);
       setError(null);
+
+      // Still redirect even if logout fails
+      router.push('/');
     }
   };
 

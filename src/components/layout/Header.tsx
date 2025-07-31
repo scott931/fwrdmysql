@@ -5,7 +5,7 @@ import { useRouter } from 'next/router';
 import { Search, Menu, X, Bell, User, ChevronDown, LogOut, Settings } from 'lucide-react';
 import NotificationsDropdown from '../ui/NotificationsDropdown';
 import { useNotifications } from '../../hooks/useNotifications';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuthEnhanced } from '../../hooks/useAuthEnhanced';
 
 const Header: React.FC = () => {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -15,7 +15,7 @@ const Header: React.FC = () => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const router = useRouter();
   const { notifications, markAsRead, markAllAsRead, unreadCount } = useNotifications();
-  const { user, profile, signOut } = useAuth();
+  const { user, profile, enhancedSignOut } = useAuthEnhanced();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -38,8 +38,8 @@ const Header: React.FC = () => {
   }, [router.pathname]);
 
   const handleSignOut = async () => {
-    await signOut();
-    router.push('/');
+    await enhancedSignOut();
+    // Navigation is now handled by AuthContext
   };
 
   const toggleProfileDropdown = () => {

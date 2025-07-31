@@ -2,6 +2,18 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Custom animations for notifications */
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
 /* Prevent layout shifts during loading */
 .loading-skeleton {
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;

@@ -1,107 +1,104 @@
+import { useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useCallback } from 'react';
+import { useRouter } from 'next/router';
+import { authService } from '../lib/auth';
 
 export const useAuthEnhanced = () => {
   const auth = useAuth();
+  const router = useRouter();
 
-  // Enhanced login with better error handling
-  const login = useCallback(async (email: string, password: string) => {
+  // Enhanced logout with better navigation handling
+  const enhancedSignOut = useCallback(async () => {
     try {
-      await auth.signIn({ email, password });
-      return { success: true };
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Login failed'
-      };
-    }
-  }, [auth]);
-
-  // Enhanced logout with cleanup
-  const logout = useCallback(async () => {
-    try {
+      console.log('🚪 Enhanced logout: Starting logout process...');
       await auth.signOut();
-      // Clear any additional local storage or state
-      localStorage.removeItem('forward_africa_token');
-      localStorage.removeItem('forward_africa_user');
-      return { success: true };
+
+      // Clear any additional user-specific data
+      if (typeof window !== 'undefined') {
+        // Clear any cached data or user preferences
+        sessionStorage.clear();
+
+        // Clear specific localStorage items that might persist
+        const keysToRemove = [
+          'user_preferences',
+          'last_visited_page',
+          'course_progress',
+          'video_watch_history'
+        ];
+
+        keysToRemove.forEach(key => {
+          localStorage.removeItem(key);
+        });
+      }
+
+      console.log('✅ Enhanced logout: Logout completed successfully');
     } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Logout failed'
-      };
+      console.error('❌ Enhanced logout: Error during logout:', error);
+      // Even if logout fails, ensure user is redirected
+      router.push('/');
     }
-  }, [auth]);
+  }, [auth, router]);
 
-  // Check if user has specific permission
-  const hasPermission = useCallback((permission: string) => {
-    return auth.user?.permissions?.includes(permission) || false;
-  }, [auth.user]);
+  // Monitor authentication state changes
+  useEffect(() => {
+    if (!auth.user && !auth.loading) {
+      console.log('🔍 Auth state changed: User is no longer authenticated');
 
-  // Check if user has any of the specified roles
-  const hasRole = useCallback((roles: string[]) => {
-    return auth.user?.role ? roles.includes(auth.user.role) : false;
-  }, [auth.user]);
+      // Check if we're on a protected page
+      const currentPath = router.pathname;
+      const protectedPaths = [
+        '/profile',
+        '/admin',
+        '/favorites',
+        '/course/[courseId]/lesson/[lessonId]',
+        '/storage-manager'
+      ];
 
-  // Check if user is admin (super_admin or admin)
-  const isAdmin = useCallback(() => {
-    return auth.isAdmin || auth.isSuperAdmin;
-  }, [auth.isAdmin, auth.isSuperAdmin]);
+      const isOnProtectedPath = protectedPaths.some(path =>
+        currentPath === path || currentPath.startsWith(path.replace(/\[.*?\]/g, ''))
+      );
 
-  // Get user's display name
-  const getDisplayName = useCallback(() => {
-    return auth.user?.full_name || auth.user?.email || 'Unknown User';
-  }, [auth.user]);
+      if (isOnProtectedPath) {
+        console.log('🚪 Redirecting from protected path:', currentPath);
+        router.push({
+          pathname: '/login',
+          query: { redirect: currentPath }
+        });
+      }
+    }
+  }, [auth.user, auth.loading, router]);
 
-  // Check if user has completed onboarding
-  const hasCompletedOnboarding = useCallback(() => {
-    return auth.user?.onboarding_completed || false;
-  }, [auth.user]);
+  // Monitor token expiration
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
 
-  // Get user's role display name
-  const getRoleDisplayName = useCallback(() => {
-    const roleMap: Record<string, string> = {
-      'super_admin': 'Super Administrator',
-      'admin': 'Administrator',
-      'content_manager': 'Content Manager',
-      'community_manager': 'Community Manager',
-      'user_support': 'User Support',
-      'user': 'User'
+    const checkTokenExpiration = () => {
+      if (auth.isAuthenticated && authService.isTokenExpired()) {
+        console.log('⚠️ Token expired, logging out user');
+        enhancedSignOut();
+      }
     };
-    return auth.user?.role ? roleMap[auth.user.role] || auth.user.role : 'Unknown';
-  }, [auth.user]);
+
+    // Check every 5 minutes
+    const interval = setInterval(checkTokenExpiration, 5 * 60 * 1000);
+
+    // Also check when the page becomes visible
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        checkTokenExpiration();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [auth.isAuthenticated, enhancedSignOut]);
 
   return {
-    // Basic auth state
-    user: auth.user,
-    loading: auth.loading,
-    error: auth.error,
-    isAuthenticated: auth.isAuthenticated,
-
-    // Role checks
-    isAdmin: auth.isAdmin,
-    isSuperAdmin: auth.isSuperAdmin,
-    hasRole,
-    isAdminUser: isAdmin(), // Renamed to avoid conflict
-
-    // Permission checks
-    hasPermission,
-
-    // User info
-    getDisplayName,
-    getRoleDisplayName,
-    hasCompletedOnboarding,
-
-    // Auth actions
-    login,
-    logout,
-    signUp: auth.signUp,
-    updateProfile: auth.updateProfile,
-    refreshToken: auth.refreshToken,
-    clearError: auth.clearError,
-    checkAuthStatus: auth.checkAuthStatus,
-
-    // Raw auth context (for advanced usage)
-    auth
+    ...auth,
+    enhancedSignOut,
   };
 };

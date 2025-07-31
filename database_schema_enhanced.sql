@@ -1,5 +1,21 @@
 -- Enhanced Video Progress Tracking Tables
 
+-- User Engagement Metrics Table
+CREATE TABLE user_engagement_metrics (
+    id VARCHAR(36) PRIMARY KEY,
+    user_id VARCHAR(36) NOT NULL,
+    date DATE NOT NULL,
+    daily_active_minutes INT DEFAULT 0,
+    courses_accessed JSON,
+    lessons_completed INT DEFAULT 0,
+    pages_visited INT DEFAULT 0,
+    login_count INT DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_user_date (user_id, date)
+);
+
 -- Video Progress Sessions
 CREATE TABLE video_progress_sessions (
     id VARCHAR(36) PRIMARY KEY,
@@ -52,7 +68,7 @@ CREATE TABLE video_resume_points (
 );
 
 -- Enhanced User Progress with Video Tracking
-ALTER TABLE user_progress 
+ALTER TABLE user_progress
 ADD COLUMN video_sessions_count INT DEFAULT 0,
 ADD COLUMN total_watch_time INT DEFAULT 0,
 ADD COLUMN last_video_progress DECIMAL(5,2) DEFAULT 0,
@@ -87,4 +103,4 @@ CREATE INDEX idx_video_intervals_session ON video_progress_intervals(session_id)
 CREATE INDEX idx_video_resume_user ON video_resume_points(user_id);
 CREATE INDEX idx_video_resume_lesson ON video_resume_points(lesson_id);
 CREATE INDEX idx_video_analytics_user ON video_analytics_summary(user_id);
-CREATE INDEX idx_video_analytics_course ON video_analytics_summary(course_id); 
+CREATE INDEX idx_video_analytics_course ON video_analytics_summary(course_id);
