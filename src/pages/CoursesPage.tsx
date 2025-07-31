@@ -4,97 +4,27 @@ import CourseCard from '../components/ui/CourseCard';
 import { useCourses } from '../hooks/useDatabase';
 import { Course } from '../types';
 
-// Transform backend course data to frontend format
-const transformCourseData = (backendCourse: any): Course => {
-  console.log('Transform Course Data - Backend:', backendCourse);
-
-  // Transform instructor data properly
-  const instructor = {
-    id: backendCourse.instructor_id || 'unknown',
-    name: backendCourse.instructor_name || 'Unknown Instructor',
-    title: backendCourse.instructor_title || 'Instructor',
-    image: backendCourse.instructor_image || '/placeholder-avatar.jpg',
-    bio: backendCourse.instructor_bio || 'Experienced instructor',
-    email: backendCourse.instructor_email || 'instructor@forwardafrica.com',
-    expertise: ['Education'], // Default expertise
-    experience: 5, // Default experience
-    createdAt: new Date()
-  };
-
-  // Try to parse expertise if it exists
-  if (backendCourse.instructor_expertise) {
-    try {
-      instructor.expertise = JSON.parse(backendCourse.instructor_expertise);
-    } catch (e) {
-      console.log('Could not parse instructor expertise:', backendCourse.instructor_expertise);
-    }
-  }
-
-  // Try to parse experience if it exists
-  if (backendCourse.instructor_experience) {
-    instructor.experience = parseInt(backendCourse.instructor_experience) || 5;
-  }
-
-  // Try to parse created_at if it exists
-  if (backendCourse.instructor_created_at) {
-    instructor.createdAt = new Date(backendCourse.instructor_created_at);
-  }
-
-  const transformed = {
-    id: backendCourse.id,
-    title: backendCourse.title,
-    instructor: instructor,
-    instructorId: backendCourse.instructor_id,
-    category: backendCourse.category_name || backendCourse.category || 'General',
-    thumbnail: backendCourse.thumbnail || '/placeholder-course.jpg',
-    banner: backendCourse.banner || '/placeholder-course.jpg',
-    videoUrl: backendCourse.video_url,
-    description: backendCourse.description || 'Course description coming soon.',
-    lessons: (backendCourse.lessons || []).slice().sort((a: any, b: any) => {
-      // Sort by order_index if present, then by title
-      if (a.orderIndex !== undefined && b.orderIndex !== undefined) {
-        return a.orderIndex - b.orderIndex;
-      }
-      if (a.order_index !== undefined && b.order_index !== undefined) {
-        return a.order_index - b.order_index;
-      }
-      // fallback: sort by title
-      return (a.title || '').localeCompare(b.title || '');
-    }),
-    featured: backendCourse.featured || false,
-    totalXP: backendCourse.total_xp || 1000,
-    comingSoon: backendCourse.coming_soon || false,
-    releaseDate: backendCourse.release_date
-  };
-
-  console.log('Transform Course Data - Transformed:', transformed);
-  console.log('Instructor data:', transformed.instructor);
-  console.log('Lessons data:', transformed.lessons);
-  return transformed;
-};
-
 const CoursesPage: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Database hooks
+  // Database hooks - same as HomePage
   const {
-    courses: apiCourses,
+    courses: allCourses,
     loading: apiLoading,
     error: apiError,
     fetchAllCourses
   } = useCourses();
 
-  // Fetch data on component mount
+  // Fetch data on component mount - same as HomePage
   useEffect(() => {
     const loadCourses = async () => {
       setLoading(true);
       setError(null);
 
       try {
-        // Fetch from API
+        // Fetch from API - same as HomePage
         await fetchAllCourses();
       } catch (err) {
         console.error('Failed to load courses:', err);
@@ -106,51 +36,61 @@ const CoursesPage: React.FC = () => {
     loadCourses();
   }, [fetchAllCourses]);
 
-  // Update courses when API data is available
+  // Update loading state based on API loading - same as HomePage
   useEffect(() => {
-    if (apiCourses.length > 0) {
-      // Transform backend data to frontend format
-      const transformedCourses = apiCourses.map(transformCourseData);
-      setCourses(transformedCourses);
+    console.log('🔄 CoursesPage Loading State:', {
+      apiLoading,
+      localLoading: loading,
+      allCoursesLength: allCourses.length,
+      apiError
+    });
+
+    if (!apiLoading) {
       setLoading(false);
     }
-  }, [apiCourses]);
+  }, [apiLoading, allCourses, apiError]);
 
-  // Update loading state based on API loading
-  useEffect(() => {
-    if (!apiLoading && apiCourses.length === 0 && !apiError) {
-      setLoading(false);
-    }
-  }, [apiLoading, apiCourses, apiError]);
-
-  // Get unique categories from courses
-  const allCategories = Array.from(new Set(courses.map(course => course.category)))
+  // Get unique categories from courses - same as HomePage
+  const allCategories = Array.from(new Set(allCourses.map(course => course.category)))
     .map(categoryName => ({ id: categoryName, name: categoryName }));
 
-  // Filter courses to only show those with lessons or are ready
-  const availableCourses = courses.filter(course =>
-    course.lessons.length > 0 || !course.comingSoon
-  );
-
-  console.log('CoursesPage Debug:', {
-    totalCourses: courses.length,
-    availableCourses: availableCourses.length,
-    coursesWithLessons: courses.filter(c => c.lessons && c.lessons.length > 0).length,
-    courseDetails: courses.map(c => ({
-      id: c.id,
-      title: c.title,
-      lessonsCount: c.lessons?.length || 0,
-      comingSoon: c.comingSoon,
-      lessons: c.lessons || []
-    }))
+  // Show all courses including coming soon courses - same as HomePage
+  const availableCourses = allCourses.filter(course => {
+    // Show all courses, including coming soon courses
+    return true;
   });
+
+  // Debug logging for coming soon courses
+  useEffect(() => {
+    console.log('🔍 CoursesPage: Courses loaded:', {
+      totalCourses: allCourses.length,
+      comingSoonCourses: allCourses.filter(c => c.comingSoon).map(c => ({
+        id: c.id,
+        title: c.title,
+        comingSoon: c.comingSoon
+      }))
+    });
+  }, [allCourses]);
 
   const filteredCourses = selectedCategory === 'all'
     ? availableCourses
     : availableCourses.filter(course => course.category === selectedCategory);
 
+  // Debug logging for filtered courses
+  console.log('🎨 CoursesPage Filtered Courses:', {
+    selectedCategory,
+    totalFiltered: filteredCourses.length,
+    filteredCourseDetails: filteredCourses.map(c => ({
+      id: c.id,
+      title: c.title,
+      comingSoon: c.comingSoon,
+      lessonsCount: c.lessons?.length || 0,
+    }))
+  });
+
   // Show loading state
   if (loading) {
+    console.log('🎬 CoursesPage: Showing loading state');
     return (
       <Layout>
         <div className="max-w-screen-xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
@@ -167,6 +107,7 @@ const CoursesPage: React.FC = () => {
 
   // Show error state
   if (error) {
+    console.log('🎬 CoursesPage: Showing error state');
     return (
       <Layout>
         <div className="max-w-screen-xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
@@ -189,7 +130,8 @@ const CoursesPage: React.FC = () => {
   }
 
   // Show empty state
-  if (courses.length === 0) {
+  if (allCourses.length === 0) {
+    console.log('🎬 CoursesPage: Showing empty state');
     return (
       <Layout>
         <div className="max-w-screen-xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
@@ -204,6 +146,8 @@ const CoursesPage: React.FC = () => {
       </Layout>
     );
   }
+
+  console.log('🎬 CoursesPage: Rendering courses grid with', filteredCourses.length, 'courses');
 
   return (
     <Layout>

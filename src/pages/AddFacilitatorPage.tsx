@@ -7,6 +7,7 @@ import ImageUpload from '../components/ui/ImageUpload';
 import { useInstructorForm } from '../hooks/useInstructorForm';
 import { ValidationError, ValidationErrorsList } from '../components/ui/ValidationError';
 import { SuccessMessage } from '../components/ui/SuccessMessage';
+import Layout from '../components/layout/Layout';
 
 const AddInstructorPage: React.FC = () => {
   const navigate = useNavigate();
@@ -119,243 +120,244 @@ const AddInstructorPage: React.FC = () => {
   }
 
   return (
-    <div className="max-w-screen-xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-3xl mx-auto">
-        <div className="flex items-center mb-8">
-          <Button
-            variant="ghost"
-            onClick={() => navigate('/admin')}
-            className="mr-4"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <h1 className="text-3xl font-bold text-white">
-            {isEditing ? 'Edit Instructor' : 'Add New Instructor'}
-          </h1>
-        </div>
+    <Layout>
+      <div className="max-w-screen-xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-3xl mx-auto">
+          <div className="flex items-center mb-8">
+            <Button
+              variant="ghost"
+              onClick={() => navigate('/admin')}
+              className="mr-4"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <h1 className="text-3xl font-bold text-white">
+              {isEditing ? 'Edit Instructor' : 'Add New Instructor'}
+            </h1>
+          </div>
 
-        <div className="bg-gray-800 rounded-lg p-6">
-          {/* Success message */}
-          {lastSuccess && (
-            <SuccessMessage
-              message={lastSuccess}
-              onClose={clearSuccess}
+          <div className="bg-gray-800 rounded-lg p-6">
+            {/* Success message */}
+            {lastSuccess && (
+              <SuccessMessage
+                message={lastSuccess}
+                onClose={clearSuccess}
+                className="mb-6"
+              />
+            )}
+
+            {/* General validation errors */}
+            <ValidationErrorsList
+              errors={generalErrors}
               className="mb-6"
+              onClose={clearErrors}
             />
-          )}
 
-          {/* General validation errors */}
-          <ValidationErrorsList
-            errors={generalErrors}
-            className="mb-6"
-            onClose={clearErrors}
-          />
-
-          {/* Form Validation Summary */}
-          {!isFormValid && validationErrors.length > 0 && (
-            <div className="bg-blue-500/10 border border-blue-500/20 rounded-md p-4 mb-6 animate-in slide-in-from-top-2 duration-300">
-              <div className="flex items-start justify-between">
-                <div className="flex items-start space-x-3">
-                  <AlertTriangle className="h-5 w-5 text-blue-400 mt-0.5 flex-shrink-0" />
-                  <div className="flex-1">
-                    <h3 className="text-blue-400 font-medium mb-2">Please complete the following required fields:</h3>
-                    <div className="space-y-1">
-                      {validationErrors
-                        .filter(error => error.severity === 'error')
-                        .map((error, index) => (
-                          <div key={index} className="flex items-center space-x-2">
-                            <div className="w-1.5 h-1.5 rounded-full bg-blue-400"></div>
-                            <span className="text-blue-300 text-sm">
-                              <strong>{error.field.charAt(0).toUpperCase() + error.field.slice(1)}:</strong> {error.message}
-                            </span>
-                          </div>
-                        ))}
-                    </div>
-                    {validationErrors.filter(error => error.severity === 'warning').length > 0 && (
-                      <div className="mt-3 pt-3 border-t border-blue-500/20">
-                        <h4 className="text-blue-400/80 font-medium mb-1 text-sm">Suggestions for improvement:</h4>
-                        <div className="space-y-1">
-                          {validationErrors
-                            .filter(error => error.severity === 'warning')
-                            .map((error, index) => (
-                              <div key={index} className="flex items-center space-x-2">
-                                <div className="w-1 h-1 rounded-full bg-blue-400/60"></div>
-                                <span className="text-blue-300/80 text-xs">
-                                  <strong>{error.field.charAt(0).toUpperCase() + error.field.slice(1)}:</strong> {error.message}
-                                </span>
-                              </div>
-                            ))}
-                        </div>
+            {/* Form Validation Summary */}
+            {!isFormValid && validationErrors.length > 0 && (
+              <div className="bg-blue-500/10 border border-blue-500/20 rounded-md p-4 mb-6 animate-in slide-in-from-top-2 duration-300">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-start space-x-3">
+                    <AlertTriangle className="h-5 w-5 text-blue-400 mt-0.5 flex-shrink-0" />
+                    <div className="flex-1">
+                      <h3 className="text-blue-400 font-medium mb-2">Please complete the following required fields:</h3>
+                      <div className="space-y-1">
+                        {validationErrors
+                          .filter(error => error.severity === 'error')
+                          .map((error, index) => (
+                            <div key={index} className="flex items-center space-x-2">
+                              <div className="w-1.5 h-1.5 rounded-full bg-blue-400"></div>
+                              <span className="text-blue-300 text-sm">
+                                <strong>{error.field.charAt(0).toUpperCase() + error.field.slice(1)}:</strong> {error.message}
+                              </span>
+                            </div>
+                          ))}
                       </div>
-                    )}
+                      {validationErrors.filter(error => error.severity === 'warning').length > 0 && (
+                        <div className="mt-3 pt-3 border-t border-blue-500/20">
+                          <h4 className="text-blue-400/80 font-medium mb-1 text-sm">Suggestions for improvement:</h4>
+                          <div className="space-y-1">
+                            {validationErrors
+                              .filter(error => error.severity === 'warning')
+                              .map((error, index) => (
+                                <div key={index} className="flex items-center space-x-2">
+                                  <div className="w-1 h-1 rounded-full bg-blue-400/60"></div>
+                                  <span className="text-blue-300/80 text-xs">
+                                    <strong>{error.field.charAt(0).toUpperCase() + error.field.slice(1)}:</strong> {error.message}
+                                  </span>
+                                </div>
+                              ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
+                  <button
+                    onClick={clearErrors}
+                    className="text-blue-400 hover:text-blue-300 transition-colors"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
                 </div>
-                <button
-                  onClick={clearErrors}
-                  className="text-blue-400 hover:text-blue-300 transition-colors"
-                >
-                  <X className="h-4 w-4" />
-                </button>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* General error message */}
-          {lastError && (
-            <div className="bg-red-500/10 border border-red-500/20 rounded-md p-4 mb-6 animate-in slide-in-from-top-2 duration-300">
-              <div className="flex items-start justify-between">
-                <div className="flex items-start space-x-3">
-                  <AlertTriangle className="h-5 w-5 text-red-400 mt-0.5 flex-shrink-0" />
-                  <div className="flex-1">
-                    <h3 className="text-red-400 font-medium mb-1">Operation Failed</h3>
-                    <p className="text-red-300 text-sm">{lastError}</p>
-                    {lastErrorCode && (
-                      <p className="text-red-400/60 text-xs mt-1">Error code: {lastErrorCode}</p>
-                    )}
+            {/* General error message */}
+            {lastError && (
+              <div className="bg-red-500/10 border border-red-500/20 rounded-md p-4 mb-6 animate-in slide-in-from-top-2 duration-300">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-start space-x-3">
+                    <AlertTriangle className="h-5 w-5 text-red-400 mt-0.5 flex-shrink-0" />
+                    <div className="flex-1">
+                      <h3 className="text-red-400 font-medium mb-1">Operation Failed</h3>
+                      <p className="text-red-300 text-sm">{lastError}</p>
+                      {lastErrorCode && (
+                        <p className="text-red-400/60 text-xs mt-1">Error code: {lastErrorCode}</p>
+                      )}
+                    </div>
                   </div>
+                  <button
+                    onClick={clearErrors}
+                    className="text-red-400 hover:text-red-300 transition-colors"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
                 </div>
-                <button
-                  onClick={clearErrors}
-                  className="text-red-400 hover:text-red-300 transition-colors"
-                >
-                  <X className="h-4 w-4" />
-                </button>
               </div>
-            </div>
-          )}
+            )}
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Basic Information */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Full Name <span className="text-red-400">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => updateField('name', e.target.value)}
-                  className={`w-full px-4 py-3 bg-gray-700 border rounded-md text-white focus:outline-none focus:ring-2 transition-colors ${
-                    getFieldError('name')
-                      ? 'border-red-500 focus:ring-red-500'
-                      : 'border-gray-600 focus:ring-red-500'
-                  }`}
-                  placeholder="Enter full name"
-                  required
-                />
-                <ValidationError error={getFieldError('name')} />
-                {formData.name && !getFieldError('name') && (
-                  <div className="flex items-center text-green-400 text-sm mt-1">
-                    <CheckCircle className="h-4 w-4 mr-1" />
-                    <span>Name looks good!</span>
-                  </div>
-                )}
-              </div>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Basic Information */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Full Name <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => updateField('name', e.target.value)}
+                    className={`w-full px-4 py-3 bg-gray-700 border rounded-md text-white focus:outline-none focus:ring-2 transition-colors ${
+                      getFieldError('name')
+                        ? 'border-red-500 focus:ring-red-500'
+                        : 'border-gray-600 focus:ring-red-500'
+                    }`}
+                    placeholder="Enter full name"
+                    required
+                  />
+                  <ValidationError error={getFieldError('name')} />
+                  {formData.name && !getFieldError('name') && (
+                    <div className="flex items-center text-green-400 text-sm mt-1">
+                      <CheckCircle className="h-4 w-4 mr-1" />
+                      <span>Name looks good!</span>
+                    </div>
+                  )}
+                </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Professional Title <span className="text-red-400">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={formData.title}
-                  onChange={(e) => updateField('title', e.target.value)}
-                  className={`w-full px-4 py-3 bg-gray-700 border rounded-md text-white focus:outline-none focus:ring-2 transition-colors ${
-                    getFieldError('title')
-                      ? 'border-red-500 focus:ring-red-500'
-                      : 'border-gray-600 focus:ring-red-500'
-                  }`}
-                  placeholder="e.g., Senior Business Consultant"
-                  required
-                />
-                <ValidationError error={getFieldError('title')} />
-                {formData.title && !getFieldError('title') && (
-                  <div className="flex items-center text-green-400 text-sm mt-1">
-                    <CheckCircle className="h-4 w-4 mr-1" />
-                    <span>Title looks good!</span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Contact Information */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Email Address <span className="text-red-400">*</span>
-                </label>
-                <input
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => updateField('email', e.target.value)}
-                  className={`w-full px-4 py-3 bg-gray-700 border rounded-md text-white focus:outline-none focus:ring-2 transition-colors ${
-                    getFieldError('email')
-                      ? 'border-red-500 focus:ring-red-500'
-                      : 'border-gray-600 focus:ring-red-500'
-                  }`}
-                  placeholder="instructor@example.com"
-                  required
-                />
-                <ValidationError error={getFieldError('email')} />
-                {formData.email && !getFieldError('email') && (
-                  <div className="flex items-center text-green-400 text-sm mt-1">
-                    <CheckCircle className="h-4 w-4 mr-1" />
-                    <span>Email format is valid!</span>
-                  </div>
-                )}
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Professional Title <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.title}
+                    onChange={(e) => updateField('title', e.target.value)}
+                    className={`w-full px-4 py-3 bg-gray-700 border rounded-md text-white focus:outline-none focus:ring-2 transition-colors ${
+                      getFieldError('title')
+                        ? 'border-red-500 focus:ring-red-500'
+                        : 'border-gray-600 focus:ring-red-500'
+                    }`}
+                    placeholder="e.g., Senior Business Consultant"
+                    required
+                  />
+                  <ValidationError error={getFieldError('title')} />
+                  {formData.title && !getFieldError('title') && (
+                    <div className="flex items-center text-green-400 text-sm mt-1">
+                      <CheckCircle className="h-4 w-4 mr-1" />
+                      <span>Title looks good!</span>
+                    </div>
+                  )}
+                </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Phone Number
-                </label>
-                <input
-                  type="tel"
-                  value={formData.phone}
-                  onChange={(e) => updateField('phone', e.target.value)}
-                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-red-500"
-                  placeholder="+1 (555) 123-4567"
-                />
-                <ValidationError error={getFieldError('phone')} />
-              </div>
-            </div>
+              {/* Contact Information */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Email Address <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => updateField('email', e.target.value)}
+                    className={`w-full px-4 py-3 bg-gray-700 border rounded-md text-white focus:outline-none focus:ring-2 transition-colors ${
+                      getFieldError('email')
+                        ? 'border-red-500 focus:ring-red-500'
+                        : 'border-gray-600 focus:ring-red-500'
+                    }`}
+                    placeholder="instructor@example.com"
+                    required
+                  />
+                  <ValidationError error={getFieldError('email')} />
+                  {formData.email && !getFieldError('email') && (
+                    <div className="flex items-center text-green-400 text-sm mt-1">
+                      <CheckCircle className="h-4 w-4 mr-1" />
+                      <span>Email format is valid!</span>
+                    </div>
+                  )}
+                </div>
 
-            {/* Profile Image and Experience */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Profile Image <span className="text-red-400">*</span>
-                </label>
-                <ImageUpload
-                  onImageUpload={(url) => updateField('image', url)}
-                  currentImage={formData.image}
-                  uploadType="avatar"
-                  label="Profile Image"
-                  previewSize="sm"
-                  required
-                />
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Phone Number
+                  </label>
+                  <input
+                    type="tel"
+                    value={formData.phone}
+                    onChange={(e) => updateField('phone', e.target.value)}
+                    className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                    placeholder="+1 (555) 123-4567"
+                  />
+                  <ValidationError error={getFieldError('phone')} />
+                </div>
               </div>
-              <ValidationError error={getFieldError('image')} />
 
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Years of Experience *
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  max="50"
-                  value={formData.experience}
-                  onChange={(e) => updateField('experience', parseInt(e.target.value) || 0)}
-                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-red-500"
-                  placeholder="5"
-                  required
-                />
-                <ValidationError error={getFieldError('experience')} />
+              {/* Profile Image and Experience */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Profile Image <span className="text-red-400">*</span>
+                  </label>
+                  <ImageUpload
+                    onImageUpload={(url) => updateField('image', url)}
+                    currentImage={formData.image}
+                    uploadType="avatar"
+                    label="Profile Image"
+                    previewSize="sm"
+                    required
+                  />
+                </div>
+                <ValidationError error={getFieldError('image')} />
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Years of Experience *
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="50"
+                    value={formData.experience}
+                    onChange={(e) => updateField('experience', parseInt(e.target.value) || 0)}
+                    className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                    placeholder="5"
+                    required
+                  />
+                  <ValidationError error={getFieldError('experience')} />
+                </div>
               </div>
-            </div>
 
-            {/* Biography */}
+              {/* Biography */}
                           <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
                   Professional Biography <span className="text-red-400">*</span>
@@ -536,6 +538,7 @@ const AddInstructorPage: React.FC = () => {
         </div>
       </div>
     </div>
+    </Layout>
   );
 };
 

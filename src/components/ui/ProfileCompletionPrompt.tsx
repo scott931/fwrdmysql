@@ -36,8 +36,21 @@ const ProfileCompletionPrompt: React.FC<ProfileCompletionPromptProps> = ({
     onDismiss?.();
   };
 
+  // Debug logging
+  console.log('🔍 ProfileCompletionPrompt Debug:', {
+    isVisible,
+    shouldPrompt,
+    onboardingCompleted: user?.onboarding_completed,
+    user: user ? { id: user.id, email: user.email, onboarding_completed: user.onboarding_completed } : null
+  });
+
   // Don't show if user shouldn't be prompted or if already visible
   if (!isVisible || !shouldPrompt || user?.onboarding_completed) {
+    console.log('🔍 ProfileCompletionPrompt: Hiding prompt because:', {
+      isVisible: !isVisible,
+      shouldPrompt: !shouldPrompt,
+      onboardingCompleted: user?.onboarding_completed
+    });
     return null;
   }
 

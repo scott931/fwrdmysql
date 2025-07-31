@@ -2,10 +2,10 @@
   "/_app": "pages/_app.js",
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
-  "/profile": "pages/profile.js",
-  "/home": "pages/home.js",
-  "/courses": "pages/courses.js",
-  "/admin": "pages/admin.js",
-  "/course/[courseId]": "pages/course/[courseId].js",
-  "/admin/upload-course": "pages/admin/upload-course.js"
+  "/api/banner/config": "pages/api/banner/config.js",
+  "/admin/system-configuration": "pages/admin/system-configuration.js",
+  "/api/banner/upload": "pages/api/banner/upload.js",
+  "/": "pages/index.js",
+  "/login": "pages/login.js",
+  "/home": "pages/home.js"
 }

@@ -12,44 +12,145 @@ export const useCourses = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchAllCourses = useCallback(async () => {
+  const fetchAllCourses = useCallback(async (includeComingSoon = true) => {
+    console.log('🔄 useDatabase: fetchAllCourses called with includeComingSoon:', includeComingSoon);
     setLoading(true);
     setError(null);
 
     try {
-      const data = await courseAPI.getAllCourses();
+      console.log('📡 useDatabase: Making API call to getAllCourses...');
+      const data = await courseAPI.getAllCourses(includeComingSoon);
+      console.log('✅ useDatabase: API call successful, received data:', {
+        dataLength: data.length,
+        dataType: typeof data,
+        isArray: Array.isArray(data),
+        firstItem: data[0] ? { id: data[0].id, title: data[0].title, coming_soon: data[0].coming_soon } : null
+      });
 
-      // Transform backend data to frontend format
-      const transformedCourses = data.map((course: any) => ({
-        id: course.id,
-        title: course.title,
-        instructor: {
-          id: course.instructor_id || 'unknown',
-          name: course.instructor_name || 'Unknown Instructor',
-          title: course.instructor_title || 'Instructor',
-          image: course.instructor_image || '/placeholder-avatar.jpg',
-          bio: course.instructor_bio || 'Experienced instructor',
-          email: course.instructor_email || 'instructor@forwardafrica.com',
-          expertise: course.instructor_expertise ? JSON.parse(course.instructor_expertise) : ['Education'],
-          experience: course.instructor_experience || 5,
-          createdAt: new Date(course.instructor_created_at || Date.now())
-        },
-        instructorId: course.instructor_id,
-        category: course.category_name || course.category || 'General',
-        thumbnail: course.thumbnail || '/placeholder-course.jpg',
-        banner: course.banner || '/placeholder-course.jpg',
-        videoUrl: course.video_url,
-        description: course.description || 'Course description coming soon.',
-        lessons: course.lessons || [],
-        featured: course.featured || false,
-        totalXP: course.total_xp || 1000,
-        comingSoon: course.coming_soon || false,
-        releaseDate: course.release_date
-      }));
+      // Transform backend data to frontend format with dual fallback logic
+      console.log('🔄 useDatabase: Starting data transformation...');
+      const transformedCourses = data.map((course: any) => {
+        console.log('🎯 useDatabase: Transforming course:', {
+          id: course.id,
+          title: course.title,
+          coming_soon: course.coming_soon,
+          instructor_name: course.instructor_name,
+          lessons_count: course.lessons?.length || 0
+        });
+
+        // DUAL FALLBACK instructor handling - same logic as admin page
+        let instructorName = 'Unknown Instructor';
+        let instructorTitle = 'Instructor';
+        let instructorImage = '/images/placeholder-avatar.jpg';
+        let instructorBio = 'Experienced instructor';
+        let instructorEmail = 'instructor@forwardafrica.com';
+        let instructorExpertise = ['Education'];
+        let instructorExperience = 5;
+        let instructorCreatedAt = new Date();
+
+        try {
+          // First: Try to access the transformed instructor object (from useCourses hook)
+          if (course.instructor && typeof course.instructor === 'object' && course.instructor !== null) {
+            instructorName = (course.instructor as any).name || 'Unknown Instructor';
+            instructorTitle = (course.instructor as any).title || 'Instructor';
+            instructorImage = (course.instructor as any).image || '/images/placeholder-avatar.jpg';
+            instructorBio = (course.instructor as any).bio || 'Experienced instructor';
+            instructorEmail = (course.instructor as any).email || 'instructor@forwardafrica.com';
+            instructorExpertise = (course.instructor as any).expertise || ['Education'];
+            instructorExperience = (course.instructor as any).experience || 5;
+            instructorCreatedAt = new Date((course.instructor as any).createdAt || Date.now());
+          }
+          // Second: Fall back to raw API field (direct from API)
+          else if (course.instructor_name) {
+            instructorName = course.instructor_name || 'Unknown Instructor';
+            instructorTitle = course.instructor_title || 'Instructor';
+            instructorImage = course.instructor_image || '/images/placeholder-avatar.jpg';
+            instructorBio = course.instructor_bio || 'Experienced instructor';
+            instructorEmail = course.instructor_email || 'instructor@forwardafrica.com';
+            instructorExpertise = course.instructor_expertise ? JSON.parse(course.instructor_expertise) : ['Education'];
+            instructorExperience = course.instructor_experience || 5;
+            instructorCreatedAt = new Date(course.instructor_created_at || Date.now());
+          }
+          // Third: Handle string instructor (legacy format)
+          else if (typeof course.instructor === 'string') {
+            instructorName = course.instructor;
+            instructorTitle = 'Instructor';
+            instructorImage = '/images/placeholder-avatar.jpg';
+            instructorBio = 'Experienced instructor';
+            instructorEmail = 'instructor@forwardafrica.com';
+            instructorExpertise = ['Education'];
+            instructorExperience = 5;
+            instructorCreatedAt = new Date();
+          }
+          // Fourth: Final fallback
+          else {
+            instructorName = 'Unknown Instructor';
+            instructorTitle = 'Instructor';
+            instructorImage = '/images/placeholder-avatar.jpg';
+            instructorBio = 'Experienced instructor';
+            instructorEmail = 'instructor@forwardafrica.com';
+            instructorExpertise = ['Education'];
+            instructorExperience = 5;
+            instructorCreatedAt = new Date();
+          }
+        } catch (error) {
+          console.error('Error accessing instructor data:', error);
+          instructorName = 'Unknown Instructor';
+          instructorTitle = 'Instructor';
+          instructorImage = '/images/placeholder-avatar.jpg';
+          instructorBio = 'Experienced instructor';
+          instructorEmail = 'instructor@forwardafrica.com';
+          instructorExpertise = ['Education'];
+          instructorExperience = 5;
+          instructorCreatedAt = new Date();
+        }
+
+        const transformed = {
+          id: course.id,
+          title: course.title,
+          instructor: {
+            id: course.instructor_id || 'unknown',
+            name: instructorName,
+            title: instructorTitle,
+            image: instructorImage,
+            bio: instructorBio,
+            email: instructorEmail,
+            expertise: instructorExpertise,
+            experience: instructorExperience,
+            createdAt: instructorCreatedAt
+          },
+          instructorId: course.instructor_id,
+          category: course.category_name || course.category || 'General',
+          thumbnail: course.thumbnail || '/images/placeholder-course.jpg',
+          banner: course.banner || '/images/placeholder-course.jpg',
+          videoUrl: course.video_url,
+          description: course.description || 'Course description coming soon.',
+          lessons: course.lessons || [],
+          featured: course.featured || false,
+          totalXP: course.total_xp || 1000,
+          comingSoon: course.coming_soon === 1 || course.coming_soon === true,
+          releaseDate: course.release_date
+        };
+
+        console.log('✅ useDatabase: Course transformed:', {
+          id: transformed.id,
+          title: transformed.title,
+          comingSoon: transformed.comingSoon,
+          lessonsCount: transformed.lessons.length
+        });
+
+        return transformed;
+      });
+
+      console.log('🎉 useDatabase: All courses transformed successfully:', {
+        totalCourses: transformedCourses.length,
+        comingSoonCount: transformedCourses.filter((c: Course) => c.comingSoon).length,
+        regularCount: transformedCourses.filter((c: Course) => !c.comingSoon).length
+      });
 
       setCourses(transformedCourses);
     } catch (err) {
-      console.error('Failed to fetch courses from API:', err);
+      console.error('❌ useDatabase: Failed to fetch courses from API:', err);
       setError('Failed to load courses from server');
       setCourses([]); // Set empty array instead of mock data
     } finally {
@@ -61,33 +162,102 @@ export const useCourses = () => {
     try {
       const data = await courseAPI.getFeaturedCourses();
 
-      // Transform backend data to frontend format
-      const transformedCourses = data.map((course: any) => ({
-        id: course.id,
-        title: course.title,
-        instructor: {
-          id: course.instructor_id || 'unknown',
-          name: course.instructor_name || 'Unknown Instructor',
-          title: course.instructor_title || 'Instructor',
-          image: course.instructor_image || '/placeholder-avatar.jpg',
-          bio: course.instructor_bio || 'Experienced instructor',
-          email: course.instructor_email || 'instructor@forwardafrica.com',
-          expertise: course.instructor_expertise ? JSON.parse(course.instructor_expertise) : ['Education'],
-          experience: course.instructor_experience || 5,
-          createdAt: new Date(course.instructor_created_at || Date.now())
-        },
-        instructorId: course.instructor_id,
-        category: course.category_name || course.category || 'General',
-        thumbnail: course.thumbnail || '/placeholder-course.jpg',
-        banner: course.banner || '/placeholder-course.jpg',
-        videoUrl: course.video_url,
-        description: course.description || 'Course description coming soon.',
-        lessons: course.lessons || [],
-        featured: course.featured || false,
-        totalXP: course.total_xp || 1000,
-        comingSoon: course.coming_soon || false,
-        releaseDate: course.release_date
-      }));
+      // Transform backend data to frontend format with dual fallback logic
+      const transformedCourses = data.map((course: any) => {
+        // DUAL FALLBACK instructor handling - same logic as admin page
+        let instructorName = 'Unknown Instructor';
+        let instructorTitle = 'Instructor';
+        let instructorImage = '/images/placeholder-avatar.jpg';
+        let instructorBio = 'Experienced instructor';
+        let instructorEmail = 'instructor@forwardafrica.com';
+        let instructorExpertise = ['Education'];
+        let instructorExperience = 5;
+        let instructorCreatedAt = new Date();
+
+        try {
+          // First: Try to access the transformed instructor object (from useCourses hook)
+          if (course.instructor && typeof course.instructor === 'object' && course.instructor !== null) {
+            instructorName = (course.instructor as any).name || 'Unknown Instructor';
+            instructorTitle = (course.instructor as any).title || 'Instructor';
+            instructorImage = (course.instructor as any).image || '/images/placeholder-avatar.jpg';
+            instructorBio = (course.instructor as any).bio || 'Experienced instructor';
+            instructorEmail = (course.instructor as any).email || 'instructor@forwardafrica.com';
+            instructorExpertise = (course.instructor as any).expertise || ['Education'];
+            instructorExperience = (course.instructor as any).experience || 5;
+            instructorCreatedAt = new Date((course.instructor as any).createdAt || Date.now());
+          }
+          // Second: Fall back to raw API field (direct from API)
+          else if (course.instructor_name) {
+            instructorName = course.instructor_name || 'Unknown Instructor';
+            instructorTitle = course.instructor_title || 'Instructor';
+            instructorImage = course.instructor_image || '/images/placeholder-avatar.jpg';
+            instructorBio = course.instructor_bio || 'Experienced instructor';
+            instructorEmail = course.instructor_email || 'instructor@forwardafrica.com';
+            instructorExpertise = course.instructor_expertise ? JSON.parse(course.instructor_expertise) : ['Education'];
+            instructorExperience = course.instructor_experience || 5;
+            instructorCreatedAt = new Date(course.instructor_created_at || Date.now());
+          }
+          // Third: Handle string instructor (legacy format)
+          else if (typeof course.instructor === 'string') {
+            instructorName = course.instructor;
+            instructorTitle = 'Instructor';
+            instructorImage = '/images/placeholder-avatar.jpg';
+            instructorBio = 'Experienced instructor';
+            instructorEmail = 'instructor@forwardafrica.com';
+            instructorExpertise = ['Education'];
+            instructorExperience = 5;
+            instructorCreatedAt = new Date();
+          }
+          // Fourth: Final fallback
+          else {
+            instructorName = 'Unknown Instructor';
+            instructorTitle = 'Instructor';
+            instructorImage = '/images/placeholder-avatar.jpg';
+            instructorBio = 'Experienced instructor';
+            instructorEmail = 'instructor@forwardafrica.com';
+            instructorExpertise = ['Education'];
+            instructorExperience = 5;
+            instructorCreatedAt = new Date();
+          }
+        } catch (error) {
+          console.error('Error accessing instructor data:', error);
+          instructorName = 'Unknown Instructor';
+          instructorTitle = 'Instructor';
+          instructorImage = '/images/placeholder-avatar.jpg';
+          instructorBio = 'Experienced instructor';
+          instructorEmail = 'instructor@forwardafrica.com';
+          instructorExpertise = ['Education'];
+          instructorExperience = 5;
+          instructorCreatedAt = new Date();
+        }
+
+        return {
+          id: course.id,
+          title: course.title,
+          instructor: {
+            id: course.instructor_id || 'unknown',
+            name: instructorName,
+            title: instructorTitle,
+            image: instructorImage,
+            bio: instructorBio,
+            email: instructorEmail,
+            expertise: instructorExpertise,
+            experience: instructorExperience,
+            createdAt: instructorCreatedAt
+          },
+          instructorId: course.instructor_id,
+          category: course.category_name || course.category || 'General',
+          thumbnail: course.thumbnail || '/images/placeholder-course.jpg',
+          banner: course.banner || '/images/placeholder-course.jpg',
+          videoUrl: course.video_url,
+          description: course.description || 'Course description coming soon.',
+          lessons: course.lessons || [],
+          featured: course.featured || false,
+          totalXP: course.total_xp || 1000,
+          comingSoon: course.coming_soon === 1 || course.coming_soon === true,
+          releaseDate: course.release_date
+        };
+      });
 
       setFeaturedCourses(transformedCourses);
     } catch (err) {
@@ -456,7 +626,7 @@ export const useAnalytics = () => {
       setStats(data);
     } catch (err) {
       // Handle authentication error gracefully
-      if (err.message === 'Authentication required') {
+      if (err instanceof Error && err.message === 'Authentication required') {
         console.log('📊 Platform stats require authentication - using fallback data');
         setError(null); // Don't show error for auth requirement
       } else {

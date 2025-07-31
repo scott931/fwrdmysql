@@ -3,7 +3,6 @@ import { useParams } from '../lib/router';
 import { Send, Smile, Paperclip, Image as ImageIcon, FileText, Link as LinkIcon, Mic, MoreHorizontal, Search, Phone, Video, Users, Settings, LogOut, ArrowLeft, Plus, X, Check, AlertTriangle, Info, ExternalLink, Download, Share2, Heart, MessageCircle, Eye, EyeOff, Lock, Unlock, Shield, Crown, Medal, Trophy, Badge, Flag, Rocket, Star } from 'lucide-react';
 import Picker from '@emoji-mart/react';
 import data from '@emoji-mart/data';
-import Layout from '../components/layout/Layout';
 import Button from '../components/ui/Button';
 import Image from 'next/image';
 
@@ -210,13 +209,15 @@ const ChatPage: React.FC = () => {
               className={`flex ${message.userId === currentUser.id ? 'justify-end' : 'justify-start'}`}
             >
               <div className={`flex ${message.userId === currentUser.id ? 'flex-row-reverse' : 'flex-row'} items-end max-w-[80%]`}>
-                <Image
-                  src={message.userAvatar}
-                  alt={message.userName}
-                  width={32}
-                  height={32}
-                  className="w-8 h-8 rounded-full mx-2 flex-shrink-0"
-                />
+                <div className="relative w-8 h-8 rounded-full overflow-hidden bg-gray-700 mx-2 flex-shrink-0">
+                  <Image
+                    src={message.userAvatar}
+                    alt={message.userName}
+                    fill
+                    className="object-cover"
+                    sizes="32px"
+                  />
+                </div>
                 <div className={`flex flex-col ${message.userId === currentUser.id ? 'items-end' : 'items-start'}`}>
                   <div className={`rounded-lg px-4 py-2 max-w-full break-words ${
                     message.userId === currentUser.id ? 'bg-red-600 text-white' : 'bg-gray-700 text-white'
@@ -229,13 +230,15 @@ const ChatPage: React.FC = () => {
                     {message.attachments?.map((attachment, index) => (
                       <div key={index} className="mt-2">
                         {attachment.type === 'image' && (
-                          <Image
-                            src={attachment.url}
-                            alt="attachment"
-                            width={300}
-                            height={200}
-                            className="max-w-full rounded-lg"
-                          />
+                          <div className="relative w-64 h-40 rounded-lg overflow-hidden bg-gray-600">
+                            <Image
+                              src={attachment.url}
+                              alt="attachment"
+                              fill
+                              className="object-cover"
+                              sizes="256px"
+                            />
+                          </div>
                         )}
                         {(attachment.type === 'document' || attachment.type === 'link') && (
                           <a
@@ -274,6 +277,7 @@ const ChatPage: React.FC = () => {
                 className="w-full bg-transparent text-white placeholder-gray-400 px-4 py-2 resize-none outline-none max-h-32 overflow-y-auto"
                 rows={1}
                 style={{ minHeight: '40px' }}
+                aria-label="Message input"
               />
             </div>
 
@@ -296,6 +300,7 @@ const ChatPage: React.FC = () => {
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
                     className="flex items-center space-x-2 text-white hover:bg-gray-600 px-4 py-2 rounded w-full"
+                    aria-label="Upload image"
                   >
                     <ImageIcon className="h-5 w-5 flex-shrink-0" />
                     <span>Image</span>
@@ -304,6 +309,7 @@ const ChatPage: React.FC = () => {
                     type="button"
                     onClick={handleShareLink}
                     className="flex items-center space-x-2 text-white hover:bg-gray-600 px-4 py-2 rounded w-full"
+                    aria-label="Share link"
                   >
                     <LinkIcon className="h-5 w-5 flex-shrink-0" />
                     <span>Link</span>
@@ -312,6 +318,7 @@ const ChatPage: React.FC = () => {
                     type="button"
                     onClick={() => documentInputRef.current?.click()}
                     className="flex items-center space-x-2 text-white hover:bg-gray-600 px-4 py-2 rounded w-full"
+                    aria-label="Upload document"
                   >
                     <FileText className="h-5 w-5 flex-shrink-0" />
                     <span>Document</span>
@@ -327,6 +334,7 @@ const ChatPage: React.FC = () => {
               type="button"
               onClick={() => setShowEmojiPicker(!showEmojiPicker)}
               className="text-gray-400 hover:text-white p-2 rounded-full hover:bg-gray-700"
+              aria-label="Toggle emoji picker"
             >
               <Smile className="h-6 w-6" />
             </button>
@@ -334,12 +342,14 @@ const ChatPage: React.FC = () => {
               type="button"
               onClick={() => setShowAttachmentMenu(!showAttachmentMenu)}
               className="text-gray-400 hover:text-white p-2 rounded-full hover:bg-gray-700"
+              aria-label="Toggle attachment menu"
             >
               <Paperclip className="h-6 w-6" />
             </button>
             <button
               type="submit"
               className="bg-red-600 text-white rounded-lg px-4 py-2 hover:bg-red-700 flex items-center justify-center"
+              aria-label="Send message"
             >
               <Send className="h-5 w-5" />
             </button>

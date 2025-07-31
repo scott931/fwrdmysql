@@ -60,7 +60,7 @@ class AnalyticsTracker {
       const token = authService.getToken();
       if (!token) return '';
 
-      const response = await fetch('http://localhost:3002/api/sessions/start', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002/api'}/sessions/start`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -94,7 +94,7 @@ class AnalyticsTracker {
 
       const durationSeconds = Math.floor((Date.now() - this.sessionData.startTime) / 1000);
 
-      await fetch(`http://localhost:3002/api/sessions/${this.sessionData.sessionId}/end`, {
+              await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002/api'}/sessions/${this.sessionData.sessionId}/end`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -130,7 +130,7 @@ class AnalyticsTracker {
       const token = authService.getToken();
       if (!token) return '';
 
-      const response = await fetch('http://localhost:3002/api/watch-time/start', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002/api'}/watch-time/start`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -168,7 +168,7 @@ class AnalyticsTracker {
 
       const durationSeconds = Math.floor((Date.now() - watchData.startTime) / 1000);
 
-      await fetch(`http://localhost:3002/api/watch-time/${watchId}/end`, {
+              await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002/api'}/watch-time/${watchId}/end`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -195,7 +195,7 @@ class AnalyticsTracker {
     // Track time spent on previous page
     if (this.currentPage && timeSpentSeconds > 0) {
       try {
-        await fetch('http://localhost:3002/api/page-views', {
+        await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002/api'}/page-views`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -236,7 +236,7 @@ class AnalyticsTracker {
       const token = authService.getToken();
       if (!token) return;
 
-      await fetch('http://localhost:3002/api/engagement/update', {
+              await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002/api'}/engagement/update`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

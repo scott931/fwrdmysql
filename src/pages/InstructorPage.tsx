@@ -112,7 +112,7 @@ const InstructorPage: React.FC = () => {
           id: instructorId,
           name: 'Unknown Instructor',
           title: 'Instructor',
-          image: '/placeholder-avatar.jpg',
+          image: '/images/placeholder-avatar.jpg',
           bio: 'This instructor profile could not be loaded. Please try again later.',
           email: '',
           expertise: [],
@@ -198,29 +198,29 @@ const InstructorPage: React.FC = () => {
           {/* Sidebar */}
           <aside className="w-full md:w-1/3 lg:w-1/4 flex-shrink-0">
             <div className="bg-gray-900 rounded-2xl shadow-lg p-6 flex flex-col items-center">
-              {(instructor.image || '/placeholder-avatar.jpg').startsWith('http') ? (
+              {(instructor.image || '/images/placeholder-avatar.jpg').startsWith('http') ? (
                 <img
-                  src={instructor.image || '/placeholder-avatar.jpg'}
+                  src={instructor.image || '/images/placeholder-avatar.jpg'}
                   alt={instructor.name}
                   className="w-40 h-40 rounded-full object-cover border-4 border-red-600 mb-4"
                   onError={(e) => {
                     const target = e.target as HTMLImageElement;
-                    if (target.src !== '/placeholder-avatar.jpg') {
-                      target.src = '/placeholder-avatar.jpg';
+                    if (target.src !== '/images/placeholder-avatar.jpg') {
+                      target.src = '/images/placeholder-avatar.jpg';
                     }
                   }}
                 />
               ) : (
                 <Image
-                  src={instructor.image || '/placeholder-avatar.jpg'}
+                  src={instructor.image || '/images/placeholder-avatar.jpg'}
                   alt={instructor.name}
                   width={160}
                   height={160}
                   className="w-40 h-40 rounded-full object-cover border-4 border-red-600 mb-4"
                   onError={(e) => {
                     const target = e.target as HTMLImageElement;
-                    if (target.src !== '/placeholder-avatar.jpg') {
-                      target.src = '/placeholder-avatar.jpg';
+                    if (target.src !== '/images/placeholder-avatar.jpg') {
+                      target.src = '/images/placeholder-avatar.jpg';
                     }
                   }}
                 />

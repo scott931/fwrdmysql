@@ -9,7 +9,7 @@ import { Eye, EyeOff, Mail, Lock, User, GraduationCap, Briefcase, ArrowLeft, Che
 
 const RegisterPage: React.FC = () => {
   const router = useRouter();
-  const { signUp } = useAuth();
+  const { signUp, user } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -30,6 +30,7 @@ const RegisterPage: React.FC = () => {
   const [showTopicsDropdown, setShowTopicsDropdown] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [passwordStrength, setPasswordStrength] = useState(0);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [showHelp, setShowHelp] = useState(false);
@@ -165,6 +166,16 @@ const RegisterPage: React.FC = () => {
     }
   }, [error]);
 
+  // Clear success message after 3 seconds
+  useEffect(() => {
+    if (success) {
+      const timer = setTimeout(() => {
+        setSuccess('');
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [success]);
+
   const handleTopicToggle = (topic: string) => {
     const newTopics = formData.topics_of_interest.includes(topic)
       ? formData.topics_of_interest.filter(t => t !== topic)
@@ -196,6 +207,7 @@ const RegisterPage: React.FC = () => {
   const validateForm = () => {
     // Clear previous errors
     setError('');
+    setSuccess('');
     setValidationErrors({});
 
     // Validate all fields
@@ -224,6 +236,7 @@ const RegisterPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setSuccess('');
 
     if (!validateForm()) return;
 
@@ -232,7 +245,20 @@ const RegisterPage: React.FC = () => {
     try {
       const { confirmPassword, ...registerData } = formData;
       await signUp(registerData);
-      router.push('/home');
+      setSuccess('Account created successfully! Welcome to Forward Africa!');
+
+      // Wait for user state to be updated before redirecting
+      setTimeout(() => {
+        // Force a re-render by checking user state
+        if (user) {
+          router.push('/home');
+        } else {
+          // If user state is not updated yet, wait a bit more
+          setTimeout(() => {
+            router.push('/home');
+          }, 500);
+        }
+      }, 1500);
     } catch (error: any) {
       // Error is already handled in AuthContext, but we can add additional handling here
       console.log('Registration error caught in component:', error);
@@ -243,7 +269,7 @@ const RegisterPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-2xl w-full">
+      <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
           <button
@@ -265,7 +291,7 @@ const RegisterPage: React.FC = () => {
         </div>
 
         {/* Registration Form */}
-        <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 border border-gray-700/50 shadow-2xl">
+        <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 border border-gray-700/50 shadow-2xl max-w-2xl mx-auto">
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Basic Information - 2 columns */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -734,6 +760,14 @@ const RegisterPage: React.FC = () => {
               )}
             </div>
 
+            {/* Success Message */}
+            <ErrorDisplay
+              error={success}
+              type="success"
+              onClose={() => setSuccess('')}
+              className="mb-4"
+            />
+
             {/* Error Message */}
             <ErrorDisplay
               error={error}
@@ -781,7 +815,7 @@ const RegisterPage: React.FC = () => {
               <p className="text-gray-400">
                 Forgot your password?{' '}
                 <button
-                  onClick={() => router.push('/login')}
+                  onClick={() => router.push('/forgot-password')}
                   className="text-red-400 hover:text-red-300 font-medium transition-colors duration-200"
                 >
                   Reset it here

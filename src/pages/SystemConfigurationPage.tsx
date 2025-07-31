@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from '../lib/router';
-import { ArrowLeft, Settings, Database, Server, Shield, Globe, Zap, Save, AlertTriangle, CheckCircle, RefreshCw, Power, Monitor, HardDrive, Network, Cpu, Download } from 'lucide-react';
+import { ArrowLeft, Settings, Database, Server, Shield, Globe, Zap, Save, AlertTriangle, CheckCircle, RefreshCw, Power, Monitor, HardDrive, Network, Cpu, Download, Image } from 'lucide-react';
 import Button from '../components/ui/Button';
 import { useAuthEnhanced } from '../hooks/useAuthEnhanced';
 import { usePermissions } from '../contexts/PermissionContext';
 import PermissionGuard from '../components/ui/PermissionGuard';
 import { apiClient } from '../lib/authInterceptor';
 import { tokenDebugger } from '../utils/tokenDebugger';
+import Layout from '../components/layout/Layout';
+import BannerManagement from '../components/ui/BannerManagement';
 
 // Helper function to safely access auth token
 const getAuthToken = () => {
@@ -20,7 +22,7 @@ const SystemConfigurationPage: React.FC = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading, isSuperAdmin } = useAuthEnhanced();
   const { userRole, hasPermission } = usePermissions();
-  const [activeTab, setActiveTab] = useState<'general' | 'database' | 'security' | 'performance' | 'backup' | 'monitoring'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'database' | 'security' | 'performance' | 'backup' | 'monitoring' | 'banner'>('general');
   const [isLoading, setIsLoading] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
   const [systemStatus, setSystemStatus] = useState<any>(null);
@@ -110,7 +112,7 @@ const SystemConfigurationPage: React.FC = () => {
 
                 // Load configuration
         try {
-          const response = await apiClient.get('http://localhost:3002/api/system/config');
+          const response = await apiClient.get('/system/config');
           setSystemConfig(response.data);
         } catch (error) {
           console.warn('Failed to load system config, using defaults:', error);
@@ -120,7 +122,7 @@ const SystemConfigurationPage: React.FC = () => {
 
                 // Load system status
         try {
-          const response = await apiClient.get('http://localhost:3002/api/system/status');
+          const response = await apiClient.get('/system/status');
           setSystemStatus(response.data);
         } catch (error) {
           console.warn('Failed to load system status, using defaults:', error);
@@ -173,7 +175,7 @@ const SystemConfigurationPage: React.FC = () => {
       }
 
             console.log('💾 Saving configuration...');
-      const response = await apiClient.put('http://localhost:3002/api/system/config', systemConfig);
+      const response = await apiClient.put('/system/config', systemConfig);
       console.log('✅ Configuration saved successfully:', response.data);
       setSaveStatus('success');
       setTimeout(() => setSaveStatus('idle'), 3000);
@@ -246,7 +248,7 @@ const SystemConfigurationPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white pt-20">
+    <Layout>
       {/* Header */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex items-center justify-between mb-8">
@@ -323,7 +325,8 @@ const SystemConfigurationPage: React.FC = () => {
               { id: 'security', label: 'Security', icon: Shield },
               { id: 'performance', label: 'Performance', icon: Zap },
               { id: 'backup', label: 'Backup', icon: HardDrive },
-              { id: 'monitoring', label: 'Monitoring', icon: Monitor }
+              { id: 'monitoring', label: 'Monitoring', icon: Monitor },
+              { id: 'banner', label: 'Banner', icon: Image }
             ].map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
@@ -786,9 +789,14 @@ const SystemConfigurationPage: React.FC = () => {
               </div>
             </div>
           )}
+
+          {/* Banner Management */}
+          {activeTab === 'banner' && (
+            <BannerManagement />
+          )}
         </div>
       </div>
-    </div>
+    </Layout>
   );
 };
 

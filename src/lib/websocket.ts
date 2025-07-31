@@ -17,9 +17,34 @@ class WebSocketService {
   private sessionId: string | null = null;
   private messageHandlers: Map<string, (message: CrossDeviceSyncMessage) => void> = new Map();
   private initialized = false;
+  private disabled = false; // Add flag to disable WebSocket
 
   constructor() {
     // Don't initialize immediately - wait for browser environment
+  }
+
+  /**
+   * Disable WebSocket connections (useful when server is not available)
+   */
+  public disable(): void {
+    this.disabled = true;
+    if (this.ws) {
+      this.ws.close(1000, 'WebSocket disabled');
+      this.ws = null;
+    }
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+    console.log('🔌 WebSocket disabled');
+  }
+
+  /**
+   * Enable WebSocket connections
+   */
+  public enable(): void {
+    this.disabled = false;
+    console.log('🔗 WebSocket enabled');
   }
 
   /**
@@ -68,6 +93,13 @@ class WebSocketService {
   public connect(userId: string, serverUrl: string = 'ws://localhost:3002'): Promise<void> {
     return new Promise((resolve, reject) => {
       try {
+        // Check if WebSocket is disabled
+        if (this.disabled) {
+          console.log('🔌 WebSocket is disabled, skipping connection');
+          resolve();
+          return;
+        }
+
         // Initialize if not already done
         this.initialize();
 
@@ -77,7 +109,23 @@ class WebSocketService {
           return;
         }
 
+        // Check if we're already connected
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+          console.log('🔗 WebSocket already connected');
+          resolve();
+          return;
+        }
+
+        // Check if we're in the process of connecting
+        if (this.ws && this.ws.readyState === WebSocket.CONNECTING) {
+          console.log('🔗 WebSocket already connecting');
+          resolve();
+          return;
+        }
+
         this.userId = userId;
+        console.log('🔗 Attempting WebSocket connection to:', `${serverUrl}/ws/video-sync`);
+
         this.ws = new WebSocket(`${serverUrl}/ws/video-sync`);
 
         this.ws.onopen = () => {
@@ -114,12 +162,16 @@ class WebSocketService {
         this.ws.onclose = (event) => {
           console.log('🔌 WebSocket disconnected:', event.code, event.reason);
           this.isConnected = false;
-          this.attemptReconnect();
+
+          // Only attempt reconnect if it wasn't a manual disconnect and not disabled
+          if (event.code !== 1000 && !this.disabled) {
+            this.attemptReconnect();
+          }
         };
 
         this.ws.onerror = (error) => {
           console.error('WebSocket error:', error);
-          reject(error);
+          // Don't reject immediately, let onclose handle reconnection
         };
 
       } catch (error) {
@@ -133,8 +185,14 @@ class WebSocketService {
    * Attempt to reconnect to WebSocket server
    */
   private attemptReconnect(): void {
+    // Don't attempt reconnection if disabled
+    if (this.disabled) {
+      console.log('🔌 WebSocket is disabled, skipping reconnection');
+      return;
+    }
+
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.error('Max reconnection attempts reached');
+      console.error('Max reconnection attempts reached, stopping reconnection attempts');
       return;
     }
 
@@ -147,7 +205,8 @@ class WebSocketService {
       this.reconnectAttempts++;
 
       if (this.userId) {
-        this.connect(this.userId).catch(() => {
+        this.connect(this.userId).catch((error) => {
+          console.error('Reconnection failed:', error);
           // Exponential backoff
           this.reconnectDelay = Math.min(this.reconnectDelay * 2, 30000);
         });

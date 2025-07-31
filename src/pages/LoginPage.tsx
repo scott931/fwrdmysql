@@ -9,23 +9,37 @@ import { Eye, EyeOff, Mail, Lock, ArrowRight, HelpCircle, ExternalLink } from 'l
 
 const LoginPage: React.FC = () => {
   const router = useRouter();
-  const { signIn } = useAuth();
+  const { signIn, error: authError, clearError, user } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [showHelp, setShowHelp] = useState(false);
 
+  // Use auth error if available, otherwise use local error
+  const displayError = authError || error;
+
   // Enhanced error handling
   useEffect(() => {
-    if (error) {
-      const errorCode = extractErrorCode(error);
-      const enhancedMessage = getAuthErrorMessage(errorCode, error);
+    if (displayError) {
+      const errorCode = extractErrorCode(displayError);
+      const enhancedMessage = getAuthErrorMessage(errorCode, displayError);
       setError(enhancedMessage);
     }
-  }, [error]);
+  }, [displayError]);
+
+  // Clear success message after 3 seconds
+  useEffect(() => {
+    if (success) {
+      const timer = setTimeout(() => {
+        setSuccess('');
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [success]);
 
   // Real-time validation
   const validateField = (field: string, value: string) => {
@@ -46,6 +60,8 @@ const LoginPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setSuccess('');
+    clearError(); // Clear any existing auth errors
     setValidationErrors({});
 
     // Validate fields
@@ -59,7 +75,12 @@ const LoginPage: React.FC = () => {
 
     try {
       await signIn({ email, password });
-      router.push('/home');
+      setSuccess('Login successful! Redirecting to dashboard...');
+
+      // Use router.replace to force a fresh page load
+      setTimeout(() => {
+        router.replace('/home');
+      }, 1000);
     } catch (error) {
       // Error is already handled in AuthContext
       console.log('Login error caught in component:', error);
@@ -157,11 +178,22 @@ const LoginPage: React.FC = () => {
               </div>
             </div>
 
+            {/* Success Message */}
+            <ErrorDisplay
+              error={success}
+              type="success"
+              onClose={() => setSuccess('')}
+              className="mb-4"
+            />
+
             {/* Error Message */}
             <ErrorDisplay
-              error={error}
+              error={displayError}
               type="error"
-              onClose={() => setError('')}
+              onClose={() => {
+                setError('');
+                clearError();
+              }}
               className="mb-4"
             />
 
@@ -228,7 +260,7 @@ const LoginPage: React.FC = () => {
               <p className="text-gray-400">
                 Forgot your password?{' '}
                 <button
-                  onClick={() => router.push('/login')}
+                  onClick={() => router.push('/forgot-password')}
                   className="text-red-400 hover:text-red-300 font-medium transition-colors duration-200"
                 >
                   Reset it here

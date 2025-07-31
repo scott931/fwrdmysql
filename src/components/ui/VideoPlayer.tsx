@@ -17,7 +17,7 @@
  * @component
  * @example
  * ```tsx
- * <VideoPlayer lesson={currentLesson} />
+ * <VideoPlayer lesson={lesson} />
  * ```
  */
 
@@ -26,6 +26,7 @@ import { Maximize2, Pause, Play, Volume2, VolumeX, ExternalLink, Settings, Rotat
 import { Lesson } from '../../types';
 import { useVideoTracking } from '../../hooks/useVideoTracking';
 import RealTimeProgress from './RealTimeProgress';
+import videoProgressService from '../../lib/videoProgressService';
 
 interface VideoPlayerProps {
   /** Lesson containing video information */
@@ -34,9 +35,28 @@ interface VideoPlayerProps {
   courseId?: string;
   /** Show real-time progress panel */
   showProgressPanel?: boolean;
+  onProgressUpdate?: (progress: number) => void;
+  onSessionStart?: (sessionId: string) => void;
+  onSessionEnd?: (analytics: any) => void;
+  /** Callback when video is completed (reached 95% or more) */
+  onVideoComplete?: (lessonId: string, completionData: {
+    lessonId: string;
+    courseId: string;
+    completionTime: number;
+    totalDuration: number;
+    completionPercentage: number;
+  }) => void;
 }
 
-const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson, courseId, showProgressPanel = false }) => {
+const VideoPlayer: React.FC<VideoPlayerProps> = ({
+  lesson,
+  courseId,
+  showProgressPanel = false,
+  onProgressUpdate,
+  onSessionStart,
+  onSessionEnd,
+  onVideoComplete
+}) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -50,6 +70,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson, courseId, showProgres
   const [bufferTime, setBufferTime] = useState(10);
   const videoRef = useRef<HTMLVideoElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [analytics, setAnalytics] = useState<any>(null);
+  const [lastProgressUpdate, setLastProgressUpdate] = useState<number>(0);
+  const [hasCompleted, setHasCompleted] = useState(false);
 
   // Video tracking hook
   const {
@@ -69,65 +93,89 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson, courseId, showProgres
     duration: 0 // Will be updated when video loads
   });
 
-  // Function to extract YouTube video ID from various YouTube URL formats
+  // Extract YouTube video ID from various URL formats
   const extractYouTubeId = (url: string): string | null => {
-    if (!url) {
-      console.log('No URL provided');
-      return null;
-    }
-
-    // Remove any whitespace
-    url = url.trim();
-    console.log('Processing URL:', url);
+    if (!url) return null;
 
     const patterns = [
-      // Standard YouTube URLs
-      /(?:https?:\/\/)?(?:www\.)?youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})/,
-      // YouTube short URLs
-      /(?:https?:\/\/)?youtu\.be\/([a-zA-Z0-9_-]{11})/,
-      // YouTube embed URLs
-      /(?:https?:\/\/)?(?:www\.)?youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/,
-      // YouTube URLs with additional parameters
-      /(?:https?:\/\/)?(?:www\.)?youtube\.com\/watch\?.*v=([a-zA-Z0-9_-]{11})/,
-      // YouTube URLs with time stamps
-      /(?:https?:\/\/)?(?:www\.)?youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})&?.*$/,
-      // YouTube mobile URLs
-      /(?:https?:\/\/)?m\.youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})/
+      /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
+      /youtube\.com\/watch\?.*v=([a-zA-Z0-9_-]{11})/,
+      /youtu\.be\/([a-zA-Z0-9_-]{11})/
     ];
 
     for (let i = 0; i < patterns.length; i++) {
       const pattern = patterns[i];
       const match = url.match(pattern);
       if (match && match[1]) {
-        console.log(`YouTube ID extracted using pattern ${i + 1}:`, match[1]);
+        console.log(`✅ YouTube ID extracted using pattern ${i + 1}:`, match[1]);
         return match[1];
       }
     }
 
-    console.log('No YouTube ID found for URL:', url);
+    console.log('❌ No YouTube ID found for URL:', url);
     return null;
   };
 
   // Check if the video URL is a YouTube URL and extract ID
   useEffect(() => {
-    console.log('=== VideoPlayer: Processing video URL ===');
-    console.log('Video URL:', lesson.videoUrl);
-
-    if (!lesson.videoUrl) {
-      console.log('No video URL provided');
+    // Prevent running if lesson is not properly loaded
+    if (!lesson || !lesson.videoUrl) {
+      console.log('❌ No lesson or video URL provided');
+      console.log('Lesson object:', lesson);
       setIsLoading(false);
       setHasError(true);
       return;
     }
 
+    console.log('=== VideoPlayer: Processing video URL ===');
+    console.log('Lesson object:', lesson);
+    console.log('Video URL:', lesson.videoUrl);
+    console.log('Video URL type:', typeof lesson.videoUrl);
+    console.log('Video URL length:', lesson.videoUrl.length);
+    console.log('Lesson ID:', lesson.id);
+    console.log('Lesson title:', lesson.title);
+
     const videoUrl = lesson.videoUrl;
+    console.log('Processing video URL:', videoUrl);
+
+    // Check if URL is valid
+    try {
+      new URL(videoUrl);
+      console.log('✅ Video URL is valid');
+    } catch (error) {
+      console.error('❌ Video URL is invalid:', error);
+      setHasError(true);
+      setIsLoading(false);
+      return;
+    }
+
     const ytId = extractYouTubeId(videoUrl);
+    console.log('Extracted YouTube ID:', ytId);
 
     if (ytId) {
       console.log('✅ YouTube video detected, ID:', ytId);
       setIsYouTube(true);
       setYouTubeId(ytId);
       setHasError(false);
+
+      // Test if the YouTube video is accessible
+      const testUrl = `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${ytId}&format=json`;
+      console.log('Testing YouTube accessibility with URL:', testUrl);
+
+      fetch(testUrl)
+        .then(response => {
+          console.log('YouTube test response status:', response.status);
+          if (response.ok) {
+            console.log('✅ YouTube video is accessible');
+          } else {
+            console.log('❌ YouTube video is not accessible');
+            setHasError(true);
+          }
+        })
+        .catch(error => {
+          console.log('❌ Error testing YouTube video accessibility:', error);
+          // Don't set error immediately, let the iframe try to load
+        });
 
       // For YouTube videos, we'll set loading to false after a short delay
       // to allow the iframe to start loading
@@ -161,12 +209,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson, courseId, showProgres
       };
     } else {
       console.log('📹 Direct video file detected');
+      console.log('Direct video URL:', videoUrl);
       setIsYouTube(false);
       setYouTubeId('');
       setIsLoading(true);
       setHasError(false);
     }
-  }, [lesson.videoUrl]);
+  }, [lesson?.videoUrl, lesson?.id, lesson?.title]);
 
   useEffect(() => {
     if (isYouTube) {
@@ -240,7 +289,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson, courseId, showProgres
       video.removeEventListener('error', handleError);
       video.removeEventListener('loadstart', handleLoadStart);
     };
-  }, [lesson.videoUrl, isYouTube]);
+  }, [lesson.videoUrl, isYouTube, updateProgress, getSmartResumeTime]);
 
   // Handle iframe load events for YouTube
   useEffect(() => {
@@ -267,7 +316,197 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson, courseId, showProgres
       iframe.removeEventListener('load', handleIframeLoad);
       iframe.removeEventListener('error', handleIframeError);
     };
-  }, [isYouTube, youTubeId]);
+  }, [isYouTube, youTubeId, lesson.title]);
+
+  // Start video session when component mounts
+  useEffect(() => {
+    if (courseId && lesson.id) {
+      startVideoSession();
+    }
+
+    return () => {
+      if (sessionId) {
+        endVideoSession();
+      }
+    };
+  }, [courseId, lesson.id]);
+
+  // Start video session
+  const startVideoSession = async () => {
+    try {
+      const deviceInfo = {
+        deviceId: navigator.userAgent,
+        deviceType: getDeviceType(),
+        browserInfo: {
+          userAgent: navigator.userAgent,
+          language: navigator.language,
+          platform: navigator.platform
+        }
+      };
+
+      const newSessionId = await videoProgressService.startSession(
+        'user-id', // Replace with actual user ID
+        courseId!,
+        lesson.id,
+        deviceInfo
+      );
+
+      setSessionId(newSessionId);
+      onSessionStart?.(newSessionId);
+
+      // Load resume point
+      const resumePoint = await videoProgressService.getResumePoint(courseId!, lesson.id);
+      if (resumePoint.resumeTimeSeconds > 0 && videoRef.current) {
+        videoRef.current.currentTime = resumePoint.resumeTimeSeconds;
+        console.log('🎯 Applied resume point:', resumePoint.resumeTimeSeconds);
+      }
+
+      // Load analytics
+      const lessonAnalytics = await videoProgressService.getVideoAnalytics(courseId!, lesson.id);
+      setAnalytics(lessonAnalytics);
+    } catch (error) {
+      console.error('Error starting video session:', error);
+    }
+  };
+
+  // End video session
+  const endVideoSession = async () => {
+    if (!sessionId) return;
+
+    try {
+      await videoProgressService.endSession();
+      onSessionEnd?.(analytics);
+    } catch (error) {
+      console.error('Error ending video session:', error);
+    }
+  };
+
+  // Enhanced time update handler
+  const handleTimeUpdate = () => {
+    if (!videoRef.current || !duration || !isFinite(duration)) return;
+
+    const currentTime = videoRef.current.currentTime;
+    const progress = (currentTime / duration) * 100;
+
+    setProgress(progress);
+    setCurrentTime(currentTime);
+
+    // Update video tracking
+    updateProgress(currentTime, isPlaying, isMuted, videoRef.current.playbackRate);
+
+    // Record progress interval every 30 seconds
+    const now = Date.now();
+    if (now - lastProgressUpdate >= 30000) { // 30 seconds
+      recordProgressInterval(currentTime);
+      setLastProgressUpdate(now);
+    }
+
+    // Update resume point every 10 seconds
+    if (Math.floor(currentTime) % 10 === 0) {
+      updateResumePoint(currentTime);
+    }
+
+    // Check for video completion (95% or more)
+    if (progress >= 95 && !hasCompleted && courseId && lesson.id) {
+      setHasCompleted(true);
+      console.log('🎉 Video completed!', {
+        lessonId: lesson.id,
+        courseId,
+        progress,
+        currentTime,
+        duration
+      });
+
+      // Call completion callback
+      onVideoComplete?.(lesson.id, {
+        lessonId: lesson.id,
+        courseId: courseId,
+        completionTime: currentTime,
+        totalDuration: duration,
+        completionPercentage: progress
+      });
+
+      // Record completion in analytics
+      recordInteraction('video_completed', {
+        lessonId: lesson.id,
+        courseId: courseId,
+        completionTime: currentTime,
+        totalDuration: duration,
+        completionPercentage: progress
+      });
+    }
+
+    // Call progress update callback
+    onProgressUpdate?.(progress);
+  };
+
+  // Record progress interval
+  const recordProgressInterval = async (currentTime: number) => {
+    if (!sessionId) return;
+
+    const interactions = [
+      { type: 'play', timestamp: Date.now() },
+      { type: 'progress', currentTime, timestamp: Date.now() }
+    ];
+
+    await videoProgressService.recordInterval(
+      Math.max(0, currentTime - 30),
+      currentTime,
+      30,
+      interactions
+    );
+  };
+
+  // Update resume point
+  const updateResumePoint = async (currentTime: number) => {
+    if (!courseId) return;
+
+    await videoProgressService.updateResumePoint(
+      courseId,
+      lesson.id,
+      currentTime,
+      10 // 10-second buffer
+    );
+  };
+
+  // Enhanced play/pause handlers
+  const handlePlay = async () => {
+    if (isYouTube || !videoRef.current) return;
+
+    try {
+      await videoRef.current.play();
+      setIsPlaying(true);
+      recordInteraction('play');
+
+      // Set activity status
+      videoProgressService.setActivityStatus(true);
+    } catch (error) {
+      console.error('Error playing video:', error);
+      setHasError(true);
+    }
+  };
+
+  const handlePause = () => {
+    if (isYouTube || !videoRef.current) return;
+
+    videoRef.current.pause();
+    setIsPlaying(false);
+    recordInteraction('pause');
+
+    // Set activity status
+    videoProgressService.setActivityStatus(false);
+  };
+
+  // Get device type
+  const getDeviceType = (): string => {
+    const userAgent = navigator.userAgent.toLowerCase();
+    if (/mobile|android|iphone|ipad|phone/.test(userAgent)) {
+      return 'mobile';
+    } else if (/tablet|ipad/.test(userAgent)) {
+      return 'tablet';
+    }
+    return 'desktop';
+  };
 
   const togglePlay = async () => {
     if (isYouTube || !videoRef.current) return;
@@ -361,7 +600,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson, courseId, showProgres
       allowfullscreen: '1'
     });
 
-    return `https://www.youtube.com/embed/${videoId}?${params.toString()}`;
+    const embedUrl = `https://www.youtube.com/embed/${videoId}?${params.toString()}`;
+    console.log('🎬 Generated YouTube embed URL:', embedUrl);
+    return embedUrl;
   };
 
   console.log('=== VideoPlayer Render ===');
@@ -476,17 +717,17 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson, courseId, showProgres
             loading="lazy"
             style={{ border: 'none' }}
             onLoad={() => {
-              console.log('YouTube iframe onLoad triggered');
+              console.log('✅ YouTube iframe onLoad triggered');
               setIsLoading(false);
               setHasError(false);
             }}
             onError={() => {
-              console.error('YouTube iframe onError triggered');
+              console.error('❌ YouTube iframe onError triggered');
               setIsLoading(false);
               setHasError(true);
             }}
             onAbort={() => {
-              console.error('YouTube iframe onAbort triggered');
+              console.error('❌ YouTube iframe onAbort triggered');
               setIsLoading(false);
               setHasError(true);
             }}
@@ -503,14 +744,14 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson, courseId, showProgres
 
               {/* Bottom Controls */}
               <div className="flex justify-between items-center pointer-events-auto">
-                <button
+                {/* <button
                   onClick={openInYouTube}
                   className="text-white hover:text-red-500 transition-colors bg-black/50 px-3 py-2 rounded flex items-center text-sm"
                   title="Open in YouTube"
                 >
                   <ExternalLink className="h-4 w-4 mr-2" />
                   Open in YouTube
-                </button>
+                </button> */}
 
                 <button
                   onClick={toggleFullscreen}
@@ -597,6 +838,36 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson, courseId, showProgres
             playsInline
             preload="metadata"
             crossOrigin="anonymous"
+            onLoadStart={() => {
+              console.log('📹 Video loadStart triggered');
+              setIsLoading(true);
+              setHasError(false);
+            }}
+            onLoadedMetadata={() => {
+              console.log('📹 Video loadedMetadata triggered');
+              console.log('Video duration:', videoRef.current?.duration);
+              console.log('Video currentTime:', videoRef.current?.currentTime);
+              console.log('Video readyState:', videoRef.current?.readyState);
+            }}
+            onCanPlay={() => {
+              console.log('📹 Video canPlay triggered');
+              setIsLoading(false);
+              setHasError(false);
+            }}
+            onError={(e) => {
+              console.error('📹 Video error triggered:', e);
+              console.error('Video error details:', videoRef.current?.error);
+              setHasError(true);
+              setIsLoading(false);
+            }}
+            onPlay={() => {
+              console.log('📹 Video play triggered');
+              setIsPlaying(true);
+            }}
+            onPause={() => {
+              console.log('📹 Video pause triggered');
+              setIsPlaying(false);
+            }}
           />
 
           {/* Loading State */}
@@ -728,15 +999,30 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ lesson, courseId, showProgres
         </>
       )}
 
-{/* {process.env.NODE_ENV === 'development' && (
-        <div className="absolute top-2 right-2 bg-black/80 text-white text-xs p-2 rounded opacity-75 max-w-xs">
-          <div>URL: {lesson.videoUrl}</div>
-          <div>YouTube: {isYouTube ? 'Yes' : 'No'}</div>
-          {isYouTube && <div>ID: {youTubeId}</div>}
-          <div>Loading: {isLoading ? 'Yes' : 'No'}</div>
-          <div>Error: {hasError ? 'Yes' : 'No'}</div>
+      {/* Enhanced Progress Display */}
+      {showProgressPanel && analytics && (
+        <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+          <h3 className="text-lg font-semibold mb-2">Video Analytics</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+            <div>
+              <span className="text-gray-600">Total Sessions:</span>
+              <span className="ml-2 font-medium">{analytics.totalSessions}</span>
+            </div>
+            <div>
+              <span className="text-gray-600">Watch Time:</span>
+              <span className="ml-2 font-medium">{Math.round(analytics.totalWatchTime / 60)}m</span>
+            </div>
+            <div>
+              <span className="text-gray-600">Completion:</span>
+              <span className="ml-2 font-medium">{analytics.completionRate}%</span>
+            </div>
+            <div>
+              <span className="text-gray-600">Engagement:</span>
+              <span className="ml-2 font-medium">{analytics.engagementScore}%</span>
+            </div>
+          </div>
         </div>
-      )} */}
+      )}
     </div>
   );
 };
