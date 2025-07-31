@@ -270,7 +270,7 @@ app.use((req, res, next) => {
   res.setHeader('X-XSS-Protection', '1; mode=block');
 
   // Content security policy
-      res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: https:; connect-src 'self' http://localhost:3002 https:; font-src 'self' https:;");
+      res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: https: http://localhost:3002; connect-src 'self' http://localhost:3002 https:; font-src 'self' https:;");
 
   next();
 });
@@ -284,6 +284,12 @@ app.use('/api', secureRoutes);
 app.get('/api/health', (req, res) => {
   const healthStatus = monitoringService.getHealthStatus();
   res.apiSuccess(healthStatus, 'Server is healthy');
+});
+
+// Simple test endpoint
+app.get('/api/test', (req, res) => {
+  console.log('🔍 Test API: Request received');
+  res.json({ message: 'Backend server is working', timestamp: new Date().toISOString() });
 });
 
 // Debug endpoint to check user data (for testing)
@@ -761,6 +767,53 @@ app.post('/api/init-db', async (req, res) => {
     }
 
     console.log('✅ Database initialized successfully');
+
+    // After creating other tables, add this:
+
+    // Create system_configuration table if it doesn't exist
+    await executeQuery(`
+      CREATE TABLE IF NOT EXISTS system_configuration (
+        id INT PRIMARY KEY DEFAULT 1,
+        site_name VARCHAR(255) NOT NULL DEFAULT 'Forward Africa',
+        site_description TEXT,
+        maintenance_mode BOOLEAN DEFAULT FALSE,
+        debug_mode BOOLEAN DEFAULT FALSE,
+        max_upload_size INT DEFAULT 50,
+        session_timeout INT DEFAULT 30,
+        email_notifications BOOLEAN DEFAULT TRUE,
+        auto_backup BOOLEAN DEFAULT TRUE,
+        backup_frequency ENUM('hourly', 'daily', 'weekly', 'monthly') DEFAULT 'daily',
+        security_level ENUM('low', 'medium', 'high', 'maximum') DEFAULT 'high',
+        rate_limiting BOOLEAN DEFAULT TRUE,
+        max_requests_per_minute INT DEFAULT 100,
+        database_connection_pool INT DEFAULT 10,
+        cache_enabled BOOLEAN DEFAULT TRUE,
+        cache_ttl INT DEFAULT 3600,
+        cdn_enabled BOOLEAN DEFAULT FALSE,
+        ssl_enabled BOOLEAN DEFAULT TRUE,
+        cors_enabled BOOLEAN DEFAULT TRUE,
+        allowed_origins JSON,
+        -- Homepage Banner Configuration
+        homepage_banner_enabled BOOLEAN DEFAULT FALSE,
+        homepage_banner_type ENUM('video', 'image', 'course') DEFAULT 'course',
+        homepage_banner_video_url VARCHAR(500),
+        homepage_banner_image_url VARCHAR(500),
+        homepage_banner_title VARCHAR(255),
+        homepage_banner_subtitle TEXT,
+        homepage_banner_description TEXT,
+        homepage_banner_button_text VARCHAR(100) DEFAULT 'Get Started',
+        homepage_banner_button_url VARCHAR(500),
+        homepage_banner_overlay_opacity DECIMAL(3,2) DEFAULT 0.70,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Insert default system configuration if it doesn't exist
+    await executeQuery(`
+      INSERT IGNORE INTO system_configuration (id, site_name, site_description)
+      VALUES (1, 'Forward Africa', 'Empowering African entrepreneurs through education')
+    `);
 
     res.json({
       status: 'OK',
@@ -2554,6 +2607,20 @@ app.get('/api/audit-logs', authenticateToken, async (req, res) => {
 
     const { action, resource_type, user_id, start_date, end_date, limit = 100 } = req.query;
 
+    // First, let's check if the audit_logs table exists
+    try {
+      const tableCheck = await executeQuery('SHOW TABLES LIKE "audit_logs"');
+      console.log('📋 Table check result:', tableCheck);
+
+      if (tableCheck.length === 0) {
+        console.error('❌ audit_logs table does not exist');
+        return res.status(500).json({ error: 'Audit logs table not found. Please check database setup.' });
+      }
+    } catch (tableError) {
+      console.error('❌ Error checking audit_logs table:', tableError);
+      return res.status(500).json({ error: 'Database connection error' });
+    }
+
     let query = `
       SELECT al.*, u.full_name as user_name, u.email as user_email
       FROM audit_logs al
@@ -2598,7 +2665,47 @@ app.get('/api/audit-logs', authenticateToken, async (req, res) => {
     res.json(logs);
   } catch (error) {
     console.error('Audit logs error:', error);
-    res.status(500).json({ error: 'Failed to fetch audit logs' });
+    res.status(500).json({ error: 'Failed to fetch audit logs', details: error.message });
+  }
+});
+
+// Test endpoint to check audit logs table structure
+app.get('/api/audit-logs/test', authenticateToken, async (req, res) => {
+  try {
+    console.log('🧪 Testing audit logs table...');
+
+    // Check if table exists
+    const tableCheck = await executeQuery('SHOW TABLES LIKE "audit_logs"');
+    console.log('📋 Table exists:', tableCheck.length > 0);
+
+    if (tableCheck.length === 0) {
+      return res.json({
+        error: 'Table not found',
+        message: 'audit_logs table does not exist. Please run the database schema setup.'
+      });
+    }
+
+    // Check table structure
+    const structure = await executeQuery('DESCRIBE audit_logs');
+    console.log('📋 Table structure:', structure);
+
+    // Check if there are any records
+    const count = await executeQuery('SELECT COUNT(*) as count FROM audit_logs');
+    console.log('📋 Record count:', count[0].count);
+
+    // Get sample records
+    const samples = await executeQuery('SELECT * FROM audit_logs LIMIT 3');
+    console.log('📋 Sample records:', samples);
+
+    res.json({
+      tableExists: true,
+      structure: structure,
+      recordCount: count[0].count,
+      samples: samples
+    });
+  } catch (error) {
+    console.error('Test endpoint error:', error);
+    res.status(500).json({ error: 'Test failed', details: error.message });
   }
 });
 
@@ -2609,6 +2716,8 @@ app.post('/api/audit-logs', authenticateToken, async (req, res) => {
     const ip_address = req.ip || req.connection.remoteAddress;
     const user_agent = req.headers['user-agent'];
 
+    console.log('📝 Creating audit log:', { action, resource_type, resource_id, user_id: req.user.id });
+
     await executeQuery(
       'INSERT INTO audit_logs (id, user_id, action, resource_type, resource_id, details, ip_address, user_agent) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
       [id, req.user.id, action, resource_type, resource_id, JSON.stringify(details), ip_address, user_agent]
@@ -2617,7 +2726,7 @@ app.post('/api/audit-logs', authenticateToken, async (req, res) => {
     res.status(201).json({ id, message: 'Audit log created successfully' });
   } catch (error) {
     console.error('Create audit log error:', error);
-    res.status(500).json({ error: 'Failed to create audit log' });
+    res.status(500).json({ error: 'Failed to create audit log', details: error.message });
   }
 });
 
@@ -2914,6 +3023,206 @@ app.put('/api/system/config', authenticateToken, authorizeRole(['super_admin']),
   } catch (error) {
     console.error('Error updating system configuration:', error);
     res.status(500).json({ error: 'Failed to update system configuration' });
+  }
+});
+
+// Homepage Banner Management Endpoints
+app.get('/api/banner/config', async (req, res) => {
+  console.log('🔍 Banner API: Request received');
+  try {
+    console.log('🔍 Banner API: Fetching configuration...');
+
+    // Get banner configuration from database
+    const [configRows] = await executeQuery(`
+      SELECT
+        homepage_banner_enabled,
+        homepage_banner_type,
+        homepage_banner_video_url,
+        homepage_banner_image_url,
+        homepage_banner_title,
+        homepage_banner_subtitle,
+        homepage_banner_description,
+        homepage_banner_button_text,
+        homepage_banner_button_url,
+        homepage_banner_overlay_opacity
+      FROM system_configuration WHERE id = 1
+    `);
+
+    console.log('🔍 Banner API: Query result:', configRows);
+
+    // Check if we have valid configuration data
+    if (!configRows || Object.keys(configRows).length === 0) {
+      console.log('🔍 Banner API: No config found, returning defaults');
+      // Return default banner configuration
+      const defaultBannerConfig = {
+        homepage_banner_enabled: true,  // Changed from false to true
+        homepage_banner_type: 'image',  // Changed from 'course' to 'image'
+        homepage_banner_video_url: null,
+        homepage_banner_image_url: null,
+        homepage_banner_title: 'Welcome to Forward Africa',
+        homepage_banner_subtitle: 'Empowering African Entrepreneurs',
+        homepage_banner_description: 'Join our community of learners and innovators',
+        homepage_banner_button_text: 'Get Started',
+        homepage_banner_button_url: '/courses',
+        homepage_banner_overlay_opacity: 0.70
+      };
+
+      console.log('🔍 Banner API: Sending default config');
+      res.json(defaultBannerConfig);
+    } else {
+      console.log('🔍 Banner API: Using database config');
+
+      // Convert boolean values properly
+      const bannerConfig = {
+        homepage_banner_enabled: Boolean(configRows.homepage_banner_enabled),
+        homepage_banner_type: configRows.homepage_banner_type,
+        homepage_banner_video_url: configRows.homepage_banner_video_url,
+        homepage_banner_image_url: configRows.homepage_banner_image_url,
+        homepage_banner_title: configRows.homepage_banner_title,
+        homepage_banner_subtitle: configRows.homepage_banner_subtitle,
+        homepage_banner_description: configRows.homepage_banner_description,
+        homepage_banner_button_text: configRows.homepage_banner_button_text,
+        homepage_banner_button_url: configRows.homepage_banner_button_url,
+        homepage_banner_overlay_opacity: parseFloat(configRows.homepage_banner_overlay_opacity) || 0.70
+      };
+
+      console.log('🔍 Banner API: Sending banner config:', bannerConfig);
+      res.json(bannerConfig);
+    }
+  } catch (error) {
+    console.error('❌ Error fetching banner configuration:', error);
+    res.status(500).json({ error: 'Failed to fetch banner configuration', details: error.message });
+  }
+});
+
+app.put('/api/banner/config', authenticateToken, authorizeRole(['super_admin']), async (req, res) => {
+  try {
+    const {
+      homepage_banner_enabled,
+      homepage_banner_type,
+      homepage_banner_video_url,
+      homepage_banner_image_url,
+      homepage_banner_title,
+      homepage_banner_subtitle,
+      homepage_banner_description,
+      homepage_banner_button_text,
+      homepage_banner_button_url,
+      homepage_banner_overlay_opacity
+    } = req.body;
+
+    // Check if configuration exists
+    const [existingConfig] = await executeQuery('SELECT id FROM system_configuration WHERE id = 1');
+
+    if (existingConfig.length === 0) {
+      // Insert new configuration with banner settings
+      await executeQuery(`
+        INSERT INTO system_configuration (
+          id, site_name, site_description, maintenance_mode, debug_mode, max_upload_size,
+          session_timeout, email_notifications, auto_backup, backup_frequency, security_level,
+          rate_limiting, max_requests_per_minute, database_connection_pool, cache_enabled,
+          cache_ttl, cdn_enabled, ssl_enabled, cors_enabled, allowed_origins,
+          homepage_banner_enabled, homepage_banner_type, homepage_banner_video_url,
+          homepage_banner_image_url, homepage_banner_title, homepage_banner_subtitle,
+          homepage_banner_description, homepage_banner_button_text, homepage_banner_button_url,
+          homepage_banner_overlay_opacity, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+      `, [
+        1, 'Forward Africa', 'Empowering African professionals through expert-led courses',
+        false, false, 50, 30, true, true, 'daily', 'high', true, 100, 10, true,
+        3600, false, true, true, JSON.stringify(['https://forwardafrica.com', 'https://www.forwardafrica.com']),
+        homepage_banner_enabled, homepage_banner_type, homepage_banner_video_url,
+        homepage_banner_image_url, homepage_banner_title, homepage_banner_subtitle,
+        homepage_banner_description, homepage_banner_button_text, homepage_banner_button_url,
+        homepage_banner_overlay_opacity
+      ]);
+    } else {
+      // Update existing configuration with banner settings
+      await executeQuery(`
+        UPDATE system_configuration SET
+          homepage_banner_enabled = ?, homepage_banner_type = ?, homepage_banner_video_url = ?,
+          homepage_banner_image_url = ?, homepage_banner_title = ?, homepage_banner_subtitle = ?,
+          homepage_banner_description = ?, homepage_banner_button_text = ?, homepage_banner_button_url = ?,
+          homepage_banner_overlay_opacity = ?, updated_at = NOW()
+        WHERE id = 1
+      `, [
+        homepage_banner_enabled, homepage_banner_type, homepage_banner_video_url,
+        homepage_banner_image_url, homepage_banner_title, homepage_banner_subtitle,
+        homepage_banner_description, homepage_banner_button_text, homepage_banner_button_url,
+        homepage_banner_overlay_opacity
+      ]);
+    }
+
+    // Log the banner configuration change
+    await executeQuery(`
+      INSERT INTO audit_logs (id, user_id, action, details, ip_address, user_agent)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `, [
+      uuidv4(),
+      req.user.id,
+      'BANNER_CONFIG_UPDATE',
+      `Updated homepage banner configuration: ${homepage_banner_enabled ? 'enabled' : 'disabled'}`,
+      req.ip || req.connection.remoteAddress,
+      req.headers['user-agent']
+    ]);
+
+    res.json({ message: 'Banner configuration updated successfully' });
+  } catch (error) {
+    console.error('Error updating banner configuration:', error);
+    res.status(500).json({ error: 'Failed to update banner configuration' });
+  }
+});
+
+// Banner upload endpoint
+app.post('/api/banner/upload', authenticateToken, authorizeRole(['super_admin']), upload.single('banner'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'video/mp4', 'video/webm', 'video/ogg'];
+    if (!allowedTypes.includes(req.file.mimetype)) {
+      return res.status(400).json({ error: 'Invalid file type. Only images (JPEG, PNG, WebP) and videos (MP4, WebM, OGG) are allowed.' });
+    }
+
+    // Validate file size (50MB max)
+    const maxSize = 50 * 1024 * 1024; // 50MB
+    if (req.file.size > maxSize) {
+      return res.status(400).json({ error: 'File size too large. Maximum size is 50MB.' });
+    }
+
+    // Generate unique filename
+    const timestamp = Date.now();
+    const randomId = Math.random().toString(36).substring(2, 15);
+    const fileExtension = req.file.originalname.split('.').pop();
+    const filename = `banner-${timestamp}-${randomId}.${fileExtension}`;
+
+    // Move file to banner directory
+    const bannerDir = path.join(__dirname, 'uploads', 'banners');
+    if (!fs.existsSync(bannerDir)) {
+      fs.mkdirSync(bannerDir, { recursive: true });
+    }
+
+    const filePath = path.join(bannerDir, filename);
+    fs.renameSync(req.file.path, filePath);
+
+    // Generate URL
+    const url = `${req.protocol}://${req.get('host')}/uploads/banners/${filename}`;
+
+    // Determine file type
+    const isVideo = req.file.mimetype.startsWith('video/');
+    const fileType = isVideo ? 'video' : 'image';
+
+    res.json({
+      url,
+      filename,
+      fileType,
+      size: req.file.size,
+      mimetype: req.file.mimetype
+    });
+  } catch (error) {
+    console.error('Error uploading banner:', error);
+    res.status(500).json({ error: 'Failed to upload banner' });
   }
 });
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from '../lib/router';
-import { ArrowLeft, Settings, Database, Server, Shield, Globe, Zap, Save, AlertTriangle, CheckCircle, RefreshCw, Power, Monitor, HardDrive, Network, Cpu, Download } from 'lucide-react';
+import { ArrowLeft, Settings, Database, Server, Shield, Globe, Zap, Save, AlertTriangle, CheckCircle, RefreshCw, Power, Monitor, HardDrive, Network, Cpu, Download, Image } from 'lucide-react';
 import Button from '../components/ui/Button';
 import { useAuthEnhanced } from '../hooks/useAuthEnhanced';
 import { usePermissions } from '../contexts/PermissionContext';
@@ -8,6 +8,7 @@ import PermissionGuard from '../components/ui/PermissionGuard';
 import { apiClient } from '../lib/authInterceptor';
 import { tokenDebugger } from '../utils/tokenDebugger';
 import Layout from '../components/layout/Layout';
+import BannerManagement from '../components/ui/BannerManagement';
 
 // Helper function to safely access auth token
 const getAuthToken = () => {
@@ -21,7 +22,7 @@ const SystemConfigurationPage: React.FC = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading, isSuperAdmin } = useAuthEnhanced();
   const { userRole, hasPermission } = usePermissions();
-  const [activeTab, setActiveTab] = useState<'general' | 'database' | 'security' | 'performance' | 'backup' | 'monitoring'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'database' | 'security' | 'performance' | 'backup' | 'monitoring' | 'banner'>('general');
   const [isLoading, setIsLoading] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
   const [systemStatus, setSystemStatus] = useState<any>(null);
@@ -324,7 +325,8 @@ const SystemConfigurationPage: React.FC = () => {
               { id: 'security', label: 'Security', icon: Shield },
               { id: 'performance', label: 'Performance', icon: Zap },
               { id: 'backup', label: 'Backup', icon: HardDrive },
-              { id: 'monitoring', label: 'Monitoring', icon: Monitor }
+              { id: 'monitoring', label: 'Monitoring', icon: Monitor },
+              { id: 'banner', label: 'Banner', icon: Image }
             ].map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
@@ -786,6 +788,11 @@ const SystemConfigurationPage: React.FC = () => {
                 </div>
               </div>
             </div>
+          )}
+
+          {/* Banner Management */}
+          {activeTab === 'banner' && (
+            <BannerManagement />
           )}
         </div>
       </div>

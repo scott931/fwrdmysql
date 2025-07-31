@@ -124,6 +124,17 @@ CREATE TABLE system_configuration (
     ssl_enabled BOOLEAN DEFAULT TRUE,
     cors_enabled BOOLEAN DEFAULT TRUE,
     allowed_origins JSON,
+    -- Homepage Banner Configuration
+    homepage_banner_enabled BOOLEAN DEFAULT FALSE,
+    homepage_banner_type ENUM('video', 'image', 'course') DEFAULT 'course',
+    homepage_banner_video_url VARCHAR(500),
+    homepage_banner_image_url VARCHAR(500),
+    homepage_banner_title VARCHAR(255),
+    homepage_banner_subtitle TEXT,
+    homepage_banner_description TEXT,
+    homepage_banner_button_text VARCHAR(100) DEFAULT 'Get Started',
+    homepage_banner_button_url VARCHAR(500),
+    homepage_banner_overlay_opacity DECIMAL(3,2) DEFAULT 0.70,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );

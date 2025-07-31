@@ -408,7 +408,7 @@ const securityHeaders = (req, res, next) => {
   }
 
   // Content security policy
-      res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: https:; connect-src 'self' http://localhost:3002 https:; font-src 'self' https:;");
+      res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: https: http://localhost:3002; connect-src 'self' http://localhost:3002 https:; font-src 'self' https:;");
 
   next();
 };
