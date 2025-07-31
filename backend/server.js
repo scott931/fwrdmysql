@@ -373,6 +373,14 @@ app.post('/api/init-db', async (req, res) => {
         city VARCHAR(100),
         onboarding_completed BOOLEAN DEFAULT FALSE,
         role ENUM('user', 'content_manager', 'community_manager', 'user_support', 'super_admin') DEFAULT 'user',
+        is_active BOOLEAN DEFAULT TRUE,
+        permissions JSON,
+        refresh_token TEXT,
+        failed_login_attempts INT DEFAULT 0,
+        last_failed_login TIMESTAMP NULL,
+        last_login TIMESTAMP NULL,
+        reset_code VARCHAR(6),
+        reset_code_expiry TIMESTAMP NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       )
@@ -3575,5 +3583,129 @@ app.get('/api/health/lessons', async (req, res) => {
       error: error.message,
       timestamp: new Date().toISOString()
     });
+  }
+});
+
+// Password Reset Endpoints
+// Request password reset
+app.post('/api/auth/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
+    // Check if user exists
+    const [user] = await executeQuery('SELECT id, email, full_name FROM users WHERE email = ?', [email]);
+    if (!user) {
+      // Don't reveal if user exists or not for security
+      return res.json({ message: 'If an account with this email exists, a reset code has been sent' });
+    }
+
+    // Generate reset code (6 digits)
+    const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const resetCodeExpiry = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+
+    // Store reset code in database
+    await executeQuery(
+      'UPDATE users SET reset_code = ?, reset_code_expiry = ? WHERE id = ?',
+      [resetCode, resetCodeExpiry, user.id]
+    );
+
+    // For now, we'll return the code in the response (in production, this would be sent via email)
+    // In a real implementation, you would use nodemailer to send the email
+    res.json({
+      message: 'Reset code sent successfully',
+      resetCode: resetCode, // Remove this in production
+      email: user.email
+    });
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({ error: 'Failed to process password reset request' });
+  }
+});
+
+// Verify reset code
+app.post('/api/auth/verify-reset-code', async (req, res) => {
+  try {
+    const { email, resetCode } = req.body;
+
+    if (!email || !resetCode) {
+      return res.status(400).json({ error: 'Email and reset code are required' });
+    }
+
+    // Check if user exists and code is valid
+    const [user] = await executeQuery(
+      'SELECT id, email, reset_code, reset_code_expiry FROM users WHERE email = ?',
+      [email]
+    );
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (!user.reset_code || user.reset_code !== resetCode) {
+      return res.status(400).json({ error: 'Invalid reset code' });
+    }
+
+    if (new Date() > new Date(user.reset_code_expiry)) {
+      return res.status(400).json({ error: 'Reset code has expired' });
+    }
+
+    // Generate a temporary token for password reset
+    const resetToken = jwt.sign(
+      { id: user.id, email: user.email, type: 'password_reset' },
+      JWT_SECRET,
+      { expiresIn: '15m' }
+    );
+
+    res.json({
+      message: 'Reset code verified successfully',
+      resetToken: resetToken
+    });
+  } catch (error) {
+    console.error('Verify reset code error:', error);
+    res.status(500).json({ error: 'Failed to verify reset code' });
+  }
+});
+
+// Reset password with token
+app.post('/api/auth/reset-password', async (req, res) => {
+  try {
+    const { resetToken, newPassword } = req.body;
+
+    if (!resetToken || !newPassword) {
+      return res.status(400).json({ error: 'Reset token and new password are required' });
+    }
+
+    // Validate password strength
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters long' });
+    }
+
+    // Verify reset token
+    const decoded = jwt.verify(resetToken, JWT_SECRET);
+
+    if (decoded.type !== 'password_reset') {
+      return res.status(400).json({ error: 'Invalid reset token' });
+    }
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update password and clear reset code
+    await executeQuery(
+      'UPDATE users SET password_hash = ?, reset_code = NULL, reset_code_expiry = NULL WHERE id = ?',
+      [hashedPassword, decoded.id]
+    );
+
+    res.json({ message: 'Password reset successfully' });
+  } catch (error) {
+    console.error('Reset password error:', error);
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(400).json({ error: 'Invalid or expired reset token' });
+    }
+    res.status(500).json({ error: 'Failed to reset password' });
   }
 });

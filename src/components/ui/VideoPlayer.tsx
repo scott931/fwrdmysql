@@ -744,14 +744,14 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
               {/* Bottom Controls */}
               <div className="flex justify-between items-center pointer-events-auto">
-                <button
+                {/* <button
                   onClick={openInYouTube}
                   className="text-white hover:text-red-500 transition-colors bg-black/50 px-3 py-2 rounded flex items-center text-sm"
                   title="Open in YouTube"
                 >
                   <ExternalLink className="h-4 w-4 mr-2" />
                   Open in YouTube
-                </button>
+                </button> */}
 
                 <button
                   onClick={toggleFullscreen}

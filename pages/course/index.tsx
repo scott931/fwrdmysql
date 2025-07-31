@@ -8,6 +8,14 @@ export default function CourseIndex() {
   useEffect(() => {
     const fetchAndRedirect = async () => {
       try {
+        // Check if we're already on a specific course route
+        // If so, don't redirect automatically
+        if (router.asPath.includes('/course/') && !router.asPath.includes('/course/index')) {
+          console.log('Already on a specific course route, skipping automatic redirect');
+          setIsLoading(false);
+          return;
+        }
+
         // Fetch available courses from the API
         const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002/api'}/courses`);
 
@@ -17,7 +25,7 @@ export default function CourseIndex() {
 
         const courses = await response.json();
 
-                if (courses && courses.length > 0) {
+        if (courses && courses.length > 0) {
           // Get the first available course (or you can implement logic to select a specific course)
           const selectedCourse = courses[0];
           console.log('Redirecting to course:', selectedCourse.id);

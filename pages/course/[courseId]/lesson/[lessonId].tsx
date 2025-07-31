@@ -556,7 +556,11 @@ export default function LessonPage() {
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-4">
               <button
-                onClick={() => router.push(`/course/${courseId}`)}
+                onClick={() => {
+                  // Navigate directly to the specific course page
+                  // Use replace to prevent back button issues
+                  router.replace(`/course/${courseId}`);
+                }}
                 className="flex items-center space-x-2 text-gray-300 hover:text-white transition-colors"
               >
                 <ChevronLeft className="h-5 w-5" />
