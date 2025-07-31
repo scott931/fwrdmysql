@@ -113,8 +113,9 @@ const uploadsDir = path.join(__dirname, 'uploads');
 const avatarsDir = path.join(uploadsDir, 'avatars');
 const courseMediaDir = path.join(uploadsDir, 'course-media');
 const certificatesDir = path.join(uploadsDir, 'certificates');
+const bannersDir = path.join(uploadsDir, 'banners');
 
-[uploadsDir, avatarsDir, courseMediaDir, certificatesDir].forEach(dir => {
+[uploadsDir, avatarsDir, courseMediaDir, certificatesDir, bannersDir].forEach(dir => {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
@@ -132,6 +133,8 @@ const storage = multer.diskStorage({
       uploadPath = courseMediaDir;
     } else if (file.fieldname === 'certificate') {
       uploadPath = certificatesDir;
+    } else if (file.fieldname === 'banner') {
+      uploadPath = bannersDir;
     }
 
     cb(null, uploadPath);
@@ -144,12 +147,24 @@ const storage = multer.diskStorage({
   }
 });
 
+// Improved fileFilter function
 const fileFilter = (req, file, cb) => {
-  // Accept only image files
-  if (file.mimetype.startsWith('image/')) {
+  console.log(`🔍 FileFilter checking: ${file.originalname} (${file.mimetype})`);
+
+  // Extended list of allowed types
+  const allowedTypes = [
+    'image/jpeg', 'image/jpg', 'image/png', 'image/webp',
+    'video/mp4', 'video/webm', 'video/ogg', 'video/quicktime',
+    'video/x-msvideo', 'video/avi', 'video/mov'
+  ];
+
+  if (allowedTypes.includes(file.mimetype)) {
+    console.log(`✅ File accepted: ${file.originalname}`);
     cb(null, true);
   } else {
-    cb(new Error('Only image files are allowed!'), false);
+    const errorMsg = `Invalid file type: ${file.mimetype}. Only image and video files are allowed!`;
+    console.log(`❌ File rejected: ${file.originalname} - ${errorMsg}`);
+    cb(new Error(errorMsg), false);
   }
 };
 
@@ -157,8 +172,28 @@ const upload = multer({
   storage: storage,
   fileFilter: fileFilter,
   limits: {
-    fileSize: parseInt(process.env.MAX_FILE_SIZE) || 10485760 // 10MB default
+    fileSize: parseInt(process.env.MAX_FILE_SIZE) || 104857600 // 100MB default
   }
+});
+
+// Enhanced global error handler for multer errors
+app.use((error, req, res, next) => {
+  console.error('Global error handler:', error);
+
+  if (error instanceof multer.MulterError) {
+    console.error('Multer error:', error);
+    if (error.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({ error: 'File too large. Maximum size is 100MB.' });
+    }
+    return res.status(400).json({ error: 'File upload error: ' + error.message });
+  }
+
+  // Handle fileFilter errors
+  if (error.message && error.message.includes('Only image and video files are allowed')) {
+    return res.status(400).json({ error: 'Only image and video files are allowed!' });
+  }
+
+  next(error);
 });
 
 // Authentication middleware
@@ -270,7 +305,7 @@ app.use((req, res, next) => {
   res.setHeader('X-XSS-Protection', '1; mode=block');
 
   // Content security policy
-      res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: https: http://localhost:3002; connect-src 'self' http://localhost:3002 https:; font-src 'self' https:;");
+      res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: https: http://localhost:3002 http://localhost:3002/uploads; connect-src 'self' http://localhost:3002 https:; font-src 'self' https:;");
 
   next();
 });
@@ -3172,57 +3207,123 @@ app.put('/api/banner/config', authenticateToken, authorizeRole(['super_admin']),
   }
 });
 
-// Banner upload endpoint
+// Simplified banner upload endpoint for debugging
 app.post('/api/banner/upload', authenticateToken, authorizeRole(['super_admin']), upload.single('banner'), async (req, res) => {
   try {
+    console.log('🎬 Banner upload request received');
+
     if (!req.file) {
+      console.log('❌ No file uploaded');
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
+    console.log(`📁 File received: ${req.file.originalname} (${req.file.mimetype}, ${(req.file.size / (1024 * 1024)).toFixed(1)}MB)`);
+
     // Validate file type
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'video/mp4', 'video/webm', 'video/ogg'];
+    const allowedTypes = [
+      'image/jpeg', 'image/jpg', 'image/png', 'image/webp',
+      'video/mp4', 'video/webm', 'video/ogg', 'video/quicktime',
+      'video/x-msvideo', 'video/avi', 'video/mov'
+    ];
+
     if (!allowedTypes.includes(req.file.mimetype)) {
-      return res.status(400).json({ error: 'Invalid file type. Only images (JPEG, PNG, WebP) and videos (MP4, WebM, OGG) are allowed.' });
+      console.log(`❌ Invalid file type: ${req.file.mimetype}`);
+      return res.status(400).json({
+        error: 'Invalid file type. Only images (JPEG, PNG, WebP) and videos (MP4, WebM, OGG, MOV, AVI) are allowed.'
+      });
     }
 
-    // Validate file size (50MB max)
-    const maxSize = 50 * 1024 * 1024; // 50MB
+    // Validate file size (100MB max)
+    const maxSize = 100 * 1024 * 1024; // 100MB
     if (req.file.size > maxSize) {
-      return res.status(400).json({ error: 'File size too large. Maximum size is 50MB.' });
+      console.log(`❌ File too large: ${(req.file.size / (1024 * 1024)).toFixed(1)}MB`);
+      return res.status(400).json({ error: 'File size too large. Maximum size is 100MB.' });
     }
 
-    // Generate unique filename
+    const isVideo = req.file.mimetype.startsWith('video/');
+    let finalFilePath, finalFilename, finalSize;
+
+    // Simplified file handling - no compression for now
     const timestamp = Date.now();
     const randomId = Math.random().toString(36).substring(2, 15);
-    const fileExtension = req.file.originalname.split('.').pop();
-    const filename = `banner-${timestamp}-${randomId}.${fileExtension}`;
+    const fileExtension = req.file.originalname.split('.').pop() || (isVideo ? 'mp4' : 'jpg');
+    finalFilename = `banner-${timestamp}-${randomId}.${fileExtension}`;
 
-    // Move file to banner directory
     const bannerDir = path.join(__dirname, 'uploads', 'banners');
     if (!fs.existsSync(bannerDir)) {
       fs.mkdirSync(bannerDir, { recursive: true });
     }
 
-    const filePath = path.join(bannerDir, filename);
-    fs.renameSync(req.file.path, filePath);
+    finalFilePath = path.join(bannerDir, finalFilename);
+
+    // Use copyFileSync instead of renameSync to avoid issues
+    fs.copyFileSync(req.file.path, finalFilePath);
+    fs.unlinkSync(req.file.path); // Clean up temp file
+
+    finalSize = req.file.size;
 
     // Generate URL
-    const url = `${req.protocol}://${req.get('host')}/uploads/banners/${filename}`;
-
-    // Determine file type
-    const isVideo = req.file.mimetype.startsWith('video/');
+    const url = `${req.protocol}://${req.get('host')}/uploads/banners/${finalFilename}`;
     const fileType = isVideo ? 'video' : 'image';
+
+    // Log upload details
+    console.log(`📤 Banner upload completed:`);
+    console.log(`   Type: ${fileType}`);
+    console.log(`   Size: ${(finalSize / (1024 * 1024)).toFixed(1)}MB`);
+    console.log(`   URL: ${url}`);
 
     res.json({
       url,
-      filename,
+      filename: finalFilename,
       fileType,
-      size: req.file.size,
+      size: finalSize,
       mimetype: req.file.mimetype
     });
+
   } catch (error) {
-    console.error('Error uploading banner:', error);
-    res.status(500).json({ error: 'Failed to upload banner' });
+    console.error('❌ Error uploading banner:', error);
+    console.error('Error type:', typeof error);
+    console.error('Error constructor:', error?.constructor?.name);
+
+    // Clean up temp file if it exists
+    if (req.file && req.file.path && fs.existsSync(req.file.path)) {
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch (cleanupError) {
+        console.error('Failed to cleanup temp file:', cleanupError);
+      }
+    }
+
+    // Better error handling
+    let errorMessage = 'Failed to upload banner';
+
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    } else if (typeof error === 'object' && error !== null) {
+      try {
+        // Try to extract meaningful error information
+        if (error.message) {
+          errorMessage = error.message;
+        } else if (error.error) {
+          errorMessage = error.error;
+        } else if (error.details) {
+          errorMessage = error.details;
+        } else {
+          const stringified = JSON.stringify(error);
+          if (stringified !== '{}') {
+            errorMessage = stringified;
+          }
+        }
+      } catch (stringifyError) {
+        console.error('Failed to stringify error:', stringifyError);
+        errorMessage = 'Upload failed - error details unavailable';
+      }
+    } else if (typeof error === 'string') {
+      errorMessage = error;
+    }
+
+    console.log('Final error message:', errorMessage);
+    res.status(500).json({ error: errorMessage });
   }
 });
 
@@ -4016,5 +4117,19 @@ app.post('/api/auth/reset-password', async (req, res) => {
       return res.status(400).json({ error: 'Invalid or expired reset token' });
     }
     res.status(500).json({ error: 'Failed to reset password' });
+  }
+});
+
+// Test endpoint for debugging upload issues
+app.post('/api/banner/test', (req, res) => {
+  try {
+    console.log('🧪 Test endpoint called');
+    res.json({
+      message: 'Test endpoint working',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Test endpoint error:', error);
+    res.status(500).json({ error: 'Test endpoint failed' });
   }
 });

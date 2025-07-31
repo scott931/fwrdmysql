@@ -37,15 +37,6 @@ export const tokenDebugger = {
     console.log('🧹 Token Debug: Auth data cleared');
   },
 
-  // Set test token (for debugging)
-  setTestToken: (token: string, userData: any) => {
-    if (typeof window === 'undefined') return;
-
-    localStorage.setItem('forward_africa_token', token);
-    localStorage.setItem('forward_africa_user', JSON.stringify(userData));
-    console.log('🧪 Token Debug: Test token set');
-  },
-
   // List all localStorage items
   listAllStorage: () => {
     if (typeof window === 'undefined') return;

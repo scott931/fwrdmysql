@@ -112,7 +112,7 @@ const SystemConfigurationPage: React.FC = () => {
 
                 // Load configuration
         try {
-          const response = await apiClient.get('http://localhost:3002/api/system/config');
+          const response = await apiClient.get('/system/config');
           setSystemConfig(response.data);
         } catch (error) {
           console.warn('Failed to load system config, using defaults:', error);
@@ -122,7 +122,7 @@ const SystemConfigurationPage: React.FC = () => {
 
                 // Load system status
         try {
-          const response = await apiClient.get('http://localhost:3002/api/system/status');
+          const response = await apiClient.get('/system/status');
           setSystemStatus(response.data);
         } catch (error) {
           console.warn('Failed to load system status, using defaults:', error);
@@ -175,7 +175,7 @@ const SystemConfigurationPage: React.FC = () => {
       }
 
             console.log('💾 Saving configuration...');
-      const response = await apiClient.put('http://localhost:3002/api/system/config', systemConfig);
+      const response = await apiClient.put('/system/config', systemConfig);
       console.log('✅ Configuration saved successfully:', response.data);
       setSaveStatus('success');
       setTimeout(() => setSaveStatus('idle'), 3000);

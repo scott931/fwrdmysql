@@ -2,7 +2,7 @@ const mysql = require('mysql2/promise');
 
 async function testAuditLogs() {
   let connection;
-  
+
   try {
     // Create connection
     connection = await mysql.createConnection({
@@ -35,13 +35,13 @@ async function testAuditLogs() {
     // Test 3: Get sample data
     console.log('\n📋 Test 3: Getting sample audit logs...');
     const [logs] = await connection.execute(`
-      SELECT al.*, u.email as user_email 
-      FROM audit_logs al 
-      LEFT JOIN users u ON al.user_id = u.id 
-      ORDER BY al.created_at DESC 
+      SELECT al.*, u.email as user_email
+      FROM audit_logs al
+      LEFT JOIN users u ON al.user_id = u.id
+      ORDER BY al.created_at DESC
       LIMIT 5
     `);
-    
+
     console.log('📋 Sample audit logs:');
     logs.forEach((log, index) => {
       console.log(`  ${index + 1}. ${log.action} by ${log.user_email || log.user_id} on ${log.resource_type} at ${log.created_at}`);
@@ -54,10 +54,10 @@ async function testAuditLogs() {
       FROM audit_logs al
       LEFT JOIN users u ON al.user_id = u.id
       WHERE 1=1
-      ORDER BY al.created_at DESC 
+      ORDER BY al.created_at DESC
       LIMIT 10
     `);
-    
+
     console.log('📋 API query results:', apiLogs.length, 'records');
     apiLogs.forEach((log, index) => {
       console.log(`  ${index + 1}. ${log.action} by ${log.user_email || log.user_id} on ${log.resource_type}`);
@@ -82,4 +82,4 @@ testAuditLogs().then(() => {
 }).catch((error) => {
   console.error('💥 Test script failed:', error);
   process.exit(1);
-}); 
+});

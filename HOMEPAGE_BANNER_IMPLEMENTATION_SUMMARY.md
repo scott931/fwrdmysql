@@ -24,7 +24,7 @@ The homepage banner management system has been successfully implemented, allowin
 ### 4. File Management
 - **Automatic directory creation** for banner uploads
 - **File type validation** (images: JPEG, PNG, WebP; videos: MP4, WebM, OGG)
-- **File size limits** (50MB maximum)
+- **File size limits** (100MB maximum)
 - **Secure file naming** with timestamps and random IDs
 
 ## 🎯 Features Implemented

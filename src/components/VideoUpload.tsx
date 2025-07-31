@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import Button from './ui/Button';
 import ErrorMessage from './ui/ErrorMessage';
 import { SuccessMessage } from './ui/SuccessMessage';
+import { useFileUpload } from '../hooks/useFileUpload';
 
 interface VideoUploadProps {
   lessonId: string;
@@ -10,66 +11,43 @@ interface VideoUploadProps {
 
 export const VideoUpload: React.FC<VideoUploadProps> = ({ lessonId, onUploadComplete }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [uploading, setUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+
+  // File upload hook
+  const {
+    isUploading,
+    error,
+    success,
+    uploadFile,
+    clearError,
+    clearSuccess
+  } = useFileUpload({
+    endpoint: `/api/video-content/upload/${lessonId}`,
+    fieldName: 'video',
+    maxSize: 500 * 1024 * 1024, // 500MB
+    allowedTypes: ['video/mp4', 'video/mov', 'video/avi', 'video/webm'],
+    onSuccess: (data) => {
+      if (onUploadComplete) {
+        onUploadComplete(data.videoAssetId);
+      }
+    }
+  });
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      if (file.size > 500 * 1024 * 1024) {
-        setError('File size exceeds 500MB limit');
-        return;
-      }
-      if (!file.type.startsWith('video/')) {
-        setError('Please select a valid video file');
-        return;
-      }
       setSelectedFile(file);
-      setError(null);
+      clearError();
     }
   };
 
   const handleUpload = async () => {
     if (!selectedFile) return;
 
-    setUploading(true);
-    setError(null);
-    setSuccess(null);
-
-    const formData = new FormData();
-    formData.append('video', selectedFile);
-    formData.append('title', selectedFile.name);
-    formData.append('description', 'Video upload');
-
-    try {
-      const response = await fetch(`/api/video-content/upload/${lessonId}`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: formData
-      });
-
-      if (!response.ok) {
-        throw new Error('Upload failed');
-      }
-
-      const result = await response.json();
-      setSuccess('Video upload started successfully. Processing jobs have been queued.');
-
-      if (onUploadComplete) {
-        onUploadComplete(result.videoAssetId);
-      }
-    } catch (error) {
-      setError('Failed to upload video. Please try again.');
-    } finally {
-      setUploading(false);
-      setSelectedFile(null);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
+    await uploadFile(selectedFile);
+    setSelectedFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
   };
 
@@ -77,8 +55,8 @@ export const VideoUpload: React.FC<VideoUploadProps> = ({ lessonId, onUploadComp
     <div className="max-w-2xl mx-auto p-6">
       <h2 className="text-2xl font-bold mb-6">Upload Video</h2>
 
-      {error && <ErrorMessage message={error} onClose={() => setError(null)} />}
-      {success && <SuccessMessage message={success} onClose={() => setSuccess(null)} />}
+      {error && <ErrorMessage message={error} onClose={clearError} />}
+      {success && <SuccessMessage message={success} onClose={clearSuccess} />}
 
       <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
         <input
@@ -97,7 +75,7 @@ export const VideoUpload: React.FC<VideoUploadProps> = ({ lessonId, onUploadComp
           <div>
             <Button
               onClick={() => fileInputRef.current?.click()}
-              disabled={uploading}
+              disabled={isUploading}
               className="bg-blue-600 hover:bg-blue-700"
             >
               Select Video File
@@ -117,10 +95,10 @@ export const VideoUpload: React.FC<VideoUploadProps> = ({ lessonId, onUploadComp
           </p>
           <Button
             onClick={handleUpload}
-            disabled={uploading}
+            disabled={isUploading}
             className="mt-4 bg-green-600 hover:bg-green-700"
           >
-            {uploading ? 'Uploading...' : 'Upload Video'}
+            {isUploading ? 'Uploading...' : 'Upload Video'}
           </Button>
         </div>
       )}

@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Upload, X } from 'lucide-react';
 import Button from './Button';
 import Image from 'next/image';
+import { useFileUpload } from '../../hooks/useFileUpload';
 
 interface ImageUploadProps {
   onImageUpload: (url: string) => void;
@@ -22,10 +23,27 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
   previewSize = 'md',
   required = false
 }) => {
-  const [isUploading, setIsUploading] = useState(false);
   const [preview, setPreview] = useState<string | null>(currentImage || null);
-  const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // File upload hook
+  const {
+    isUploading,
+    error,
+    uploadFile,
+    clearError
+  } = useFileUpload({
+    endpoint: getUploadEndpoint(),
+    fieldName: uploadType,
+    maxSize: 5 * 1024 * 1024, // 5MB
+    allowedTypes: ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'],
+    onSuccess: (data) => {
+      onImageUpload(data.url);
+    },
+    onError: (errorMessage) => {
+      setPreview(null);
+    }
+  });
 
   const getPreviewSizeClasses = () => {
     switch (previewSize) {
@@ -62,20 +80,6 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      setError('Please select an image file');
-      return;
-    }
-
-    // Validate file size (5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      setError('File size must be less than 5MB');
-      return;
-    }
-
-    setError(null);
-
     // Create preview
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -83,42 +87,14 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
     };
     reader.readAsDataURL(file);
 
-    // Upload file
+    // Upload file using the hook
     uploadFile(file);
-  };
-
-  const uploadFile = async (file: File) => {
-    setIsUploading(true);
-    setError(null);
-
-    try {
-      const formData = new FormData();
-      formData.append(uploadType, file);
-
-      const response = await fetch(getUploadEndpoint(), {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Upload failed');
-      }
-
-      const data = await response.json();
-      onImageUpload(data.url);
-    } catch (err) {
-      console.error('Upload error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to upload image. Please try again.');
-      setPreview(null);
-    } finally {
-      setIsUploading(false);
-    }
   };
 
   const handleRemoveImage = () => {
     setPreview(null);
     onImageUpload('');
+    clearError();
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }

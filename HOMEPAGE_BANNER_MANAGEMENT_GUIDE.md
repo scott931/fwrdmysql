@@ -72,8 +72,8 @@ homepage_banner_overlay_opacity DECIMAL(3,2) DEFAULT 0.70
 **Step 3: Upload Media (if using custom banner)**
 - Click the upload area to select a file
 - Supported formats:
-  - Images: JPEG, PNG, WebP (max 50MB)
-  - Videos: MP4, WebM, OGG (max 50MB)
+  - Images: JPEG, PNG, WebP (max 100MB)
+- Videos: MP4, WebM, OGG (max 100MB)
 - Files are automatically processed and stored
 
 **Step 4: Configure Content**
@@ -169,7 +169,7 @@ src/
 
 ### File Validation
 - File type validation (images: JPEG, PNG, WebP; videos: MP4, WebM, OGG)
-- File size limits (50MB maximum)
+- File size limits (100MB maximum)
 - Secure file naming with timestamps and random IDs
 
 ### Data Protection
@@ -188,7 +188,7 @@ src/
 
 **2. File upload fails**
 - Ensure file type is supported
-- Check file size (max 50MB)
+- Check file size (max 100MB)
 - Verify super admin permissions
 
 **3. Banner configuration not saving**

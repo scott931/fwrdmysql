@@ -2,7 +2,7 @@ const mysql = require('mysql2/promise');
 
 async function addSampleAuditLogs() {
   let connection;
-  
+
   try {
     // Create connection
     connection = await mysql.createConnection({
@@ -21,7 +21,7 @@ async function addSampleAuditLogs() {
 
     // Add meaningful sample audit logs
     console.log('📝 Adding sample audit logs...');
-    
+
     const sampleLogs = [
       {
         id: 'audit_001',
@@ -187,13 +187,13 @@ async function addSampleAuditLogs() {
     // Verify the data
     console.log('\n📋 Verifying sample data...');
     const [logs] = await connection.execute(`
-      SELECT al.*, u.email as user_email 
-      FROM audit_logs al 
-      LEFT JOIN users u ON al.user_id = u.id 
-      ORDER BY al.created_at DESC 
+      SELECT al.*, u.email as user_email
+      FROM audit_logs al
+      LEFT JOIN users u ON al.user_id = u.id
+      ORDER BY al.created_at DESC
       LIMIT 10
     `);
-    
+
     console.log('📋 Recent audit logs:');
     logs.forEach((log, index) => {
       console.log(`  ${index + 1}. ${log.action} by ${log.user_email || log.user_id} on ${log.resource_type}`);
@@ -218,4 +218,4 @@ addSampleAuditLogs().then(() => {
 }).catch((error) => {
   console.error('💥 Script failed:', error);
   process.exit(1);
-}); 
+});

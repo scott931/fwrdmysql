@@ -2,7 +2,7 @@ const mysql = require('mysql2/promise');
 
 async function fixAuditLogsTable() {
   let connection;
-  
+
   try {
     // Create connection
     connection = await mysql.createConnection({
@@ -25,19 +25,19 @@ async function fixAuditLogsTable() {
     // Check if we need to recreate the table
     const idColumn = currentStructure.find(col => col.Field === 'id');
     const userIdColumn = currentStructure.find(col => col.Field === 'user_id');
-    
+
     if (idColumn.Type.includes('int') || userIdColumn.Type.includes('int')) {
       console.log('🔄 Table structure needs to be updated...');
-      
+
       // Create backup of current data
       console.log('📋 Backing up current data...');
       const [currentData] = await connection.execute('SELECT * FROM audit_logs');
       console.log(`📊 Backed up ${currentData.length} records`);
-      
+
       // Drop the current table
       console.log('🗑️ Dropping current table...');
       await connection.execute('DROP TABLE audit_logs');
-      
+
       // Create the correct table structure
       console.log('📋 Creating new table with correct structure...');
       await connection.execute(`
@@ -54,20 +54,20 @@ async function fixAuditLogsTable() {
           FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
         )
       `);
-      
+
       // Create indexes
       await connection.execute('CREATE INDEX idx_audit_logs_user ON audit_logs(user_id)');
       await connection.execute('CREATE INDEX idx_audit_logs_action ON audit_logs(action)');
       await connection.execute('CREATE INDEX idx_audit_logs_created_at ON audit_logs(created_at)');
-      
+
       console.log('✅ New table created successfully');
-      
+
       // Reinsert the data with proper structure
       console.log('📝 Reinserting data with correct structure...');
       for (const record of currentData) {
         const newId = `audit_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
         const userId = record.user_id ? `u${record.user_id}` : null;
-        
+
         await connection.execute(
           'INSERT INTO audit_logs (id, user_id, action, resource_type, resource_id, details, ip_address, user_agent, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
           [
@@ -83,7 +83,7 @@ async function fixAuditLogsTable() {
           ]
         );
       }
-      
+
       console.log('✅ Data reinserted successfully');
     } else {
       console.log('✅ Table structure is already correct');
@@ -108,10 +108,10 @@ async function fixAuditLogsTable() {
       FROM audit_logs al
       LEFT JOIN users u ON al.user_id = u.id
       WHERE 1=1
-      ORDER BY al.created_at DESC 
+      ORDER BY al.created_at DESC
       LIMIT 5
     `);
-    
+
     console.log('📋 API query results:');
     apiLogs.forEach((log, index) => {
       console.log(`  ${index + 1}. ${log.action} by ${log.user_email || log.user_id} on ${log.resource_type}`);
@@ -136,4 +136,4 @@ fixAuditLogsTable().then(() => {
 }).catch((error) => {
   console.error('💥 Fix script failed:', error);
   process.exit(1);
-}); 
+});

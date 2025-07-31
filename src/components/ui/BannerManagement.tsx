@@ -5,6 +5,7 @@ import { useAuthEnhanced } from '../../hooks/useAuthEnhanced';
 import { usePermissions } from '../../contexts/PermissionContext';
 import PermissionGuard from './PermissionGuard';
 import { apiClient } from '../../lib/authInterceptor';
+import { useFileUpload } from '../../hooks/useFileUpload';
 
 interface BannerConfig {
   homepage_banner_enabled: boolean;
@@ -36,16 +37,56 @@ const BannerManagement: React.FC = () => {
   });
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // File upload hook
+  const {
+    isUploading,
+    error: uploadError,
+    success: uploadSuccess,
+    uploadFile,
+    clearError: clearUploadError,
+    clearSuccess: clearUploadSuccess,
+    getFileSizeMB
+  } = useFileUpload({
+    endpoint: '/api/banner/upload',
+    fieldName: 'banner',
+    maxSize: 100 * 1024 * 1024, // 100MB
+    allowedTypes: [
+      'image/jpeg', 'image/jpg', 'image/png', 'image/webp',
+      'video/mp4', 'video/webm', 'video/ogg', 'video/quicktime'
+    ],
+    onSuccess: (data) => {
+      // Update config based on file type
+      if (data.fileType === 'video') {
+        setConfig(prev => ({
+          ...prev,
+          homepage_banner_video_url: data.url,
+          homepage_banner_type: 'video'
+        }));
+        setMessage({ type: 'success', text: `Video uploaded successfully!` });
+      } else {
+        setConfig(prev => ({
+          ...prev,
+          homepage_banner_image_url: data.url,
+          homepage_banner_type: 'image'
+        }));
+        setMessage({ type: 'success', text: `Image uploaded successfully!` });
+      }
+      triggerBannerRefresh();
+    },
+    onError: (error) => {
+      setMessage({ type: 'error', text: error });
+    }
+  });
 
   // Load banner configuration
   useEffect(() => {
     const loadConfig = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002/api'}/banner/config`);
+        const response = await fetch('/api/banner/config');
         if (response.ok) {
           const data = await response.json();
           setConfig(data);
@@ -61,63 +102,35 @@ const BannerManagement: React.FC = () => {
     loadConfig();
   }, []);
 
-  // Handle file upload
+  // Handle file upload with simplified logic
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    try {
-      setUploading(true);
-      const formData = new FormData();
-      formData.append('banner', file);
-
-      const token = localStorage.getItem('forward_africa_token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002/api'}/banner/upload`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: formData
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-
-        // Update config based on file type
-        if (data.fileType === 'video') {
-          setConfig(prev => ({
-            ...prev,
-            homepage_banner_video_url: data.url,
-            homepage_banner_type: 'video'
-          }));
-        } else {
-          setConfig(prev => ({
-            ...prev,
-            homepage_banner_image_url: data.url,
-            homepage_banner_type: 'image'
-          }));
-        }
-
-        setMessage({ type: 'success', text: 'File uploaded successfully!' });
-      } else {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Upload failed');
+    // Check for large files and warn user
+    const fileSizeMB = getFileSizeMB(file);
+    if (fileSizeMB > 50) {
+      const proceed = typeof window !== 'undefined' && confirm(`This file is ${fileSizeMB.toFixed(1)}MB. Large files may take several minutes to upload. Do you want to continue?`);
+      if (!proceed) {
+        event.target.value = ''; // Clear the file input
+        return;
       }
-    } catch (error) {
-      console.error('Upload error:', error);
-      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Upload failed' });
-    } finally {
-      setUploading(false);
     }
+
+    // Use the file upload hook
+    await uploadFile(file);
+
+    // Clear the file input
+    event.target.value = '';
   };
 
   // Function to trigger banner refresh on homepage
   const triggerBannerRefresh = () => {
-    // Dispatch custom event to notify HeroBanner
-    window.dispatchEvent(new CustomEvent('banner-updated'));
-
-    // Also trigger a page refresh for immediate visual feedback
+    // Only dispatch custom event if window is available (client-side)
     if (typeof window !== 'undefined') {
+      // Dispatch custom event to notify HeroBanner
+      window.dispatchEvent(new CustomEvent('banner-updated'));
+
       // Show a notification that changes will be visible on homepage
       console.log('✅ Banner updated! Changes will be visible on the homepage.');
     }
@@ -133,12 +146,10 @@ const BannerManagement: React.FC = () => {
   const handleSave = async () => {
     try {
       setSaving(true);
-      const token = localStorage.getItem('forward_africa_token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002/api'}/banner/config`, {
+      const response = await fetch('/api/banner/config', {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify(config)
       });
@@ -151,7 +162,7 @@ const BannerManagement: React.FC = () => {
 
         // Show success message with homepage link
         setTimeout(() => {
-          if (confirm('Banner updated successfully! Would you like to view the homepage to see the changes?')) {
+          if (typeof window !== 'undefined' && confirm('Banner updated successfully! Would you like to view the homepage to see the changes?')) {
             window.open('/', '_blank');
           }
         }, 1000);
@@ -185,7 +196,7 @@ const BannerManagement: React.FC = () => {
   }
 
   return (
-    <PermissionGuard requiredPermission="manage_system_config">
+         <PermissionGuard permission="manage_system_config">
       <div className="bg-gray-800 rounded-lg p-6">
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -196,7 +207,11 @@ const BannerManagement: React.FC = () => {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => window.open('/', '_blank')}
+              onClick={() => {
+                if (typeof window !== 'undefined') {
+                  window.open('/', '_blank');
+                }
+              }}
               className="flex items-center"
             >
               <Eye className="h-4 w-4 mr-2" />
@@ -327,28 +342,31 @@ const BannerManagement: React.FC = () => {
                     onChange={handleFileUpload}
                     className="hidden"
                     id="banner-upload"
-                    disabled={uploading}
+                    disabled={isUploading}
                   />
                   <label
                     htmlFor="banner-upload"
                     className={`cursor-pointer flex flex-col items-center ${
-                      uploading ? 'opacity-50 cursor-not-allowed' : 'hover:text-red-400'
+                      isUploading ? 'opacity-50 cursor-not-allowed' : 'hover:text-red-400'
                     }`}
                   >
-                    {uploading ? (
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500 mb-2"></div>
-                    ) : (
-                      <Upload className="h-8 w-8 mb-2" />
-                    )}
-                    <span className="text-sm">
-                      {uploading ? 'Uploading...' : `Click to upload ${config.homepage_banner_type}`}
-                    </span>
-                    <span className="text-xs text-gray-400 mt-1">
-                      {config.homepage_banner_type === 'video'
-                        ? 'MP4, WebM, OGG (max 50MB)'
-                        : 'JPEG, PNG, WebP (max 50MB)'
-                      }
-                    </span>
+                                         {isUploading ? (
+                       <div className="flex flex-col items-center">
+                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500 mb-2"></div>
+                         <span className="text-xs text-gray-400">Uploading...</span>
+                       </div>
+                     ) : (
+                       <Upload className="h-8 w-8 mb-2" />
+                     )}
+                     <span className="text-sm">
+                       {isUploading ? 'Please wait...' : `Click to upload ${config.homepage_banner_type}`}
+                     </span>
+                                         <span className="text-xs text-gray-400 mt-1">
+                       {config.homepage_banner_type === 'video'
+                         ? 'MP4, WebM, OGG (max 100MB)'
+                         : 'JPEG, PNG, WebP (max 100MB)'
+                       }
+                     </span>
                   </label>
                 </div>
               </div>

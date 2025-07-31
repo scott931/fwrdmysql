@@ -2,7 +2,7 @@ const mysql = require('mysql2/promise');
 
 async function initAuditLogs() {
   let connection;
-  
+
   try {
     // Create connection
     connection = await mysql.createConnection({
@@ -16,10 +16,10 @@ async function initAuditLogs() {
 
     // Check if audit_logs table exists
     const [tables] = await connection.execute('SHOW TABLES LIKE "audit_logs"');
-    
+
     if (tables.length === 0) {
       console.log('📋 Creating audit_logs table...');
-      
+
       // Create the audit_logs table
       await connection.execute(`
         CREATE TABLE audit_logs (
@@ -35,12 +35,12 @@ async function initAuditLogs() {
           FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
         )
       `);
-      
+
       // Create indexes
       await connection.execute('CREATE INDEX idx_audit_logs_user ON audit_logs(user_id)');
       await connection.execute('CREATE INDEX idx_audit_logs_action ON audit_logs(action)');
       await connection.execute('CREATE INDEX idx_audit_logs_created_at ON audit_logs(created_at)');
-      
+
       console.log('✅ audit_logs table created successfully');
     } else {
       console.log('✅ audit_logs table already exists');
@@ -49,13 +49,13 @@ async function initAuditLogs() {
     // Check if we have any audit logs
     const [countResult] = await connection.execute('SELECT COUNT(*) as count FROM audit_logs');
     const count = countResult[0].count;
-    
+
     console.log(`📊 Current audit logs count: ${count}`);
 
     // Add sample audit logs if table is empty
     if (count === 0) {
       console.log('📝 Adding sample audit logs...');
-      
+
       const sampleLogs = [
         {
           id: 'audit1',
@@ -169,4 +169,4 @@ initAuditLogs().then(() => {
 }).catch((error) => {
   console.error('💥 Script failed:', error);
   process.exit(1);
-}); 
+});
