@@ -5,6 +5,7 @@ import Button from '../components/ui/Button';
 import { useAuth } from '../contexts/AuthContext';
 import { usePermissions } from '../contexts/PermissionContext';
 import Layout from '../components/layout/Layout';
+import { communicationService, Announcement, EmailCampaign, PushNotification, EmailTemplate, CommunicationSettings, CommunicationAnalytics } from '../lib/communicationService';
 
 const CommunicationCenterPage: React.FC = () => {
   const navigate = useNavigate();
@@ -14,17 +15,32 @@ const CommunicationCenterPage: React.FC = () => {
   const [selectedAudience, setSelectedAudience] = useState<'all' | 'users' | 'instructors' | 'admins'>('all');
 
   // Communication data state
-  const [communications, setCommunications] = useState({
-    totalAnnouncements: 45,
-    totalEmails: 1234,
-    totalNotifications: 5678,
-    openRate: 78.5,
-    clickRate: 12.3,
-    deliveryRate: 99.2
+  const [communications, setCommunications] = useState<CommunicationAnalytics>({
+    total_announcements: 0,
+    total_emails: 0,
+    total_notifications: 0,
+    delivery_rate: '0',
+    open_rate: '0',
+    click_rate: '0'
   });
+
+  // Data states
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [emailCampaigns, setEmailCampaigns] = useState<EmailCampaign[]>([]);
+  const [pushNotifications, setPushNotifications] = useState<PushNotification[]>([]);
+  const [emailTemplates, setEmailTemplates] = useState<EmailTemplate[]>([]);
+  const [settings, setSettings] = useState<CommunicationSettings | null>(null);
+  const [loading, setLoading] = useState(false);
 
   // Check if user is super admin
   const isSuperAdmin = userRole === 'super_admin';
+
+  // Load data when component mounts
+  useEffect(() => {
+    if (isSuperAdmin) {
+      loadData();
+    }
+  }, [isSuperAdmin]);
 
   // Redirect if not super admin
   useEffect(() => {
@@ -32,6 +48,39 @@ const CommunicationCenterPage: React.FC = () => {
       navigate('/admin');
     }
   }, [isSuperAdmin, navigate]);
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      // Load analytics
+      const analyticsResponse = await communicationService.getAnalytics();
+      setCommunications(analyticsResponse.analytics);
+
+      // Load announcements
+      const announcementsResponse = await communicationService.getAnnouncements({ limit: 10 });
+      setAnnouncements(announcementsResponse.announcements);
+
+      // Load email campaigns
+      const campaignsResponse = await communicationService.getEmailCampaigns({ limit: 10 });
+      setEmailCampaigns(campaignsResponse.campaigns);
+
+      // Load push notifications
+      const notificationsResponse = await communicationService.getPushNotifications({ limit: 10 });
+      setPushNotifications(notificationsResponse.notifications);
+
+      // Load email templates
+      const templatesResponse = await communicationService.getEmailTemplates();
+      setEmailTemplates(templatesResponse.templates);
+
+      // Load settings
+      const settingsResponse = await communicationService.getSettings();
+      setSettings(settingsResponse.settings);
+    } catch (error) {
+      console.error('Error loading communication data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const formatPercentage = (value: number) => {
     return `${value.toFixed(1)}%`;
@@ -116,7 +165,7 @@ const CommunicationCenterPage: React.FC = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-gray-400 text-sm">Total Announcements</p>
-                      <p className="text-2xl font-bold text-white">{communications.totalAnnouncements}</p>
+                      <p className="text-2xl font-bold text-white">{communications.total_announcements}</p>
                     </div>
                     <div className="bg-blue-600/20 p-3 rounded-lg">
                       <Bell className="h-6 w-6 text-blue-400" />
@@ -127,7 +176,7 @@ const CommunicationCenterPage: React.FC = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-gray-400 text-sm">Open Rate</p>
-                      <p className="text-2xl font-bold text-white">{formatPercentage(communications.openRate)}</p>
+                      <p className="text-2xl font-bold text-white">{communications.open_rate}%</p>
                     </div>
                     <div className="bg-green-600/20 p-3 rounded-lg">
                       <Eye className="h-6 w-6 text-green-400" />
@@ -138,7 +187,7 @@ const CommunicationCenterPage: React.FC = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-gray-400 text-sm">Delivery Rate</p>
-                      <p className="text-2xl font-bold text-white">{formatPercentage(communications.deliveryRate)}</p>
+                      <p className="text-2xl font-bold text-white">{communications.delivery_rate}%</p>
                     </div>
                     <div className="bg-purple-600/20 p-3 rounded-lg">
                       <CheckCircle className="h-6 w-6 text-purple-400" />
@@ -172,73 +221,56 @@ const CommunicationCenterPage: React.FC = () => {
                 </div>
 
                 <div className="space-y-4">
-                  <div className="bg-gray-700 rounded-lg p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <h4 className="text-white font-medium mb-2">Platform Maintenance Notice</h4>
-                        <p className="text-gray-400 text-sm mb-2">
-                          Scheduled maintenance will occur on January 20th from 2:00 AM to 4:00 AM UTC.
-                          During this time, the platform will be temporarily unavailable.
-                        </p>
-                        <div className="flex items-center space-x-4 text-xs text-gray-500">
-                          <span className="flex items-center">
-                            <Calendar className="h-3 w-3 mr-1" />
-                            Jan 15, 2024
-                          </span>
-                          <span className="flex items-center">
-                            <Users className="h-3 w-3 mr-1" />
-                            All Users
-                          </span>
-                          <span className="flex items-center">
-                            <Eye className="h-3 w-3 mr-1" />
-                            1,247 views
-                          </span>
+                  {loading ? (
+                    <div className="text-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600 mx-auto"></div>
+                      <p className="text-gray-400 mt-2">Loading announcements...</p>
+                    </div>
+                  ) : announcements.length > 0 ? (
+                    announcements.map((announcement) => (
+                      <div key={announcement.id} className="bg-gray-700 rounded-lg p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <h4 className="text-white font-medium mb-2">{announcement.title}</h4>
+                            <p className="text-gray-400 text-sm mb-2">{announcement.content}</p>
+                            <div className="flex items-center space-x-4 text-xs text-gray-500">
+                              <span className="flex items-center">
+                                <Calendar className="h-3 w-3 mr-1" />
+                                {new Date(announcement.created_at).toLocaleDateString()}
+                              </span>
+                              <span className="flex items-center">
+                                <Users className="h-3 w-3 mr-1" />
+                                {announcement.audience === 'all' ? 'All Users' : announcement.audience}
+                              </span>
+                              <span className="flex items-center">
+                                <Eye className="h-3 w-3 mr-1" />
+                                {announcement.views_count} views
+                              </span>
+                              <span className={`px-2 py-1 rounded text-xs ${
+                                announcement.status === 'published' ? 'bg-green-600/20 text-green-400' :
+                                announcement.status === 'draft' ? 'bg-yellow-600/20 text-yellow-400' :
+                                'bg-gray-600/20 text-gray-400'
+                              }`}>
+                                {announcement.status}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Button variant="outline" size="sm">
+                              <Edit className="h-3 w-3" />
+                            </Button>
+                            <Button variant="outline" size="sm">
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
                         </div>
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <Button variant="outline" size="sm">
-                          <Edit className="h-3 w-3" />
-                        </Button>
-                        <Button variant="outline" size="sm">
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-8">
+                      <p className="text-gray-400">No announcements found</p>
                     </div>
-                  </div>
-
-                  <div className="bg-gray-700 rounded-lg p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <h4 className="text-white font-medium mb-2">New Course Available</h4>
-                        <p className="text-gray-400 text-sm mb-2">
-                          We're excited to announce our new course on "Advanced Business Strategy"
-                          taught by industry expert Dr. Sarah Johnson.
-                        </p>
-                        <div className="flex items-center space-x-4 text-xs text-gray-500">
-                          <span className="flex items-center">
-                            <Calendar className="h-3 w-3 mr-1" />
-                            Jan 12, 2024
-                          </span>
-                          <span className="flex items-center">
-                            <Users className="h-3 w-3 mr-1" />
-                            All Users
-                          </span>
-                          <span className="flex items-center">
-                            <Eye className="h-3 w-3 mr-1" />
-                            892 views
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Button variant="outline" size="sm">
-                          <Edit className="h-3 w-3" />
-                        </Button>
-                        <Button variant="outline" size="sm">
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
+                  )}
                 </div>
               </div>
             </>
@@ -262,47 +294,61 @@ const CommunicationCenterPage: React.FC = () => {
               </div>
 
               <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-gray-700">
-                      <th className="text-left py-3 px-4 text-gray-400 font-medium">Campaign Name</th>
-                      <th className="text-left py-3 px-4 text-gray-400 font-medium">Audience</th>
-                      <th className="text-left py-3 px-4 text-gray-400 font-medium">Sent</th>
-                      <th className="text-left py-3 px-4 text-gray-400 font-medium">Opened</th>
-                      <th className="text-left py-3 px-4 text-gray-400 font-medium">Clicked</th>
-                      <th className="text-left py-3 px-4 text-gray-400 font-medium">Status</th>
-                      <th className="text-left py-3 px-4 text-gray-400 font-medium">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr className="border-b border-gray-700">
-                      <td className="py-3 px-4 text-gray-300">Welcome Series</td>
-                      <td className="py-3 px-4 text-gray-300">New Users</td>
-                      <td className="py-3 px-4 text-gray-300">1,234</td>
-                      <td className="py-3 px-4 text-green-400">987 (80%)</td>
-                      <td className="py-3 px-4 text-blue-400">123 (10%)</td>
-                      <td className="py-3 px-4">
-                        <span className="bg-green-600/20 text-green-400 px-2 py-1 rounded text-xs">Active</span>
-                      </td>
-                      <td className="py-3 px-4">
-                        <Button variant="outline" size="sm">View</Button>
-                      </td>
-                    </tr>
-                    <tr className="border-b border-gray-700">
-                      <td className="py-3 px-4 text-gray-300">Course Reminder</td>
-                      <td className="py-3 px-4 text-gray-300">Inactive Users</td>
-                      <td className="py-3 px-4 text-gray-300">567</td>
-                      <td className="py-3 px-4 text-green-400">234 (41%)</td>
-                      <td className="py-3 px-4 text-blue-400">45 (8%)</td>
-                      <td className="py-3 px-4">
-                        <span className="bg-yellow-600/20 text-yellow-400 px-2 py-1 rounded text-xs">Draft</span>
-                      </td>
-                      <td className="py-3 px-4">
-                        <Button variant="outline" size="sm">Edit</Button>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
+                {loading ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600 mx-auto"></div>
+                    <p className="text-gray-400 mt-2">Loading email campaigns...</p>
+                  </div>
+                ) : emailCampaigns.length > 0 ? (
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-gray-700">
+                        <th className="text-left py-3 px-4 text-gray-400 font-medium">Campaign Name</th>
+                        <th className="text-left py-3 px-4 text-gray-400 font-medium">Audience</th>
+                        <th className="text-left py-3 px-4 text-gray-400 font-medium">Sent</th>
+                        <th className="text-left py-3 px-4 text-gray-400 font-medium">Opened</th>
+                        <th className="text-left py-3 px-4 text-gray-400 font-medium">Clicked</th>
+                        <th className="text-left py-3 px-4 text-gray-400 font-medium">Status</th>
+                        <th className="text-left py-3 px-4 text-gray-400 font-medium">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {emailCampaigns.map((campaign) => (
+                        <tr key={campaign.id} className="border-b border-gray-700">
+                          <td className="py-3 px-4 text-gray-300">{campaign.name}</td>
+                          <td className="py-3 px-4 text-gray-300">
+                            {campaign.audience === 'all' ? 'All Users' : campaign.audience}
+                          </td>
+                          <td className="py-3 px-4 text-gray-300">{campaign.total_recipients}</td>
+                          <td className="py-3 px-4 text-green-400">
+                            {campaign.opened_count} ({campaign.total_recipients > 0 ? ((campaign.opened_count / campaign.total_recipients) * 100).toFixed(1) : 0}%)
+                          </td>
+                          <td className="py-3 px-4 text-blue-400">
+                            {campaign.clicked_count} ({campaign.opened_count > 0 ? ((campaign.clicked_count / campaign.opened_count) * 100).toFixed(1) : 0}%)
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className={`px-2 py-1 rounded text-xs ${
+                              campaign.status === 'sent' ? 'bg-green-600/20 text-green-400' :
+                              campaign.status === 'sending' ? 'bg-blue-600/20 text-blue-400' :
+                              campaign.status === 'draft' ? 'bg-yellow-600/20 text-yellow-400' :
+                              campaign.status === 'cancelled' ? 'bg-red-600/20 text-red-400' :
+                              'bg-gray-600/20 text-gray-400'
+                            }`}>
+                              {campaign.status}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <Button variant="outline" size="sm">View</Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-gray-400">No email campaigns found</p>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -325,71 +371,57 @@ const CommunicationCenterPage: React.FC = () => {
               </div>
 
               <div className="space-y-4">
-                <div className="bg-gray-700 rounded-lg p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <h4 className="text-white font-medium mb-2">Course Completion</h4>
-                      <p className="text-gray-400 text-sm mb-2">
-                        Congratulations! You've completed the "Business Fundamentals" course.
-                      </p>
-                      <div className="flex items-center space-x-4 text-xs text-gray-500">
-                        <span className="flex items-center">
-                          <Clock className="h-3 w-3 mr-1" />
-                          2 hours ago
-                        </span>
-                        <span className="flex items-center">
-                          <Users className="h-3 w-3 mr-1" />
-                          Course Completers
-                        </span>
-                        <span className="flex items-center">
-                          <CheckCircle className="h-3 w-3 mr-1" />
-                          Delivered
-                        </span>
+                {loading ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600 mx-auto"></div>
+                    <p className="text-gray-400 mt-2">Loading notifications...</p>
+                  </div>
+                ) : pushNotifications.length > 0 ? (
+                  pushNotifications.map((notification) => (
+                    <div key={notification.id} className="bg-gray-700 rounded-lg p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <h4 className="text-white font-medium mb-2">{notification.title}</h4>
+                          <p className="text-gray-400 text-sm mb-2">{notification.message}</p>
+                          <div className="flex items-center space-x-4 text-xs text-gray-500">
+                            <span className="flex items-center">
+                              <Clock className="h-3 w-3 mr-1" />
+                              {new Date(notification.created_at).toLocaleDateString()}
+                            </span>
+                            <span className="flex items-center">
+                              <Users className="h-3 w-3 mr-1" />
+                              {notification.audience === 'all' ? 'All Users' : notification.audience}
+                            </span>
+                            <span className="flex items-center">
+                              <CheckCircle className="h-3 w-3 mr-1" />
+                              {notification.delivered_count} delivered
+                            </span>
+                            <span className={`px-2 py-1 rounded text-xs ${
+                              notification.status === 'sent' ? 'bg-green-600/20 text-green-400' :
+                              notification.status === 'draft' ? 'bg-yellow-600/20 text-yellow-400' :
+                              notification.status === 'cancelled' ? 'bg-red-600/20 text-red-400' :
+                              'bg-gray-600/20 text-gray-400'
+                            }`}>
+                              {notification.status}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Button variant="outline" size="sm">
+                            <Edit className="h-3 w-3" />
+                          </Button>
+                          <Button variant="outline" size="sm">
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <Button variant="outline" size="sm">
-                        <Edit className="h-3 w-3" />
-                      </Button>
-                      <Button variant="outline" size="sm">
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-gray-400">No push notifications found</p>
                   </div>
-                </div>
-
-                <div className="bg-gray-700 rounded-lg p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <h4 className="text-white font-medium mb-2">New Lesson Available</h4>
-                      <p className="text-gray-400 text-sm mb-2">
-                        A new lesson is available in your enrolled course "Digital Marketing".
-                      </p>
-                      <div className="flex items-center space-x-4 text-xs text-gray-500">
-                        <span className="flex items-center">
-                          <Clock className="h-3 w-3 mr-1" />
-                          1 day ago
-                        </span>
-                        <span className="flex items-center">
-                          <Users className="h-3 w-3 mr-1" />
-                          Enrolled Students
-                        </span>
-                        <span className="flex items-center">
-                          <CheckCircle className="h-3 w-3 mr-1" />
-                          Delivered
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Button variant="outline" size="sm">
-                        <Edit className="h-3 w-3" />
-                      </Button>
-                      <Button variant="outline" size="sm">
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
+                )}
               </div>
             </div>
           )}
@@ -399,36 +431,34 @@ const CommunicationCenterPage: React.FC = () => {
             <div className="bg-gray-800 rounded-lg p-6">
               <h3 className="text-lg font-semibold mb-6">Message Templates</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div className="bg-gray-700 rounded-lg p-4">
-                  <h4 className="text-white font-medium mb-2">Welcome Email</h4>
-                  <p className="text-gray-400 text-sm mb-4">
-                    Template for welcoming new users to the platform.
-                  </p>
-                  <div className="flex items-center space-x-2">
-                    <Button variant="outline" size="sm">Edit</Button>
-                    <Button variant="outline" size="sm">Use</Button>
+                {loading ? (
+                  <div className="col-span-full text-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600 mx-auto"></div>
+                    <p className="text-gray-400 mt-2">Loading templates...</p>
                   </div>
-                </div>
-                <div className="bg-gray-700 rounded-lg p-4">
-                  <h4 className="text-white font-medium mb-2">Course Reminder</h4>
-                  <p className="text-gray-400 text-sm mb-4">
-                    Template for reminding users about incomplete courses.
-                  </p>
-                  <div className="flex items-center space-x-2">
-                    <Button variant="outline" size="sm">Edit</Button>
-                    <Button variant="outline" size="sm">Use</Button>
+                ) : emailTemplates.length > 0 ? (
+                  emailTemplates.map((template) => (
+                    <div key={template.id} className="bg-gray-700 rounded-lg p-4">
+                      <h4 className="text-white font-medium mb-2">{template.name}</h4>
+                      <p className="text-gray-400 text-sm mb-4">
+                        {template.subject}
+                      </p>
+                      <div className="flex items-center space-x-2">
+                        <Button variant="outline" size="sm">Edit</Button>
+                        <Button variant="outline" size="sm">Use</Button>
+                        {template.is_default && (
+                          <span className="bg-blue-600/20 text-blue-400 px-2 py-1 rounded text-xs">
+                            Default
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="col-span-full text-center py-8">
+                    <p className="text-gray-400">No email templates found</p>
                   </div>
-                </div>
-                <div className="bg-gray-700 rounded-lg p-4">
-                  <h4 className="text-white font-medium mb-2">Maintenance Notice</h4>
-                  <p className="text-gray-400 text-sm mb-4">
-                    Template for platform maintenance announcements.
-                  </p>
-                  <div className="flex items-center space-x-2">
-                    <Button variant="outline" size="sm">Edit</Button>
-                    <Button variant="outline" size="sm">Use</Button>
-                  </div>
-                </div>
+                )}
               </div>
             </div>
           )}
@@ -489,65 +519,79 @@ const CommunicationCenterPage: React.FC = () => {
             <div className="bg-gray-800 rounded-lg p-6">
               <h3 className="text-lg font-semibold mb-6">Communication Settings</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Default Sender Email
-                  </label>
-                  <input
-                    type="email"
-                    defaultValue="noreply@forwardafrica.com"
-                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Default Sender Name
-                  </label>
-                  <input
-                    type="text"
-                    defaultValue="Forward Africa"
-                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                  />
-                </div>
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    defaultChecked
-                    className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
-                  />
-                  <label className="ml-2 text-sm text-gray-300">
-                    Enable email notifications
-                  </label>
-                </div>
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    defaultChecked
-                    className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
-                  />
-                  <label className="ml-2 text-sm text-gray-300">
-                    Enable push notifications
-                  </label>
-                </div>
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    defaultChecked
-                    className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
-                  />
-                  <label className="ml-2 text-sm text-gray-300">
-                    Require email confirmation
-                  </label>
-                </div>
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
-                  />
-                  <label className="ml-2 text-sm text-gray-300">
-                    Enable SMS notifications
-                  </label>
-                </div>
+                {loading ? (
+                  <div className="col-span-full text-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600 mx-auto"></div>
+                    <p className="text-gray-400 mt-2">Loading settings...</p>
+                  </div>
+                ) : settings ? (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                        Default Sender Email
+                      </label>
+                      <input
+                        type="email"
+                        defaultValue={settings.default_sender_email}
+                        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                        Default Sender Name
+                      </label>
+                      <input
+                        type="text"
+                        defaultValue={settings.default_sender_name}
+                        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        defaultChecked={settings.enable_email_notifications === 'true'}
+                        className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
+                      />
+                      <label className="ml-2 text-sm text-gray-300">
+                        Enable email notifications
+                      </label>
+                    </div>
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        defaultChecked={settings.enable_push_notifications === 'true'}
+                        className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
+                      />
+                      <label className="ml-2 text-sm text-gray-300">
+                        Enable push notifications
+                      </label>
+                    </div>
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        defaultChecked={settings.require_email_confirmation === 'true'}
+                        className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
+                      />
+                      <label className="ml-2 text-sm text-gray-300">
+                        Require email confirmation
+                      </label>
+                    </div>
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        defaultChecked={settings.enable_sms_notifications === 'true'}
+                        className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
+                      />
+                      <label className="ml-2 text-sm text-gray-300">
+                        Enable SMS notifications
+                      </label>
+                    </div>
+                  </>
+                ) : (
+                  <div className="col-span-full text-center py-8">
+                    <p className="text-gray-400">No settings found</p>
+                  </div>
+                )}
               </div>
             </div>
           )}

@@ -22,6 +22,7 @@ const { monitoringService, monitoringMiddleware } = require('./services/monitori
 
 // Import secure routes
 const secureRoutes = require('./routes/secureRoutes');
+const communicationRoutes = require('./routes/communicationRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3002;
@@ -320,8 +321,112 @@ app.use((req, res, next) => {
   next();
 });
 
+// Users API - These endpoints should be accessible without authentication for admin panel
+app.get('/api/users', async (req, res) => {
+  try {
+    const users = await executeQuery('SELECT * FROM users ORDER BY created_at DESC');
+    res.json(users);
+  } catch (error) {
+    console.error('❌ Error fetching users:', error);
+    res.status(500).json({ error: 'Failed to fetch users' });
+  }
+});
+
+app.get('/api/users/:id', async (req, res) => {
+  try {
+    const [user] = await executeQuery('SELECT * FROM users WHERE id = ?', [req.params.id]);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    res.json(user);
+  } catch (error) {
+    console.error('❌ Error fetching user:', error);
+    res.status(500).json({ error: 'Failed to fetch user' });
+  }
+});
+
+app.get('/api/users/email/:email', async (req, res) => {
+  try {
+    const [user] = await executeQuery('SELECT * FROM users WHERE email = ?', [req.params.email]);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    res.json(user);
+  } catch (error) {
+    console.error('❌ Error fetching user by email:', error);
+    res.status(500).json({ error: 'Failed to fetch user' });
+  }
+});
+
+app.post('/api/users', async (req, res) => {
+  try {
+    console.log('🔧 Creating user with data:', req.body);
+    const { email, full_name, avatar_url, role, password } = req.body;
+
+    // Validate required fields
+    if (!email || !full_name) {
+      return res.status(400).json({ error: 'Email and full_name are required' });
+    }
+
+    // Check if user already exists
+    const [existingUser] = await executeQuery(
+      'SELECT id FROM users WHERE email = ?',
+      [email]
+    );
+
+    if (existingUser) {
+      return res.status(400).json({ error: 'User with this email already exists' });
+    }
+
+    // Hash password if provided
+    let passwordHash = null;
+    if (password) {
+      passwordHash = await bcrypt.hash(password, 10);
+    }
+
+    // Prepare insert parameters with proper null handling
+    const insertParams = [
+      email,
+      full_name,
+      passwordHash,
+      role || 'user',
+      null, // permissions
+      avatar_url || null,
+      false, // onboarding_completed
+      null, // industry
+      null, // experience_level
+      null, // business_stage
+      null, // country
+      null, // state_province
+      null, // city
+      true, // is_active
+      0, // failed_login_attempts
+      null, // last_failed_login
+      null, // refresh_token
+      null, // last_login
+      new Date(), // created_at
+      new Date() // updated_at
+    ];
+
+    console.log('🔧 Insert parameters:', insertParams);
+
+    const result = await executeQuery(
+      'INSERT INTO users (email, full_name, password, role, permissions, avatar_url, onboarding_completed, industry, experience_level, business_stage, country, state_province, city, is_active, failed_login_attempts, last_failed_login, refresh_token, last_login, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      insertParams
+    );
+
+    console.log('🔧 User created successfully');
+    res.status(201).json({ message: 'User created successfully' });
+  } catch (error) {
+    console.error('❌ User creation error:', error);
+    console.error('❌ Error stack:', error.stack);
+    res.status(500).json({ error: 'Failed to create user', details: error.message });
+  }
+});
+
 // Use secure routes
 app.use('/api', secureRoutes);
+app.use('/api/communications', communicationRoutes);
 
 // API Routes
 
@@ -1060,95 +1165,7 @@ app.get('/api/auth/me', authenticateToken, async (req, res) => {
   }
 });
 
-// Users API
-app.get('/api/users', async (req, res) => {
-  try {
-    const users = await executeQuery('SELECT * FROM users ORDER BY created_at DESC');
-    res.json(users);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch users' });
-  }
-});
 
-app.get('/api/users/:id', async (req, res) => {
-  try {
-    const [user] = await executeQuery('SELECT * FROM users WHERE id = ?', [req.params.id]);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-    res.json(user);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch user' });
-  }
-});
-
-app.get('/api/users/email/:email', async (req, res) => {
-  try {
-    const [user] = await executeQuery('SELECT * FROM users WHERE email = ?', [req.params.email]);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-    res.json(user);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch user' });
-  }
-});
-
-app.post('/api/users', async (req, res) => {
-  try {
-    console.log('🔧 Creating user with data:', req.body);
-    const { email, full_name, avatar_url, education_level, job_title, topics_of_interest, role, password } = req.body;
-    const id = uuidv4();
-
-    // Validate required fields
-    if (!email || !full_name) {
-      return res.status(400).json({ error: 'Email and full_name are required' });
-    }
-
-    // Check if user already exists
-    const [existingUser] = await executeQuery(
-      'SELECT id FROM users WHERE email = ?',
-      [email]
-    );
-
-    if (existingUser) {
-      return res.status(400).json({ error: 'User with this email already exists' });
-    }
-
-    // Hash password if provided
-    let passwordHash = null;
-    if (password) {
-      passwordHash = await bcrypt.hash(password, 10);
-    }
-
-    // Prepare insert parameters with proper null handling
-    const insertParams = [
-      id,
-      email,
-      full_name,
-      avatar_url || null,
-      education_level || null,
-      job_title || null,
-      topics_of_interest ? JSON.stringify(topics_of_interest) : null,
-      role || 'user',
-      passwordHash
-    ];
-
-    console.log('🔧 Insert parameters:', insertParams);
-
-    const result = await executeQuery(
-      'INSERT INTO users (id, email, full_name, avatar_url, education_level, job_title, topics_of_interest, role, password_hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      insertParams
-    );
-
-    console.log('🔧 User created successfully with ID:', id);
-    res.status(201).json({ id, message: 'User created successfully' });
-  } catch (error) {
-    console.error('❌ User creation error:', error);
-    console.error('❌ Error stack:', error.stack);
-    res.status(500).json({ error: 'Failed to create user', details: error.message });
-  }
-});
 
 app.put('/api/users/:id', authenticateToken, async (req, res) => {
   try {

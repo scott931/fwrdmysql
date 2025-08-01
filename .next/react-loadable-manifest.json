@@ -5,10 +5,40 @@
       "static/chunks/src_pages_AdminPage_tsx.js"
     ]
   },
-  "pages\\admin\\add-instructor.tsx -> ../../src/pages/AddFacilitatorPage": {
-    "id": "pages\\admin\\add-instructor.tsx -> ../../src/pages/AddFacilitatorPage",
+  "pages\\admin\\financial-management.tsx -> ../../src/pages/FinancialManagementPage": {
+    "id": "pages\\admin\\financial-management.tsx -> ../../src/pages/FinancialManagementPage",
     "files": [
-      "static/chunks/src_pages_AddFacilitatorPage_tsx.js"
+      "static/chunks/src_pages_FinancialManagementPage_tsx.js"
+    ]
+  },
+  "pages\\admin\\upload-course.tsx -> ../../src/pages/UploadCoursePage": {
+    "id": "pages\\admin\\upload-course.tsx -> ../../src/pages/UploadCoursePage",
+    "files": [
+      "static/chunks/src_pages_UploadCoursePage_tsx.js"
+    ]
+  },
+  "pages\\afri-sage.tsx -> ../src/pages/AfrisagePage": {
+    "id": "pages\\afri-sage.tsx -> ../src/pages/AfrisagePage",
+    "files": [
+      "static/chunks/src_pages_AfrisagePage_tsx.js"
+    ]
+  },
+  "pages\\community.tsx -> ../src/pages/CommunityPage": {
+    "id": "pages\\community.tsx -> ../src/pages/CommunityPage",
+    "files": [
+      "static/chunks/src_pages_CommunityPage_tsx.js"
+    ]
+  },
+  "pages\\home.tsx -> ../src/pages/HomePage": {
+    "id": "pages\\home.tsx -> ../src/pages/HomePage",
+    "files": [
+      "static/chunks/src_pages_HomePage_tsx.js"
+    ]
+  },
+  "pages\\profile.tsx -> ../src/pages/ProfilePage": {
+    "id": "pages\\profile.tsx -> ../src/pages/ProfilePage",
+    "files": [
+      "static/chunks/src_pages_ProfilePage_tsx.js"
     ]
   }
 }
