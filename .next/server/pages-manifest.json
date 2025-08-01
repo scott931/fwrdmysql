@@ -2,13 +2,10 @@
   "/_app": "pages/_app.js",
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
+  "/login": "pages/login.js",
   "/profile": "pages/profile.js",
-  "/admin/financial-management": "pages/admin/financial-management.js",
-  "/community": "pages/community.js",
   "/admin": "pages/admin.js",
-  "/afri-sage": "pages/afri-sage.js",
+  "/": "pages/index.js",
   "/home": "pages/home.js",
-  "/api/banner/config": "pages/api/banner/config.js",
-  "/course/[courseId]/lesson/[lessonId]": "pages/course/[courseId]/lesson/[lessonId].js",
-  "/admin/upload-course": "pages/admin/upload-course.js"
+  "/api/banner/config": "pages/api/banner/config.js"
 }
