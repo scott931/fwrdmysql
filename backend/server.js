@@ -282,11 +282,21 @@ const executeQuery = async (query, params = []) => {
     return rows;
   } catch (error) {
     console.error('Database query error:', error);
+    console.error('Query:', query);
+    console.error('Params:', params);
 
     // If it's a connection error, return empty results instead of crashing
     if (error.code === 'ER_ACCESS_DENIED_ERROR' || error.code === 'ECONNREFUSED') {
       console.log('⚠️ Database not available, returning empty results');
       return [];
+    }
+
+    // Log specific error details for debugging
+    if (error.code) {
+      console.error('MySQL Error Code:', error.code);
+      console.error('MySQL Error Number:', error.errno);
+      console.error('MySQL SQL State:', error.sqlState);
+      console.error('MySQL Error Message:', error.sqlMessage);
     }
 
     throw error;
@@ -2044,28 +2054,72 @@ app.post('/api/instructors', authenticateToken, authorizeRole(['super_admin', 'c
       return res.status(400).json({ error: 'Missing required fields: name, title, email, bio, image' });
     }
 
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ error: 'Invalid email format' });
+    }
+
     // Check if instructor with this email already exists
     const [existingInstructor] = await executeQuery('SELECT id FROM instructors WHERE email = ?', [email]);
     if (existingInstructor) {
       return res.status(400).json({ error: 'Instructor with this email already exists' });
     }
 
+    // Sanitize and validate data
+    const sanitizedName = name.trim();
+    const sanitizedTitle = title.trim();
+    const sanitizedBio = bio.trim();
+    const sanitizedImage = image.trim();
+    const sanitizedPhone = phone ? phone.trim() : null;
+    const sanitizedExperience = parseInt(experience) || 0;
+
+    // Ensure expertise is an array
+    let sanitizedExpertise = [];
+    if (expertise) {
+      if (Array.isArray(expertise)) {
+        sanitizedExpertise = expertise.filter(item => typeof item === 'string' && item.trim());
+      } else if (typeof expertise === 'string') {
+        try {
+          const parsed = JSON.parse(expertise);
+          sanitizedExpertise = Array.isArray(parsed) ? parsed.filter(item => typeof item === 'string' && item.trim()) : [];
+        } catch {
+          sanitizedExpertise = [];
+        }
+      }
+    }
+
+    // Ensure socialLinks is an object
+    let sanitizedSocialLinks = {};
+    if (socialLinks) {
+      if (typeof socialLinks === 'object' && !Array.isArray(socialLinks)) {
+        sanitizedSocialLinks = socialLinks;
+      } else if (typeof socialLinks === 'string') {
+        try {
+          const parsed = JSON.parse(socialLinks);
+          sanitizedSocialLinks = typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+        } catch {
+          sanitizedSocialLinks = {};
+        }
+      }
+    }
+
     const id = uuidv4();
 
-    // Insert new instructor
+    // Insert new instructor with sanitized data
     await executeQuery(
       'INSERT INTO instructors (id, name, title, email, phone, bio, image, experience, expertise, social_links) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [
         id,
-        name,
-        title,
-        email,
-        phone || null,
-        bio,
-        image,
-        experience || 0,
-        JSON.stringify(expertise || []),
-        JSON.stringify(socialLinks || {})
+        sanitizedName,
+        sanitizedTitle,
+        email.toLowerCase().trim(),
+        sanitizedPhone,
+        sanitizedBio,
+        sanitizedImage,
+        sanitizedExperience,
+        JSON.stringify(sanitizedExpertise),
+        JSON.stringify(sanitizedSocialLinks)
       ]
     );
 
@@ -2078,9 +2132,9 @@ app.post('/api/instructors', authenticateToken, authorizeRole(['super_admin', 'c
           req.user?.id || 'system',
           'instructor_created',
           JSON.stringify({
-            message: `Created instructor: ${name} (${email})`,
+            message: `Created instructor: ${sanitizedName} (${email})`,
             instructor_id: id,
-            instructor_name: name,
+            instructor_name: sanitizedName,
             instructor_email: email
           }),
           req.ip,
@@ -2093,24 +2147,28 @@ app.post('/api/instructors', authenticateToken, authorizeRole(['super_admin', 'c
 
     res.status(201).json({
       id,
-      message: 'Instructor created successfully',
-      instructor: {
-        id,
-        name,
-        title,
-        email,
-        phone,
-        bio,
-        image,
-        experience: experience || 0,
-        expertise: expertise || [],
-        socialLinks: socialLinks || {},
-        createdAt: new Date()
-      }
+      name: sanitizedName,
+      title: sanitizedTitle,
+      email: email.toLowerCase().trim(),
+      phone: sanitizedPhone,
+      bio: sanitizedBio,
+      image: sanitizedImage,
+      experience: sanitizedExperience,
+      expertise: sanitizedExpertise,
+      socialLinks: sanitizedSocialLinks,
+      createdAt: new Date()
     });
   } catch (error) {
     console.error('Error creating instructor:', error);
-    res.status(500).json({ error: 'Failed to create instructor' });
+
+    // Provide more specific error messages
+    if (error.code === 'ER_DUP_ENTRY') {
+      return res.status(400).json({ error: 'Instructor with this email already exists' });
+    } else if (error.code === 'ER_DATA_TOO_LONG') {
+      return res.status(400).json({ error: 'One or more fields exceed maximum length' });
+    } else {
+      res.status(500).json({ error: 'Failed to create instructor', details: error.message });
+    }
   }
 });
 
@@ -2134,6 +2192,12 @@ app.put('/api/instructors/:id', authenticateToken, authorizeRole(['super_admin',
       return res.status(400).json({ error: 'Missing required fields: name, title, email, bio, image' });
     }
 
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ error: 'Invalid email format' });
+    }
+
     // Check if instructor exists
     const [existingInstructor] = await executeQuery('SELECT id FROM instructors WHERE id = ?', [req.params.id]);
     if (!existingInstructor) {
@@ -2146,19 +2210,57 @@ app.put('/api/instructors/:id', authenticateToken, authorizeRole(['super_admin',
       return res.status(400).json({ error: 'Email is already taken by another instructor' });
     }
 
-    // Update instructor
+    // Sanitize and validate data
+    const sanitizedName = name.trim();
+    const sanitizedTitle = title.trim();
+    const sanitizedBio = bio.trim();
+    const sanitizedImage = image.trim();
+    const sanitizedPhone = phone ? phone.trim() : null;
+    const sanitizedExperience = parseInt(experience) || 0;
+
+    // Ensure expertise is an array
+    let sanitizedExpertise = [];
+    if (expertise) {
+      if (Array.isArray(expertise)) {
+        sanitizedExpertise = expertise.filter(item => typeof item === 'string' && item.trim());
+      } else if (typeof expertise === 'string') {
+        try {
+          const parsed = JSON.parse(expertise);
+          sanitizedExpertise = Array.isArray(parsed) ? parsed.filter(item => typeof item === 'string' && item.trim()) : [];
+        } catch {
+          sanitizedExpertise = [];
+        }
+      }
+    }
+
+    // Ensure socialLinks is an object
+    let sanitizedSocialLinks = {};
+    if (socialLinks) {
+      if (typeof socialLinks === 'object' && !Array.isArray(socialLinks)) {
+        sanitizedSocialLinks = socialLinks;
+      } else if (typeof socialLinks === 'string') {
+        try {
+          const parsed = JSON.parse(socialLinks);
+          sanitizedSocialLinks = typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+        } catch {
+          sanitizedSocialLinks = {};
+        }
+      }
+    }
+
+    // Update instructor with sanitized data
     await executeQuery(
       'UPDATE instructors SET name = ?, title = ?, email = ?, phone = ?, bio = ?, image = ?, experience = ?, expertise = ?, social_links = ? WHERE id = ?',
       [
-        name,
-        title,
-        email,
-        phone || null,
-        bio,
-        image,
-        experience || 0,
-        JSON.stringify(expertise || []),
-        JSON.stringify(socialLinks || {}),
+        sanitizedName,
+        sanitizedTitle,
+        email.toLowerCase().trim(),
+        sanitizedPhone,
+        sanitizedBio,
+        sanitizedImage,
+        sanitizedExperience,
+        JSON.stringify(sanitizedExpertise),
+        JSON.stringify(sanitizedSocialLinks),
         req.params.id
       ]
     );
@@ -2172,9 +2274,9 @@ app.put('/api/instructors/:id', authenticateToken, authorizeRole(['super_admin',
           req.user?.id || 'system',
           'instructor_updated',
           JSON.stringify({
-            message: `Updated instructor: ${name} (${email})`,
+            message: `Updated instructor: ${sanitizedName} (${email})`,
             instructor_id: req.params.id,
-            instructor_name: name,
+            instructor_name: sanitizedName,
             instructor_email: email
           }),
           req.ip,
@@ -2186,24 +2288,31 @@ app.put('/api/instructors/:id', authenticateToken, authorizeRole(['super_admin',
     }
 
     res.json({
-      message: 'Instructor updated successfully',
-      instructor: {
-        id: req.params.id,
-        name,
-        title,
-        email,
-        phone,
-        bio,
-        image,
-        experience: experience || 0,
-        expertise: expertise || [],
-        socialLinks: socialLinks || {},
-        createdAt: new Date()
-      }
+      id: req.params.id,
+      name: sanitizedName,
+      title: sanitizedTitle,
+      email: email.toLowerCase().trim(),
+      phone: sanitizedPhone,
+      bio: sanitizedBio,
+      image: sanitizedImage,
+      experience: sanitizedExperience,
+      expertise: sanitizedExpertise,
+      socialLinks: sanitizedSocialLinks,
+      createdAt: new Date()
     });
   } catch (error) {
     console.error('Error updating instructor:', error);
-    res.status(500).json({ error: 'Failed to update instructor' });
+
+    // Provide more specific error messages
+    if (error.code === 'ER_DUP_ENTRY') {
+      return res.status(400).json({ error: 'Email is already taken by another instructor' });
+    } else if (error.code === 'ER_NO_REFERENCED_ROW_2') {
+      return res.status(400).json({ error: 'Invalid instructor ID' });
+    } else if (error.code === 'ER_DATA_TOO_LONG') {
+      return res.status(400).json({ error: 'One or more fields exceed maximum length' });
+    } else {
+      res.status(500).json({ error: 'Failed to update instructor', details: error.message });
+    }
   }
 });
 
@@ -3468,57 +3577,20 @@ wss.on('connection', (ws, req) => {
   ws.on('error', errorHandler);
 });
 
-// Apply error handling middleware
-app.use(errorHandler);
+// Import video content management routes
+const videoContentManagementRoutes = require('./routes/videoContentManagement');
 
-// Start server
-server.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🔗 API Base URL: http://localhost:${PORT}/api`);
-  console.log(`🌐 WebSocket URL: ws://localhost:${PORT}`);
-  console.log(`📈 Monitoring enabled: ${process.env.NODE_ENV === 'production' ? 'Yes' : 'Development mode'}`);
-});
+// Import video progress routes
+const videoProgressRoutes = require('./routes/videoProgress');
 
-// Handle unhandled promise rejections
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-});
+// Mount video content management routes
+app.use('/api/video-content', videoContentManagementRoutes);
 
-// Handle uncaught exceptions
-process.on('uncaughtException', (error) => {
-  console.error('Uncaught Exception:', error);
-});
+// Mount video progress routes
+app.use('/api/video-progress', videoProgressRoutes);
 
-// Graceful shutdown handler
-process.on('SIGINT', () => {
-  console.log('\n🛑 Shutting down server gracefully...');
-
-  // Close all WebSocket connections
-  connectedClients.forEach((client, clientId) => {
-    if (client.ws.readyState === WebSocket.OPEN) {
-      client.ws.close();
-    }
-  });
-  connectedClients.clear();
-
-  // Close WebSocket server
-  wss.close(() => {
-    console.log('✅ WebSocket server closed');
-  });
-
-  // Close HTTP server
-  server.close(() => {
-    console.log('✅ HTTP server closed');
-    process.exit(0);
-  });
-
-  // Force exit after 10 seconds
-  setTimeout(() => {
-    console.log('⚠️ Forced shutdown');
-    process.exit(1);
-  }, 10000);
-});
+// Initialize job processor service
+const jobProcessorService = require('./services/jobProcessorService');
 
 // Simple Search API - No prepared statements
 app.get('/api/search', async (req, res) => {
@@ -3746,26 +3818,157 @@ async function getSearchAnalytics(query) {
   }
 }
 
-// Import video content management routes
-const videoContentManagementRoutes = require('./routes/videoContentManagement');
+// Test endpoint for debugging upload issues
+app.post('/api/banner/test', (req, res) => {
+  try {
+    console.log('🧪 Test endpoint called');
+    res.json({
+      message: 'Test endpoint working',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Test endpoint error:', error);
+    res.status(500).json({ error: 'Test endpoint failed' });
+  }
+});
 
-// Import video progress routes
-const videoProgressRoutes = require('./routes/videoProgress');
+// Verify reset code
+app.post('/api/auth/verify-reset-code', async (req, res) => {
+  try {
+    const { email, resetCode } = req.body;
 
-// Mount video content management routes
-app.use('/api/video-content', videoContentManagementRoutes);
+    if (!email || !resetCode) {
+      return res.status(400).json({ error: 'Email and reset code are required' });
+    }
 
-// Mount video progress routes
-app.use('/api/video-progress', videoProgressRoutes);
+    // Check if user exists and code is valid
+    const [user] = await executeQuery(
+      'SELECT id, email, reset_code, reset_code_expiry FROM users WHERE email = ?',
+      [email]
+    );
 
-// Initialize job processor service
-const jobProcessorService = require('./services/jobProcessorService');
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
 
-// Server is already started above - this was a duplicate call
-console.log(`🚀 Forward Africa Backend Server running on port ${PORT}`);
-console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
-console.log(`🔗 API Base URL: http://localhost:${PORT}/api`);
-console.log(`🌐 CORS enabled for: ${corsOrigins.join(', ')}`);
+    if (!user.reset_code || user.reset_code !== resetCode) {
+      return res.status(400).json({ error: 'Invalid reset code' });
+    }
+
+    if (new Date() > new Date(user.reset_code_expiry)) {
+      return res.status(400).json({ error: 'Reset code has expired' });
+    }
+
+    // Generate a temporary token for password reset
+    const resetToken = jwt.sign(
+      { id: user.id, email: user.email, type: 'password_reset' },
+      JWT_SECRET,
+      { expiresIn: '15m' }
+    );
+
+    res.json({
+      message: 'Reset code verified successfully',
+      resetToken: resetToken
+    });
+  } catch (error) {
+    console.error('Verify reset code error:', error);
+    res.status(500).json({ error: 'Failed to verify reset code' });
+  }
+});
+
+// Reset password with token
+app.post('/api/auth/reset-password', async (req, res) => {
+  try {
+    const { resetToken, newPassword } = req.body;
+
+    if (!resetToken || !newPassword) {
+      return res.status(400).json({ error: 'Reset token and new password are required' });
+    }
+
+    // Validate password strength
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters long' });
+    }
+
+    // Verify reset token
+    const decoded = jwt.verify(resetToken, JWT_SECRET);
+
+    if (decoded.type !== 'password_reset') {
+      return res.status(400).json({ error: 'Invalid reset token' });
+    }
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update password and clear reset code
+    await executeQuery(
+      'UPDATE users SET password_hash = ?, reset_code = NULL, reset_code_expiry = NULL WHERE id = ?',
+      [hashedPassword, decoded.id]
+    );
+
+    res.json({ message: 'Password reset successfully' });
+  } catch (error) {
+    console.error('Reset password error:', error);
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(400).json({ error: 'Invalid or expired reset token' });
+    }
+    res.status(500).json({ error: 'Failed to reset password' });
+  }
+});
+
+// Apply error handling middleware
+app.use(errorHandler);
+
+// Start server
+server.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🔗 API Base URL: http://localhost:${PORT}/api`);
+  console.log(`🌐 WebSocket URL: ws://localhost:${PORT}`);
+  console.log(`📈 Monitoring enabled: ${process.env.NODE_ENV === 'production' ? 'Yes' : 'Development mode'}`);
+});
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+});
+
+// Graceful shutdown handler
+process.on('SIGINT', () => {
+  console.log('\n🛑 Shutting down server gracefully...');
+
+  // Close all WebSocket connections
+  connectedClients.forEach((client, clientId) => {
+    if (client.ws.readyState === WebSocket.OPEN) {
+      client.ws.close();
+    }
+  });
+  connectedClients.clear();
+
+  // Close WebSocket server
+  wss.close(() => {
+    console.log('✅ WebSocket server closed');
+  });
+
+  // Close HTTP server
+  server.close(() => {
+    console.log('✅ HTTP server closed');
+    process.exit(0);
+  });
+
+  // Force exit after 10 seconds
+  setTimeout(() => {
+    console.log('⚠️ Forced shutdown');
+    process.exit(1);
+  }, 10000);
+});
+
+
 
 // Graceful shutdown
 process.on('SIGTERM', async () => {
@@ -4036,100 +4239,5 @@ app.post('/api/auth/forgot-password', async (req, res) => {
   }
 });
 
-// Verify reset code
-app.post('/api/auth/verify-reset-code', async (req, res) => {
-  try {
-    const { email, resetCode } = req.body;
 
-    if (!email || !resetCode) {
-      return res.status(400).json({ error: 'Email and reset code are required' });
-    }
 
-    // Check if user exists and code is valid
-    const [user] = await executeQuery(
-      'SELECT id, email, reset_code, reset_code_expiry FROM users WHERE email = ?',
-      [email]
-    );
-
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    if (!user.reset_code || user.reset_code !== resetCode) {
-      return res.status(400).json({ error: 'Invalid reset code' });
-    }
-
-    if (new Date() > new Date(user.reset_code_expiry)) {
-      return res.status(400).json({ error: 'Reset code has expired' });
-    }
-
-    // Generate a temporary token for password reset
-    const resetToken = jwt.sign(
-      { id: user.id, email: user.email, type: 'password_reset' },
-      JWT_SECRET,
-      { expiresIn: '15m' }
-    );
-
-    res.json({
-      message: 'Reset code verified successfully',
-      resetToken: resetToken
-    });
-  } catch (error) {
-    console.error('Verify reset code error:', error);
-    res.status(500).json({ error: 'Failed to verify reset code' });
-  }
-});
-
-// Reset password with token
-app.post('/api/auth/reset-password', async (req, res) => {
-  try {
-    const { resetToken, newPassword } = req.body;
-
-    if (!resetToken || !newPassword) {
-      return res.status(400).json({ error: 'Reset token and new password are required' });
-    }
-
-    // Validate password strength
-    if (newPassword.length < 6) {
-      return res.status(400).json({ error: 'Password must be at least 6 characters long' });
-    }
-
-    // Verify reset token
-    const decoded = jwt.verify(resetToken, JWT_SECRET);
-
-    if (decoded.type !== 'password_reset') {
-      return res.status(400).json({ error: 'Invalid reset token' });
-    }
-
-    // Hash new password
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
-
-    // Update password and clear reset code
-    await executeQuery(
-      'UPDATE users SET password_hash = ?, reset_code = NULL, reset_code_expiry = NULL WHERE id = ?',
-      [hashedPassword, decoded.id]
-    );
-
-    res.json({ message: 'Password reset successfully' });
-  } catch (error) {
-    console.error('Reset password error:', error);
-    if (error.name === 'JsonWebTokenError') {
-      return res.status(400).json({ error: 'Invalid or expired reset token' });
-    }
-    res.status(500).json({ error: 'Failed to reset password' });
-  }
-});
-
-// Test endpoint for debugging upload issues
-app.post('/api/banner/test', (req, res) => {
-  try {
-    console.log('🧪 Test endpoint called');
-    res.json({
-      message: 'Test endpoint working',
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    console.error('Test endpoint error:', error);
-    res.status(500).json({ error: 'Test endpoint failed' });
-  }
-});

@@ -26,6 +26,24 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
   const [preview, setPreview] = useState<string | null>(currentImage || null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const getUploadEndpoint = () => {
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002/api';
+    switch (uploadType) {
+      case 'avatar':
+        return `${baseUrl}/upload/avatar`;
+      case 'courseThumbnail':
+        return `${baseUrl}/upload/course-thumbnail`;
+      case 'courseBanner':
+        return `${baseUrl}/upload/course-banner`;
+      case 'lessonThumbnail':
+        return `${baseUrl}/upload/lesson-thumbnail`;
+      case 'certificate':
+        return `${baseUrl}/upload/certificate`;
+      default:
+        return `${baseUrl}/upload/avatar`;
+    }
+  };
+
   // File upload hook
   const {
     isUploading,
@@ -55,24 +73,6 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
         return 'w-24 h-24';
       default:
         return 'w-16 h-16';
-    }
-  };
-
-  const getUploadEndpoint = () => {
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002/api';
-    switch (uploadType) {
-      case 'avatar':
-        return `${baseUrl}/upload/avatar`;
-      case 'courseThumbnail':
-        return `${baseUrl}/upload/course-thumbnail`;
-      case 'courseBanner':
-        return `${baseUrl}/upload/course-banner`;
-      case 'lessonThumbnail':
-        return `${baseUrl}/upload/lesson-thumbnail`;
-      case 'certificate':
-        return `${baseUrl}/upload/certificate`;
-      default:
-        return `${baseUrl}/upload/avatar`;
     }
   };
 

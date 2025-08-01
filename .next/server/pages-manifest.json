@@ -2,10 +2,7 @@
   "/_app": "pages/_app.js",
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
-  "/admin/system-configuration": "pages/admin/system-configuration.js",
   "/home": "pages/home.js",
   "/admin": "pages/admin.js",
-  "/api/banner/config": "pages/api/banner/config.js",
-  "/courses": "pages/courses.js",
-  "/course/[courseId]/lesson/[lessonId]": "pages/course/[courseId]/lesson/[lessonId].js"
+  "/admin/add-instructor": "pages/admin/add-instructor.js"
 }

@@ -339,6 +339,25 @@ export class InstructorService {
         throw error;
       }
 
+      // Handle API error responses
+      if (error instanceof Error) {
+        const errorMessage = error.message;
+
+        // Check for specific backend error messages
+        if (errorMessage.includes('Email is already taken') || errorMessage.includes('already exists')) {
+          throw new InstructorServiceError('Email is already taken by another instructor', 400, 'EMAIL_CONFLICT');
+        } else if (errorMessage.includes('Invalid email format')) {
+          throw new InstructorServiceError('Invalid email format', 400, 'INVALID_EMAIL');
+        } else if (errorMessage.includes('Missing required fields')) {
+          throw new InstructorServiceError('Please fill in all required fields', 400, 'MISSING_FIELDS');
+        } else if (errorMessage.includes('exceed maximum length')) {
+          throw new InstructorServiceError('One or more fields are too long', 400, 'FIELD_TOO_LONG');
+        } else {
+          // Use the actual error message from the backend
+          throw new InstructorServiceError(errorMessage, 500, 'CREATE_ERROR');
+        }
+      }
+
       console.error('Error creating instructor:', error);
       throw new InstructorServiceError(
         'Failed to create instructor. Please try again.',
@@ -373,6 +392,29 @@ export class InstructorService {
     } catch (error) {
       if (error instanceof InstructorServiceError) {
         throw error;
+      }
+
+      // Handle API error responses
+      if (error instanceof Error) {
+        const errorMessage = error.message;
+
+        // Check for specific backend error messages
+        if (errorMessage.includes('Email is already taken')) {
+          throw new InstructorServiceError('Email is already taken by another instructor', 400, 'EMAIL_CONFLICT');
+        } else if (errorMessage.includes('Invalid email format')) {
+          throw new InstructorServiceError('Invalid email format', 400, 'INVALID_EMAIL');
+        } else if (errorMessage.includes('Missing required fields')) {
+          throw new InstructorServiceError('Please fill in all required fields', 400, 'MISSING_FIELDS');
+        } else if (errorMessage.includes('exceed maximum length')) {
+          throw new InstructorServiceError('One or more fields are too long', 400, 'FIELD_TOO_LONG');
+        } else if (errorMessage.includes('Instructor not found')) {
+          throw new InstructorServiceError('Instructor not found', 404, 'INSTRUCTOR_NOT_FOUND');
+        } else if (errorMessage.includes('Invalid instructor ID')) {
+          throw new InstructorServiceError('Invalid instructor ID', 400, 'INVALID_ID');
+        } else {
+          // Use the actual error message from the backend
+          throw new InstructorServiceError(errorMessage, 500, 'UPDATE_ERROR');
+        }
       }
 
       console.error('Error updating instructor:', error);
