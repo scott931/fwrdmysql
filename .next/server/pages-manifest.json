@@ -3,6 +3,8 @@
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
   "/courses": "pages/courses.js",
+  "/admin": "pages/admin.js",
+  "/admin/upload-course": "pages/admin/upload-course.js",
   "/home": "pages/home.js",
   "/api/banner/config": "pages/api/banner/config.js"
 }

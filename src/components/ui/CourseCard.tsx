@@ -23,9 +23,10 @@ interface CourseCardProps {
   /** Course data to display */
   course: Course;
   showFavoriteButton?: boolean;
+  rowId?: number;
 }
 
-const CourseCard: React.FC<CourseCardProps> = ({ course, showFavoriteButton = true }) => {
+const CourseCard: React.FC<CourseCardProps> = ({ course, showFavoriteButton = true, rowId }) => {
   const router = useRouter();
   const [isHovered, setIsHovered] = React.useState(false);
   const [hoveredCardId, setHoveredCardId] = React.useState<string | null>(null);
@@ -48,18 +49,29 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, showFavoriteButton = tr
     const gridContainer = card.closest('.card-grid-container');
     if (!gridContainer) return;
 
-    const allCards = Array.from(gridContainer.querySelectorAll('.card-container'));
-    const currentIndex = allCards.indexOf(card);
-    const isLastCard = currentIndex === allCards.length - 1;
+    // Get the row ID for this card
+    const currentRowId = rowId;
+    if (currentRowId === undefined) return;
 
-    // First, reset all cards to ensure clean state
-    allCards.forEach((adjacentCard) => {
+    // Set the row ID on the container for CSS targeting
+    gridContainer.setAttribute('data-active-row', currentRowId.toString());
+
+    // Get all cards in this specific row only using CSS selector
+    const rowCards = gridContainer.querySelectorAll(`[data-row-id="${currentRowId}"]`);
+    const currentIndex = Array.from(rowCards).indexOf(card);
+    const isLastCard = currentIndex === rowCards.length - 1;
+
+    console.log(`Row ${currentRowId}: Found ${rowCards.length} cards in this row`);
+    console.log(`Current card index: ${currentIndex}, Is last card: ${isLastCard}`);
+
+    // First, reset all cards in this row to ensure clean state
+    rowCards.forEach((adjacentCard) => {
       (adjacentCard as HTMLElement).style.transform = 'translateX(0) scale(1)';
       (adjacentCard as HTMLElement).style.transition = 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
     });
 
     if (isLastCard) {
-      // Last card: push container to the left and expand card to the left
+      // Last card in row: push container to the left and expand card to the left
       // Only apply container push on course pages, not homepage
       const isCoursePage = window.location.pathname.includes('/courses');
       if (isCoursePage) {
@@ -72,20 +84,20 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, showFavoriteButton = tr
       (card as HTMLElement).style.width = '200%';
       (card as HTMLElement).classList.add('active');
     } else {
-      // Other cards: expand to the right and push adjacent cards
+      // Other cards: expand to the right and push adjacent cards in the same row
       (card as HTMLElement).style.transform = 'scale(1.05) translateX(1rem)';
       (card as HTMLElement).style.transition = 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
       (card as HTMLElement).style.width = '200%';
       (card as HTMLElement).classList.add('active');
 
-      // Push cards to the right of the hovered card
-      allCards.forEach((adjacentCard, index) => {
+      // Push cards to the right of the hovered card (only in this row)
+      rowCards.forEach((adjacentCard, index) => {
         if (index > currentIndex) {
           // Different push distance for homepage vs course pages
           const isHomePage = window.location.pathname === '/' || window.location.pathname === '/home';
           const pushDistance = isHomePage ? '14rem' : '18rem';
 
-          console.log(`Pushing card ${index} to the right by ${pushDistance}`);
+          console.log(`Pushing card ${index} in row ${currentRowId} to the right by ${pushDistance}`);
           (adjacentCard as HTMLElement).style.transform = `translateX(${pushDistance})`;
           (adjacentCard as HTMLElement).style.transition = 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
         }
@@ -98,7 +110,12 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, showFavoriteButton = tr
     const gridContainer = card.closest('.card-grid-container');
     if (!gridContainer) return;
 
-    const allCards = Array.from(gridContainer.querySelectorAll('.card-container'));
+    // Get the row ID for this card
+    const currentRowId = rowId;
+    if (currentRowId === undefined) return;
+
+    // Get all cards in this specific row only using CSS selector
+    const rowCards = gridContainer.querySelectorAll(`[data-row-id="${currentRowId}"]`);
 
     // Reset container position only on course pages
     const isCoursePage = window.location.pathname.includes('/courses');
@@ -107,8 +124,8 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, showFavoriteButton = tr
       (gridContainer as HTMLElement).style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
     }
 
-    // Immediately reset all cards
-    allCards.forEach((adjacentCard) => {
+    // Immediately reset all cards in this row
+    rowCards.forEach((adjacentCard) => {
       (adjacentCard as HTMLElement).style.transform = 'translateX(0) scale(1)';
       (adjacentCard as HTMLElement).style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
       (adjacentCard as HTMLElement).style.width = '100%';
@@ -120,6 +137,9 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, showFavoriteButton = tr
     (card as HTMLElement).style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
     (card as HTMLElement).style.width = '100%';
     (card as HTMLElement).classList.remove('active'); // Remove active border
+
+    // Remove the active row attribute
+    gridContainer.removeAttribute('data-active-row');
   };
 
   // Early return for null/undefined course
@@ -263,7 +283,13 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, showFavoriteButton = tr
 
 
   return (
-    <div onClick={handleCardClick} onMouseEnter={handleCardHover} onMouseLeave={handleCardLeave} className={`group card-container ${isComingSoon ? 'cursor-default' : 'cursor-pointer'}`}>
+    <div
+      className="card-container group cursor-pointer"
+      onMouseEnter={handleCardHover}
+      onMouseLeave={handleCardLeave}
+      onClick={handleCardClick}
+      data-row-id={rowId}
+    >
       <div className="relative w-full h-80 transition-all duration-500 ease-in-out card-expansion card-landscape-expand">
         {/* Poster Container */}
         <div className="w-full h-full relative rounded-lg overflow-hidden shadow-xl card-orientation-transition">

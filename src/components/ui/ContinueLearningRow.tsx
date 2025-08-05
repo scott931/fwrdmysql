@@ -20,18 +20,19 @@ const ContinueLearningRow: React.FC<ContinueLearningRowProps> = ({ courses }) =>
     const gridContainer = card.closest('.card-grid-container');
     if (!gridContainer) return;
 
+    // Get all cards in this container (which is now just one row)
     const allCards = Array.from(gridContainer.querySelectorAll('.card-container'));
     const currentIndex = allCards.indexOf(card);
     const isLastCard = currentIndex === allCards.length - 1;
 
-    // First, reset all cards to ensure clean state
+    // First, reset all cards in this container to ensure clean state
     allCards.forEach((adjacentCard) => {
       (adjacentCard as HTMLElement).style.transform = 'translateX(0) scale(1)';
       (adjacentCard as HTMLElement).style.transition = 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
     });
 
     if (isLastCard) {
-      // Last card: push container to the left and expand card to the left
+      // Last card in row: push container to the left and expand card to the left
       // Only apply container push on course pages, not homepage
       const isCoursePage = window.location.pathname.includes('/courses');
       if (isCoursePage) {
@@ -44,13 +45,13 @@ const ContinueLearningRow: React.FC<ContinueLearningRowProps> = ({ courses }) =>
       (card as HTMLElement).style.width = '200%';
       (card as HTMLElement).classList.add('active');
     } else {
-      // Other cards: expand to the right and push adjacent cards
+      // Other cards: expand to the right and push adjacent cards in the same row
       (card as HTMLElement).style.transform = 'scale(1.05) translateX(1rem)';
       (card as HTMLElement).style.transition = 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
       (card as HTMLElement).style.width = '200%';
       (card as HTMLElement).classList.add('active');
 
-      // Push cards to the right of the hovered card
+      // Push cards to the right of the hovered card (only in this container/row)
       allCards.forEach((adjacentCard, index) => {
         if (index > currentIndex) {
           // Different push distance for homepage vs course pages

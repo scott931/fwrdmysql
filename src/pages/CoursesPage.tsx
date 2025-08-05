@@ -188,11 +188,27 @@ const CoursesPage: React.FC = () => {
           ))}
         </div>
 
-        {/* Course Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-0 xl:grid-cols-4 gap-6 md:gap-4 lg:gap-8 card-grid-container">
-          {filteredCourses.map(course => (
-            <CourseCard key={course.id} course={course} />
-          ))}
+        {/* Course Grid - Separated by rows */}
+        <div className="space-y-8">
+          {(() => {
+            const cardsPerRow = 5;
+            const rows = [];
+
+            for (let i = 0; i < filteredCourses.length; i += cardsPerRow) {
+              const rowCourses = filteredCourses.slice(i, i + cardsPerRow);
+              const rowIndex = Math.floor(i / cardsPerRow);
+
+              rows.push(
+                <div key={rowIndex} className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5 gap-6 md:gap-4 lg:gap-8 card-grid-container`} data-row-id={rowIndex}>
+                  {rowCourses.map(course => (
+                    <CourseCard key={course.id} course={course} rowId={rowIndex} />
+                  ))}
+                </div>
+              );
+            }
+
+            return rows;
+          })()}
         </div>
 
         {/* Empty State */}
