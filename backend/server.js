@@ -469,14 +469,14 @@ app.get('/api/system/rate-limits', (req, res) => {
   getRateLimitStatus(req, res);
 });
 
-// System metrics endpoint (Admin only)
-app.get('/api/system/metrics', authenticateToken, authorizeRole(['admin']), (req, res) => {
+// System metrics endpoint (Super Admin only)
+app.get('/api/system/metrics', authenticateToken, authorizeRole(['super_admin']), (req, res) => {
   const metrics = monitoringService.getMetrics();
   res.apiSuccess(metrics, 'System metrics retrieved');
 });
 
-// Enhanced analytics endpoint with real data (Admin only)
-app.get('/api/analytics/platform/admin', authenticateToken, authorizeRole(['admin']), asyncHandler(async (req, res) => {
+// Enhanced analytics endpoint with real data (Super Admin only)
+app.get('/api/analytics/platform/admin', authenticateToken, authorizeRole(['super_admin']), asyncHandler(async (req, res) => {
   try {
     // Get real analytics data from database
     const [userCount] = await executeQuery('SELECT COUNT(*) as count FROM users');
@@ -1189,14 +1189,17 @@ app.put('/api/users/:id', authenticateToken, async (req, res) => {
       onboarding_completed
     } = req.body;
 
-    // Ensure user can only update their own profile unless they're admin
-    if (req.user.id !== req.params.id && req.user.role !== 'super_admin') {
+    // Allow users to update their own profile, or admins to update any user
+    const isOwnProfile = req.user.id === req.params.id;
+    const isAdmin = req.user.role === 'super_admin' || req.user.role === 'community_manager' || req.user.role === 'content_manager';
+
+    if (!isOwnProfile && !isAdmin) {
       return res.status(403).json({ error: 'You can only update your own profile' });
     }
 
-    // Regular users cannot change their role
+    // Regular users cannot change their role, but admins can
     let updateRole = req.user.role;
-    if (req.user.role === 'super_admin' && role) {
+    if ((req.user.role === 'super_admin' || req.user.role === 'community_manager') && role) {
       updateRole = role;
     }
 
@@ -1587,7 +1590,7 @@ app.put('/api/courses/:id', async (req, res) => {
 });
 
 // Delete course
-app.delete('/api/courses/:id', authenticateToken, authorizeRole(['super_admin', 'content_manager']), async (req, res) => {
+app.delete('/api/courses/:id', authenticateToken, authorizeRole(['super_admin', 'content_manager', 'community_manager']), async (req, res) => {
   console.log('🔍 Delete Course Debug:', {
     courseId: req.params.id,
     user: req.user,
@@ -2052,7 +2055,7 @@ app.get('/api/instructors/:id/courses', async (req, res) => {
 });
 
 // Create new instructor
-app.post('/api/instructors', authenticateToken, authorizeRole(['super_admin', 'content_manager']), async (req, res) => {
+app.post('/api/instructors', authenticateToken, authorizeRole(['super_admin', 'content_manager', 'community_manager']), async (req, res) => {
   try {
     const {
       name,
@@ -2190,7 +2193,7 @@ app.post('/api/instructors', authenticateToken, authorizeRole(['super_admin', 'c
 });
 
 // Update instructor
-app.put('/api/instructors/:id', authenticateToken, authorizeRole(['super_admin', 'content_manager']), async (req, res) => {
+app.put('/api/instructors/:id', authenticateToken, authorizeRole(['super_admin', 'content_manager', 'community_manager']), async (req, res) => {
   try {
     const {
       name,
@@ -2334,7 +2337,7 @@ app.put('/api/instructors/:id', authenticateToken, authorizeRole(['super_admin',
 });
 
 // Delete instructor
-app.delete('/api/instructors/:id', authenticateToken, authorizeRole(['super_admin', 'content_manager']), async (req, res) => {
+app.delete('/api/instructors/:id', authenticateToken, authorizeRole(['super_admin', 'content_manager', 'community_manager']), async (req, res) => {
   try {
     // Check if instructor exists
     const [instructor] = await executeQuery('SELECT name, email FROM instructors WHERE id = ?', [req.params.id]);

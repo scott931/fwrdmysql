@@ -138,7 +138,7 @@ const HomePage: React.FC = () => {
 
   return (
     <Layout>
-      <div className="pb-10">
+      <div className="pb-10 homepage">
         {/* Hero Banner - Always show with fallback data */}
         <HeroBanner course={featuredCourse} onPlay={handlePlayCourse} />
 
@@ -180,7 +180,7 @@ const HomePage: React.FC = () => {
         {inProgressCourses.length > 0 && (
           <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <h2 className="text-white text-2xl font-bold mb-6">Continue Learning</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4 lg:gap-6">
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 md:gap-8 lg:gap-10 card-grid-container">
               {inProgressCourses.map(course => (
                 <CourseCard key={course.id} course={course} />
               ))}
@@ -191,7 +191,7 @@ const HomePage: React.FC = () => {
         {/* Featured Classes Section */}
         <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <h2 className="text-white text-2xl font-bold mb-6">Featured Classes</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4 lg:gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 md:gap-8 lg:gap-10 card-grid-container">
             {featuredCourses.map(course => (
               <CourseCard key={course.id} course={course} />
             ))}
@@ -209,7 +209,7 @@ const HomePage: React.FC = () => {
               return (
                 <div key={categoryName} className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                   <h2 className="text-white text-2xl font-bold mb-6">{categoryName}</h2>
-                  <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4 lg:gap-6">
+                  <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 md:gap-8 lg:gap-10 card-grid-container">
                     {categoryCourses.map(course => (
                       <CourseCard key={course.id} course={course} />
                     ))}

@@ -47,7 +47,7 @@ const videoUpload = multer({
 // Video Upload and Processing Routes
 
 // Upload video for a lesson
-router.post('/upload/:lessonId', authenticateToken, authorizeRole(['instructor', 'admin']), videoUpload.single('video'), async (req, res) => {
+router.post('/upload/:lessonId', authenticateToken, authorizeRole(['instructor', 'super_admin', 'content_manager']), videoUpload.single('video'), async (req, res) => {
     try {
         const { lessonId } = req.params;
         const { title, description, tags, metadata } = req.body;
@@ -194,7 +194,7 @@ router.get('/workflow/:contentType/:contentId', authenticateToken, async (req, r
 });
 
 // Update workflow status
-router.put('/workflow/:workflowId/status', authenticateToken, authorizeRole(['instructor', 'admin', 'reviewer']), async (req, res) => {
+router.put('/workflow/:workflowId/status', authenticateToken, authorizeRole(['instructor', 'super_admin', 'content_manager', 'community_manager']), async (req, res) => {
     try {
         const { workflowId } = req.params;
         const { status, notes } = req.body;
@@ -217,7 +217,7 @@ router.put('/workflow/:workflowId/status', authenticateToken, authorizeRole(['in
 });
 
 // Assign reviewer
-router.post('/workflow/:workflowId/assign-reviewer', authenticateToken, authorizeRole(['admin']), async (req, res) => {
+router.post('/workflow/:workflowId/assign-reviewer', authenticateToken, authorizeRole(['super_admin', 'content_manager']), async (req, res) => {
     try {
         const { workflowId } = req.params;
         const { reviewerId, deadline } = req.body;
@@ -308,7 +308,7 @@ router.get('/workflow/pending-reviews', authenticateToken, async (req, res) => {
 // Metadata Management Routes
 
 // Add metadata to content
-router.post('/metadata/:contentType/:contentId', authenticateToken, authorizeRole(['instructor', 'admin']), async (req, res) => {
+router.post('/metadata/:contentType/:contentId', authenticateToken, authorizeRole(['instructor', 'super_admin', 'content_manager']), async (req, res) => {
     try {
         const { contentType, contentId } = req.params;
         const { metadata } = req.body;
@@ -330,7 +330,7 @@ router.post('/metadata/:contentType/:contentId', authenticateToken, authorizeRol
 });
 
 // Update metadata
-router.put('/metadata/:metadataId', authenticateToken, authorizeRole(['instructor', 'admin']), async (req, res) => {
+router.put('/metadata/:metadataId', authenticateToken, authorizeRole(['instructor', 'super_admin', 'content_manager']), async (req, res) => {
     try {
         const { metadataId } = req.params;
         const { metadata } = req.body;
@@ -372,7 +372,7 @@ router.get('/metadata/:contentType/:contentId', authenticateToken, async (req, r
 // Tag Management Routes
 
 // Add tags to content
-router.post('/tags/:contentType/:contentId', authenticateToken, authorizeRole(['instructor', 'admin']), async (req, res) => {
+router.post('/tags/:contentType/:contentId', authenticateToken, authorizeRole(['instructor', 'super_admin', 'content_manager']), async (req, res) => {
     try {
         const { contentType, contentId } = req.params;
         const { tags } = req.body;
@@ -469,7 +469,7 @@ router.get('/jobs/content/:contentId', authenticateToken, async (req, res) => {
 });
 
 // Retry failed job
-router.post('/jobs/:jobId/retry', authenticateToken, authorizeRole(['admin']), async (req, res) => {
+router.post('/jobs/:jobId/retry', authenticateToken, authorizeRole(['super_admin', 'content_manager']), async (req, res) => {
     try {
         const { jobId } = req.params;
 
@@ -486,7 +486,7 @@ router.post('/jobs/:jobId/retry', authenticateToken, authorizeRole(['admin']), a
 });
 
 // Get queue statistics
-router.get('/jobs/queue/stats', authenticateToken, authorizeRole(['admin']), async (req, res) => {
+router.get('/jobs/queue/stats', authenticateToken, authorizeRole(['super_admin', 'content_manager']), async (req, res) => {
     try {
         const stats = await jobProcessorService.getQueueStatistics();
 
@@ -503,7 +503,7 @@ router.get('/jobs/queue/stats', authenticateToken, authorizeRole(['admin']), asy
 // Workflow Statistics Routes
 
 // Get workflow statistics
-router.get('/workflow/stats', authenticateToken, authorizeRole(['admin']), async (req, res) => {
+router.get('/workflow/stats', authenticateToken, authorizeRole(['super_admin', 'content_manager']), async (req, res) => {
     try {
         const stats = await contentWorkflowService.getWorkflowStatistics();
 
@@ -518,7 +518,7 @@ router.get('/workflow/stats', authenticateToken, authorizeRole(['admin']), async
 });
 
 // Get overdue reviews
-router.get('/workflow/overdue-reviews', authenticateToken, authorizeRole(['admin']), async (req, res) => {
+router.get('/workflow/overdue-reviews', authenticateToken, authorizeRole(['super_admin', 'content_manager']), async (req, res) => {
     try {
         const overdue = await contentWorkflowService.getOverdueReviews();
 
@@ -550,7 +550,7 @@ router.get('/workflow/:workflowId/timeline', authenticateToken, async (req, res)
 });
 
 // Bulk operations
-router.post('/workflow/bulk-update', authenticateToken, authorizeRole(['admin']), async (req, res) => {
+router.post('/workflow/bulk-update', authenticateToken, authorizeRole(['super_admin', 'content_manager']), async (req, res) => {
     try {
         const { contentIds, contentType, newStatus, notes } = req.body;
 

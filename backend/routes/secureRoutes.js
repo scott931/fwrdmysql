@@ -543,7 +543,7 @@ router.post('/system/backup',
 // Get all users
 router.get('/users',
   authenticateToken,
-  authorizeRole(['admin', 'super_admin']),
+  authorizeRole(['super_admin', 'community_manager']),
   rateLimit(100, 15 * 60 * 1000), // 100 requests per 15 minutes
   auditLog('GET_USERS'),
   async (req, res) => {
@@ -620,8 +620,11 @@ router.put('/users/:userId',
 
       const user = users[0];
 
-      // Allow users to update their own profile, or admin/super_admin to update any user
-      if (req.user.id !== userId && req.user.role !== 'super_admin' && req.user.role !== 'admin') {
+      // Allow users to update their own profile, or admins to update any user
+      const isOwnProfile = req.user.id === userId;
+      const isAdmin = req.user.role === 'super_admin' || req.user.role === 'community_manager' || req.user.role === 'content_manager';
+
+      if (!isOwnProfile && !isAdmin) {
         return res.status(403).json({
           error: 'You can only update your own profile',
           code: 'INSUFFICIENT_PERMISSIONS'
@@ -629,8 +632,6 @@ router.put('/users/:userId',
       }
 
       // Regular users can only update certain fields
-      const isOwnProfile = req.user.id === userId;
-      const isAdmin = req.user.role === 'super_admin' || req.user.role === 'admin';
 
       // Build update fields based on permissions
       const updateFields = [];

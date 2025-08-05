@@ -81,7 +81,7 @@ const CategoryRow: React.FC<CategoryRowProps> = ({ title, courses }) => {
         {/* Scrollable Course Container */}
         <div
           ref={rowRef}
-          className="grid grid-flow-col auto-cols-[45%] sm:auto-cols-[30%] md:auto-cols-[22%] lg:auto-cols-[18%] xl:auto-cols-[15%] gap-3 overflow-x-scroll scrollbar-hide px-4 py-1"
+          className="grid grid-flow-col auto-cols-[45%] sm:auto-cols-[30%] md:auto-cols-[22%] lg:auto-cols-[18%] xl:auto-cols-[15%] gap-8 overflow-x-scroll scrollbar-hide px-4 py-1 card-grid-container"
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
                   {courses.map((course) => {

@@ -81,10 +81,83 @@ a, button {
   @apply transition-transform duration-300 hover:scale-105;
 }
 
+/* Card orientation transition */
+.card-orientation-transition {
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Card expansion effect */
+.card-expansion {
+  transform-origin: left center;
+  will-change: transform;
+}
+
+/* Prevent layout shifts during card expansion */
+.card-container {
+  overflow: visible;
+  position: relative;
+  margin-right: 0.25rem;
+  transform: translateX(0) scale(1);
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Active card with white border */
+.card-container.active {
+  border: 2px solid white;
+  border-radius: 0.5rem;
+}
+
+/* Landscape expansion effect */
+.card-landscape-expand {
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Adjacent cards pushed to the right */
+.card-container.adjacent-pushed {
+  transform: translateX(18rem); /* Reduced push distance to prevent huge gaps */
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Landscape image effect */
+.card-landscape-image {
+  transition: object-fit 0.5s ease-in-out;
+}
+
+.card-landscape-image:hover {
+  object-fit: contain;
+  object-position: center;
+}
+
+/* Maintain card height during aspect ratio changes */
+.card-aspect-maintain {
+  height: auto;
+  min-height: 0;
+}
+
 /* Line clamp utility */
 .line-clamp-3 {
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+/* Card grid container with overflow visible - only for course grids */
+.grid.card-grid-container {
+  overflow: visible !important;
+  position: relative;
+}
+
+/* Homepage-specific card margins */
+.homepage .card-container {
+  margin-right: 0.125rem; /* Reduced margin for homepage */
+}
+
+/* Regular card margins for other pages */
+.card-container {
+  overflow: visible;
+  position: relative;
+  margin-right: 0.25rem;
+  transform: translateX(0) scale(1);
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }

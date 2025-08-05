@@ -27,6 +27,9 @@ interface CourseCardProps {
 
 const CourseCard: React.FC<CourseCardProps> = ({ course, showFavoriteButton = true }) => {
   const router = useRouter();
+  const [isHovered, setIsHovered] = React.useState(false);
+  const [hoveredCardId, setHoveredCardId] = React.useState<string | null>(null);
+
   const {
     favorites,
     addToFavorites,
@@ -38,6 +41,86 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, showFavoriteButton = tr
     hasInitialized
   } = useFavorites();
   const isFavorited = favorites.some(fav => fav.id === course.id);
+
+  // Handle card hover with React state
+  const handleCardHover = (e: React.MouseEvent) => {
+    const card = e.currentTarget as HTMLElement;
+    const gridContainer = card.closest('.card-grid-container');
+    if (!gridContainer) return;
+
+    const allCards = Array.from(gridContainer.querySelectorAll('.card-container'));
+    const currentIndex = allCards.indexOf(card);
+    const isLastCard = currentIndex === allCards.length - 1;
+
+    // First, reset all cards to ensure clean state
+    allCards.forEach((adjacentCard) => {
+      (adjacentCard as HTMLElement).style.transform = 'translateX(0) scale(1)';
+      (adjacentCard as HTMLElement).style.transition = 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
+    });
+
+    if (isLastCard) {
+      // Last card: push container to the left and expand card to the left
+      // Only apply container push on course pages, not homepage
+      const isCoursePage = window.location.pathname.includes('/courses');
+      if (isCoursePage) {
+        (gridContainer as HTMLElement).style.transform = 'translateX(-12rem)';
+        (gridContainer as HTMLElement).style.transition = 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
+      }
+
+      (card as HTMLElement).style.transform = 'scale(1.05) translateX(-4rem)';
+      (card as HTMLElement).style.transition = 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
+      (card as HTMLElement).style.width = '200%';
+      (card as HTMLElement).classList.add('active');
+    } else {
+      // Other cards: expand to the right and push adjacent cards
+      (card as HTMLElement).style.transform = 'scale(1.05) translateX(1rem)';
+      (card as HTMLElement).style.transition = 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
+      (card as HTMLElement).style.width = '200%';
+      (card as HTMLElement).classList.add('active');
+
+      // Push cards to the right of the hovered card
+      allCards.forEach((adjacentCard, index) => {
+        if (index > currentIndex) {
+          // Different push distance for homepage vs course pages
+          const isHomePage = window.location.pathname === '/' || window.location.pathname === '/home';
+          const pushDistance = isHomePage ? '14rem' : '18rem';
+
+          console.log(`Pushing card ${index} to the right by ${pushDistance}`);
+          (adjacentCard as HTMLElement).style.transform = `translateX(${pushDistance})`;
+          (adjacentCard as HTMLElement).style.transition = 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
+        }
+      });
+    }
+  };
+
+  const handleCardLeave = (e: React.MouseEvent) => {
+    const card = e.currentTarget as HTMLElement;
+    const gridContainer = card.closest('.card-grid-container');
+    if (!gridContainer) return;
+
+    const allCards = Array.from(gridContainer.querySelectorAll('.card-container'));
+
+    // Reset container position only on course pages
+    const isCoursePage = window.location.pathname.includes('/courses');
+    if (isCoursePage) {
+      (gridContainer as HTMLElement).style.transform = 'translateX(0)';
+      (gridContainer as HTMLElement).style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+    }
+
+    // Immediately reset all cards
+    allCards.forEach((adjacentCard) => {
+      (adjacentCard as HTMLElement).style.transform = 'translateX(0) scale(1)';
+      (adjacentCard as HTMLElement).style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+      (adjacentCard as HTMLElement).style.width = '100%';
+      (adjacentCard as HTMLElement).classList.remove('active'); // Remove active border
+    });
+
+    // Reset hovered card immediately
+    (card as HTMLElement).style.transform = 'translateX(0) scale(1)';
+    (card as HTMLElement).style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+    (card as HTMLElement).style.width = '100%';
+    (card as HTMLElement).classList.remove('active'); // Remove active border
+  };
 
   // Early return for null/undefined course
   if (!course) {
@@ -180,17 +263,17 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, showFavoriteButton = tr
 
 
   return (
-    <div onClick={handleCardClick} className={`group ${isComingSoon ? 'cursor-default' : 'cursor-pointer'}`}>
-      <div className="relative w-full transition-transform duration-300 group-hover:scale-105">
+    <div onClick={handleCardClick} onMouseEnter={handleCardHover} onMouseLeave={handleCardLeave} className={`group card-container ${isComingSoon ? 'cursor-default' : 'cursor-pointer'}`}>
+      <div className="relative w-full h-80 transition-all duration-500 ease-in-out card-expansion card-landscape-expand">
         {/* Poster Container */}
-        <div className="aspect-[2/3] relative rounded-lg overflow-hidden shadow-xl">
+        <div className="w-full h-full relative rounded-lg overflow-hidden shadow-xl card-orientation-transition">
           {/* Thumbnail */}
           {thumbnail.startsWith('http') ? (
             // Use regular img tag for external URLs to avoid Next.js Image issues
             <img
               src={thumbnail}
               alt={title}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover card-landscape-image"
               loading="lazy"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
@@ -211,7 +294,7 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, showFavoriteButton = tr
               alt={title}
               width={400}
               height={600}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover card-landscape-image"
               loading="lazy"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;

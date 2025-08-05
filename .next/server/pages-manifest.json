@@ -2,10 +2,7 @@
   "/_app": "pages/_app.js",
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
-  "/login": "pages/login.js",
-  "/profile": "pages/profile.js",
-  "/admin": "pages/admin.js",
-  "/": "pages/index.js",
+  "/courses": "pages/courses.js",
   "/home": "pages/home.js",
   "/api/banner/config": "pages/api/banner/config.js"
 }
